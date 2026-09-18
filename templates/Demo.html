@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chat Input Box Replica</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+<div class="page">
+  <h1>Message input</h1>
+
+  <div class="conversation" id="conversation"></div>
+
+  <div class="composer" id="composer">
+    <div class="attachments" id="attachments"></div>
+
+    <div class="input-row">
+      <div
+        class="editor"
+        id="editor"
+        contenteditable="true"
+        data-placeholder="How can I help you today?"
+      ></div>
+    </div>
+
+    <div class="toolbar">
+      <div class="toolbar-left">
+        <button class="icon-btn" id="attachBtn" title="Attach file / paste to test plain-text conversion">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
+          </svg>
+        </button>
+        <button class="model-pill" id="modelPill">
+          Claude Sonnet
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="6 9 12 15 18 9"></polyline>
+          </svg>
+        </button>
+      </div>
+
+      <div class="toolbar-right">
+        <button class="send-btn" id="sendBtn" title="Send">
+          <span id="sendIcon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="12" y1="19" x2="12" y2="5"></line>
+              <polyline points="5 12 12 5 19 12"></polyline>
+            </svg>
+          </span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <p class="hint">Type normally, or paste rich/formatted text — it will automatically be flattened to plain text. Your message is sent to the Flask server and the reply appears above.</p>
+</div>
+
+<div class="toast" id="toast">Message sent</div>
+
+<input type="file" id="fileInput" multiple style="display:none">
+
+<script src="{{ url_for('static', filename='script.js') }}"></script>
+
+</body>
+</html>
