@@ -1,44 +1,54 @@
 # Project Explanation
 
-This project is a small Flask-based chat/message demo. It has two versions:
+This project is a small Flask-based web app that demonstrates how a browser, a server, and a simple chat interface work together. It has two versions:
 
-1. A simpler demo in `server.py` that accepts a text message and optional file attachment and stores them in memory.
-2. A more complete chat UI in `Demo testing/Demo.py` that sends messages to a backend route and optionally calls the OpenRouter API.
+1. A basic server in `server.py` that accepts text and optional file uploads and saves them in memory.
+2. A more advanced demo in `Demo testing/Demo.py` that sends messages to a Flask route and optionally calls the OpenRouter AI API.
 
-The goal is to show how a browser form, a Flask server, and a simple in-memory message list work together.
+The project is mainly a learning example for:
+
+- Flask routes
+- HTML forms and file upload handling
+- template rendering
+- in-memory data storage
+- JavaScript browser logic
+- JSON request/response communication
 
 ---
 
 ## 1) Project structure
 
-- `server.py` — the basic Flask app
-- `templates/index.html` — the simple frontend page with textarea and file attachment
-- `Demo testing/Demo.py` — more advanced chat server with AI reply support
-- `Demo testing/templates/Demo.html` — rich chat UI HTML
-- `Demo testing/static/script.js` — JavaScript logic that drives the chat UI
-- `Demo testing/static/style.css` — styling for the chat interface
+- `server.py` — the simplest Flask app for a message form
+- `templates/index.html` — simple HTML page with textarea and file upload
+- `Demo testing/Demo.py` — more advanced chat backend with AI support
+- `Demo testing/templates/Demo.html` — chat UI mockup
+- `Demo testing/static/script.js` — client-side chat logic
+- `Demo testing/static/style.css` — CSS styling
+- `README.md` — setup and usage notes
 
 ---
 
 ## 2) What the app is doing overall
 
-The app behaves like a mini message system.
+At a high level, the app acts like a mini message system:
 
-- The browser loads a page.
-- The user types a message or attaches a file.
-- The form sends data to the Flask server.
-- The server reads that data.
-- The server stores it in memory (`messages` list).
-- The page refreshes or the frontend displays a response.
-- In the advanced demo, the server may send the message to OpenRouter, which returns an AI answer.
+- the browser shows a form or chat box
+- the user enters text or attaches a file
+- the frontend sends the data to the Flask server
+- the server reads the incoming request
+- the server stores the message in memory
+- the backend returns a response
+- the browser updates the screen to display the result
 
-This is a classic web application pattern:
+The basic pattern is:
 
-Browser -> HTTP request -> Flask route -> Python logic -> response -> browser updates
+Browser -> HTTP request -> Flask route -> Python logic -> response -> browser update
 
 ---
 
-## 3) The simple version: `server.py`
+## 3) Basic app: `server.py`
+
+This is the simplest version and is the clearest example of Flask form handling.
 
 ### Imports
 
@@ -46,70 +56,73 @@ Browser -> HTTP request -> Flask route -> Python logic -> response -> browser up
 from flask import Flask, request, jsonify, render_template, redirect, url_for
 ```
 
-These are the key Flask pieces:
+These imports are important:
 
-- `Flask` — creates the web application object.
-- `request` — gives access to incoming browser data such as form fields, files, JSON, and URL parameters.
-- `jsonify` — converts Python data into JSON for HTTP responses.
-- `render_template` — loads an HTML page from the `templates` folder.
-- `redirect` — sends the browser to a different route.
-- `url_for` — builds a URL from a function name.
+- `Flask` creates the web application object.
+- `request` lets the app read browser-submitted values.
+- `jsonify` creates JSON responses.
+- `render_template` loads HTML templates from the `templates` folder.
+- `redirect` sends the browser to another route.
+- `url_for` builds a URL from a Python function name.
 
-### App object
+### App initialization
 
 ```python
 app = Flask(__name__)
 ```
 
-This creates the Flask app instance. `__name__` tells Flask where the app is located so it can find templates and static files correctly.
+This creates the Flask application instance. `__name__` tells Flask where the app is located and helps it find templates and static files.
 
-### In-memory storage
+### In-memory message store
 
 ```python
 messages = []
 ```
 
-This is a Python list used to store messages temporarily while the server is running. It is not saved to a database, and it disappears when the server restarts.
+This list stores all messages while the app is running. It is temporary memory only, not a database. When the server restarts, the list resets.
 
-Each message is a dictionary like:
+Each item is a dictionary like:
 
 ```python
-{"text": "hello", "file": "resume.pdf"}
+{"text": "hello", "file": "report.pdf"}
 ```
 
-That means:
+This means:
 
-- `text` keeps the typed message
-- `file` keeps the uploaded file name if one exists
+- `text` = typed message
+- `file` = name of uploaded file, if present
 
 ---
 
-### Route: home page
+### Home route
 
 ```python
-@app.route("/")
 def home():
     return render_template("index.html", messages=messages)
 ```
 
-This is the main page. The decorator `@app.route("/")` tells Flask:
+This function is connected to `/` with:
 
-- when a browser opens the root URL `/`, call this function
-- return the result of `render_template("index.html", messages=messages)`
+```python
+@app.route("/")
+```
 
-`render_template` loads the HTML page and sends the `messages` list into the template so the page can display earlier messages.
+Meaning:
+
+- when the browser opens the home page, Flask calls `home()`
+- `render_template(...)` loads the HTML page
+- the `messages` list is passed into the page so old messages can be displayed
 
 So the flow is:
 
-- browser requests `/`
-- Flask calls `home()`
-- HTML template loads
-- template loops through `messages`
-- all old messages are shown on the page
+1. browser requests `/`
+2. Flask runs `home()`
+3. the template loads
+4. the page displays past messages
 
 ---
 
-### Route: send message
+### Send route
 
 ```python
 @app.route("/send", methods=["POST"])
@@ -124,111 +137,103 @@ def send():
     return redirect(url_for("home"))
 ```
 
-This handles form submission when the user clicks Send.
+This is the main logic for receiving submitted data.
 
 #### `request.form.get("message", "")`
 
-This reads the text field named `message` from the submitted form. It says:
+This reads the form input named `message`.
 
-- look in form data
-- find the field called `message`
-- if it is missing, use an empty string
-- then strip spaces from both ends
+- it looks inside the posted form data
+- if not found, it uses an empty string
+- `.strip()` removes extra spaces around the message
 
 #### `request.files.get("attachment")`
 
-This reads the uploaded file. In the HTML, the file input uses the name `attachment`.
+This reads the uploaded file from the form.
 
-- if a file is uploaded, `file` is a file object
-- if no file is selected, `file` is `None`
+- `attachment` is the name of the file input in the HTML form
+- if no file is selected, it becomes `None`
 
 #### `file_name = file.filename if file and file.filename else None`
 
-This line extracts the uploaded file's original name.
+This extracts the file’s original name.
 
-- If a file exists and has a filename, store it
-- Otherwise, store `None`
+- if there is a file with a filename, store it
+- otherwise, set it to `None`
 
-So a message could be:
-
-- text only
-- file only
-- both text and file
-- neither (ignored)
-
-#### `if text or file_name`
+#### `if text or file_name:`
 
 This prevents empty submissions.
 
-- if there is no text and no file, nothing is saved
-- if there is either text or file, then it is added to the in-memory list
+- if the user typed nothing and attached nothing, ignore it
+- if either text or file exists, save it
 
 #### `messages.append(...)`
 
-This adds the message object to the list.
+This adds the new message to the in-memory list.
 
 Example:
 
 ```python
-messages.append({"text": "hello", "file": "notes.pdf"})
+{"text": "hello", "file": "notes.pdf"}
 ```
 
 #### `redirect(url_for("home"))`
 
-After the message is saved, the user is redirected back to the home page.
+After saving, the app redirects the browser back to `/`.
 
-This makes the page refresh so the new message appears in the list.
+This refreshes the page so the new message appears.
 
 ---
 
-### App startup
+### Startup block
 
 ```python
 if __name__ == "__main__":
     app.run(debug=True)
 ```
 
-This is the standard Flask startup block.
+This starts the Flask development server.
 
-- `__name__ == "__main__"` means this file is being run directly, not imported elsewhere
-- `app.run(...)` starts the local web server
-- `debug=True` turns on debug mode so Flask shows useful error messages while developing
+- `__name__ == "__main__"` means run only when this file is executed directly
+- `app.run(...)` starts the local server
+- `debug=True` enables debug mode for easier development and error reporting
 
 ---
 
-## 4) The frontend template: `templates/index.html`
+## 4) Frontend for the simple app: `templates/index.html`
 
-This is the HTML for the simple demo.
+This HTML file creates the basic message form.
 
-### Important pieces
-
-```html
-<form class="composer" method="POST" action="{{ url_for('send') }}" enctype="multipart/form-data">
-```
-
-This form does the submission:
-
-- `method="POST"` means send data with HTTP POST
-- `action="{{ url_for('send') }}"` tells the browser to send to the `/send` route
-- `enctype="multipart/form-data"` is required when uploading files
-
-### Text area
+### Form submission
 
 ```html
-<textarea name="message" rows="2" placeholder="How can I help you today?"></textarea>
+<form method="POST" action="{{ url_for('send') }}" enctype="multipart/form-data">
 ```
 
-This creates the text box where the user types their message. The `name="message"` matters because the Python server reads `request.form.get("message")`.
+This is the important part:
+
+- `method="POST"` sends data using a POST request
+- `action="{{ url_for('send') }}"` sends it to the `/send` route
+- `enctype="multipart/form-data"` is required for file uploads
+
+### Text input
+
+```html
+<textarea name="message" rows="2"></textarea>
+```
+
+This creates the textbox. The attribute `name="message"` matches the server-side code reading `request.form.get("message")`.
 
 ### File input
 
 ```html
-<input type="file" name="attachment" id="attachment">
+<input type="file" name="attachment">
 ```
 
-This lets the user choose a file. Its name is `attachment`, which matches the server-side `request.files.get("attachment")` call.
+This allows the user to choose a file. Its name matches the server-side `request.files.get("attachment")`.
 
-### Messages display loop
+### Displaying messages
 
 ```html
 {% for m in messages %}
@@ -241,19 +246,19 @@ This lets the user choose a file. Its name is `attachment`, which matches the se
 {% endfor %}
 ```
 
-This is Jinja templating.
+This is Jinja template syntax.
 
-- `for m in messages` loops through every message
-- if a message has a file, it shows a file tag
-- then it displays the message text
+- `for m in messages` loops through every saved message
+- if a file exists, it shows a file label
+- then it prints the message text
 
-This is how past messages appear on the page after submission.
+This makes the page show all previous messages.
 
 ---
 
-## 5) Full demo: `Demo testing/Demo.py`
+## 5) Advanced demo: `Demo testing/Demo.py`
 
-This version is more realistic and includes a chat UI and optional AI response.
+This version is more realistic and includes interactive chat behavior and optional AI integration.
 
 ### Imports
 
@@ -263,26 +268,28 @@ import requests
 from flask import Flask, request, jsonify, render_template
 ```
 
-- `os` lets the program read environment variables like API keys
-- `requests` lets the server call external APIs such as OpenRouter
-- `Flask` and `request` are used for web routes and incoming request data
-- `jsonify` turns Python dictionaries into JSON responses
+- `os` reads environment variables
+- `requests` sends HTTP requests to external APIs
+- `Flask` handles the app and routes
+- `request` reads incoming data
+- `jsonify` returns JSON responses
+- `render_template` loads HTML web pages
 
-### App object
+### App setup
 
 ```python
 app = Flask(__name__)
 ```
 
-Same purpose as in the simpler app: create the Flask app.
+This creates the Flask app for the demo version.
 
-### In-memory list
+### Message storage
 
 ```python
 messages = []
 ```
 
-This stores message strings in memory during the server runtime.
+This stores conversation text in memory while the server is running.
 
 ---
 
@@ -294,16 +301,14 @@ OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 OPENROUTER_MODEL = "openai/gpt-4o-mini"
 ```
 
-This is how the app configures AI integration:
+This configures the AI part:
 
-- `os.environ.get(...)` checks the environment for a variable named `OPENROUTER_API_KEY`
-- if missing, it becomes an empty string
-- `OPENROUTER_URL` is the API endpoint for OpenRouter
-- `OPENROUTER_MODEL` chooses which language model is used
+- `OPENROUTER_API_KEY` is read from environment variables
+- if no key is set, the app still works but cannot call AI
+- `OPENROUTER_URL` is the external API endpoint
+- `OPENROUTER_MODEL` chooses the model to use
 
-#### Why this matters
-
-If an API key is present, the server can send the user’s message to OpenRouter and get a reply. If no key is set, it falls back to a simple echo response.
+The app is designed to run either with or without AI.
 
 ### System prompt
 
@@ -314,13 +319,7 @@ SYSTEM_PROMPT = (
 )
 ```
 
-A system prompt tells the AI how to behave. For example:
-
-- be helpful
-- be concise
-- answer as a website assistant
-
-This is part of the message payload sent to OpenRouter.
+This tells the AI how to behave. It acts like a built-in instruction for the assistant.
 
 ---
 
@@ -346,25 +345,25 @@ def call_openrouter(user_message: str) -> str:
     return data["choices"][0]["message"]["content"]
 ```
 
-This function sends the user message to the OpenRouter API.
+This is the actual AI call function.
 
-#### Breakdown
+#### What it does step by step
 
-- `headers` adds the API key and tells the API the body is JSON
-- `payload` contains the model and chat messages
-- `requests.post(...)` sends the request to OpenRouter
-- `timeout=30` means the server will stop waiting after 30 seconds
-- `response.raise_for_status()` raises an error if the request fails (like 401, 500, etc.)
-- `response.json()` turns the API response into a Python dictionary
-- `data["choices"][0]["message"]["content"]` extracts the AI-generated text
+1. prepares HTTP headers with the API key
+2. creates the payload containing:
+   - model name
+   - system instructions
+   - user message
+3. sends a POST request to OpenRouter
+4. checks whether the response is valid
+5. parses the JSON response
+6. extracts the model’s reply text and returns it
 
-So the app takes:
-
-user message -> OpenRouter API -> AI reply -> send back to the browser
+This is the function that turns the app from a simple echo service into an AI-powered chat app.
 
 ---
 
-### Route: home page
+### Home route for the chat demo
 
 ```python
 @app.route("/", methods=["GET"])
@@ -372,11 +371,11 @@ def home():
     return render_template("Demo.html")
 ```
 
-This loads the advanced chat interface from `Demo testing/templates/Demo.html`.
+This route loads the advanced browser page from `Demo testing/templates/Demo.html`.
 
 ---
 
-### Route: send message
+### Send message route for the demo
 
 ```python
 @app.route("/send", methods=["POST"])
@@ -408,44 +407,29 @@ def send_message():
     })
 ```
 
-This is the main backend API for the chat demo.
+This is the main chat backend logic.
 
 #### Step-by-step flow
 
-1. `request.get_json(silent=True) or {}`
-   - reads JSON from the browser
-   - if there is no JSON, uses an empty dictionary
+1. `request.get_json(silent=True)` reads incoming JSON from the browser
+2. it reads the `message` value from the JSON object
+3. it trims spaces and rejects empty messages
+4. it saves the message in `messages`
+5. if an API key exists, it calls OpenRouter
+6. otherwise, it returns a local echo response
+7. then it returns a JSON reply to the browser
 
-2. `text = data.get("message", "").strip()`
-   - extracts the user message
-   - removes spaces around it
+This route is the server’s main request handler.
 
-3. `if not text:`
-   - reject empty messages
-   - return a JSON error with HTTP 400
+#### HTTP response behavior
 
-4. `messages.append(text)`
-   - save the message into the in-memory list
-
-5. `if OPENROUTER_API_KEY:`
-   - if API key exists, call AI
-   - otherwise use a simple echo reply
-
-6. `return jsonify({"status": "ok", "reply": reply})`
-   - send the reply back to the browser as JSON
-
-#### Why this matters
-
-This creates the back-end contract for the UI:
-
-- frontend sends `{ "message": "hello" }`
-- backend validates it
-- backend stores it
-- backend responds with `{ "status": "ok", "reply": "..." }`
+- if the message is empty: returns `400 Bad Request`
+- if OpenRouter fails: returns `502 Bad Gateway`
+- otherwise: returns `200 OK` with reply text
 
 ---
 
-### Route: get messages
+### Messages route
 
 ```python
 @app.route("/messages", methods=["GET"])
@@ -453,88 +437,82 @@ def get_messages():
     return jsonify({"messages": messages})
 ```
 
-This returns the current message list as JSON. It is useful for debugging or for a client that wants to fetch the conversation history.
+This route provides the saved message history as JSON.
+
+It is useful for:
+
+- debugging
+- checking current message state
+- creating a client that reads the conversation history
 
 ---
 
-### Startup
+### Startup block for demo app
 
 ```python
 if __name__ == "__main__":
     app.run(debug=True, port=5000)
 ```
 
-This starts the app on port 5000 in debug mode.
+This starts the advanced app on port `5000`.
 
 ---
 
-## 6) The advanced frontend: `Demo testing/templates/Demo.html`
+## 6) Frontend for the advanced demo: `Demo testing/templates/Demo.html`
 
-This is the HTML for the richer chat UI.
+This HTML page is more modern and resembles a real chat interface.
 
-Important elements:
+Key elements:
 
-- `div id="conversation"` — container for message bubbles
-- `div id="editor" contenteditable="true"` — editable text area for user input
-- `input type="file" id="fileInput"` — hidden file picker
+- `div id="conversation"` — where chat bubbles appear
+- `div id="editor" contenteditable="true"` — editable text input area
 - `button id="sendBtn"` — send button
+- `input type="file" id="fileInput"` — hidden file picker
 - script tag loads `script.js`
 
-The page is designed so JavaScript can manipulate the DOM and keep the conversation visually interactive.
+The page is designed to be controlled by JavaScript rather than a normal form post.
 
 ---
 
 ## 7) JavaScript behavior: `Demo testing/static/script.js`
 
-This file handles the real browser-side chat logic.
+This file controls the browser-side chat behavior.
 
-### DOM setup
+### DOM initialization
 
 ```javascript
 document.addEventListener('DOMContentLoaded', () => {
-  const composer     = document.getElementById('composer');
-  const editor       = document.getElementById('editor');
-  const sendBtn      = document.getElementById('sendBtn');
-  const sendIcon     = document.getElementById('sendIcon');
-  const attachBtn    = document.getElementById('attachBtn');
-  const fileInput    = document.getElementById('fileInput');
-  const attachWrap   = document.getElementById('attachments');
-  const toast        = document.getElementById('toast');
+  const composer = document.getElementById('composer');
+  const editor = document.getElementById('editor');
+  const sendBtn = document.getElementById('sendBtn');
+  const fileInput = document.getElementById('fileInput');
   const conversation = document.getElementById('conversation');
 ```
 
-This gets references to all interactive parts of the page.
+This grabs references to the UI elements the script needs to manipulate.
 
 ### Focus effect
 
 ```javascript
 editor.addEventListener('focus', () => composer.classList.add('focused'));
-editor.addEventListener('blur',  () => composer.classList.remove('focused'));
+editor.addEventListener('blur', () => composer.classList.remove('focused'));
 ```
 
-The editor adds or removes a CSS class when the user focuses or leaves the input box, which gives the visual focus ring effect.
+When the user clicks into the editor, the UI adds a focus style.
 
----
-
-### `hasContent()`
+### Content check
 
 ```javascript
-function hasContent(){
+function hasContent() {
   return editor.textContent.trim().length > 0 || attachWrap.children.length > 0;
 }
 ```
 
-This checks whether the user has typed something or attached a file.
-
-- if there is text in the editor, true
-- if there are attachment chips, true
-- otherwise false
-
-This is used to decide whether the send button should be enabled.
+This determines whether the user has text or attachments before allowing send.
 
 ---
 
-### Paste plain text conversion
+### Plain-text paste logic
 
 ```javascript
 editor.addEventListener('paste', (e) => {
@@ -544,64 +522,41 @@ editor.addEventListener('paste', (e) => {
 });
 ```
 
-This is a very important feature.
+This is a very important feature. It prevents pasted rich text from preserving HTML formatting and instead inserts plain text only.
 
-The browser normally pastes formatted rich text (HTML) if copied from a webpage, email, or Word document. This code blocks the default paste behavior and instead inserts only plain text.
-
-This is done to make the app simpler and more consistent.
-
-#### `insertPlainText(text)`
-
-This function:
-
-- gets the current selection in the editable area
-- deletes the current selection
-- splits the pasted text by lines
-- inserts each line as text
-- inserts `<br>` tags between lines
-
-This makes pasted content appear as plain text with line breaks instead of hidden HTML formatting.
+This keeps the message clean and predictable.
 
 ---
 
-### Enter to send
+### Enter-to-send behavior
 
 ```javascript
 editor.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter' && !e.shiftKey){
+  if (e.key === 'Enter' && !e.shiftKey) {
     e.preventDefault();
     trySend();
   }
 });
 ```
 
-This means:
+- Enter sends the message
+- Shift+Enter creates a new line
 
-- pressing Enter sends the message
-- pressing Shift+Enter allows a newline instead
-
-This is a common chat UX pattern.
+This is common chat UX behavior.
 
 ---
 
-### `trySend()`
+### Main sending logic: `trySend()`
 
 ```javascript
-async function trySend(){
+async function trySend() {
   if (!hasContent() || sendBtn.classList.contains('loading')) return;
 
   const messageText = editor.textContent;
-
   addBubble(messageText, 'user');
-
-  sendBtn.classList.remove('pulse');
-  void sendBtn.offsetWidth;
-  sendBtn.classList.add('pulse');
 
   editor.textContent = '';
   attachWrap.innerHTML = '';
-  editor.focus();
-
   setLoading(true);
 
   try {
@@ -613,7 +568,7 @@ async function trySend(){
 
     const data = await response.json();
 
-    if (!response.ok){
+    if (!response.ok) {
       addBubble(data.error || 'Something went wrong.', 'ai', true);
     } else {
       addBubble(data.reply, 'ai');
@@ -627,41 +582,41 @@ async function trySend(){
 }
 ```
 
-This is the main chat sending logic.
+This is the browser’s main communication path.
 
-#### Behavior
+#### What it does
 
-1. If the editor has no content, stop.
-2. Read the current text from the editor.
-3. Add a user bubble to the conversation.
-4. Clear the input and attachments.
-5. Show a loading state.
-6. Send a POST request to `/send` with JSON data.
-7. Wait for the response.
-8. If there is an error, show an error bubble.
-9. Else, show the AI reply bubble.
-10. Turn loading off.
+1. checks whether there is content to send
+2. reads the message text from the editor
+3. displays a user bubble immediately
+4. clears the input box
+5. sends a POST request to `/send`
+6. waits for the response
+7. adds the AI or error reply as a new bubble
+8. resets the loading state
 
-#### `fetch('/send', {...})`
+The core front-end/backend communication is:
 
-This is the browser sending an HTTP request to the Flask server.
+```javascript
+fetch('/send', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ message: messageText })
+})
+```
 
-- `method: 'POST'` tells the server it is a write operation
-- `headers: { 'Content-Type': 'application/json' }` says the body is JSON
-- `body: JSON.stringify({ message: messageText })` sends the user message in JSON form
-
-The server receives:
+This sends JSON like:
 
 ```json
-{ "message": "hello there" }
+{ "message": "hello" }
 ```
 
 ---
 
-### `addBubble(text, who, isError)`
+### `addBubble()`
 
 ```javascript
-function addBubble(text, who, isError){
+function addBubble(text, who, isError) {
   const bubble = document.createElement('div');
   bubble.className = `bubble ${who}` + (isError ? ' error' : '');
   bubble.textContent = text;
@@ -670,47 +625,33 @@ function addBubble(text, who, isError){
 }
 ```
 
-This creates a chat bubble for either:
+This creates a chat bubble and adds it to the conversation box.
 
-- user message
-- AI message
-- error message
-
-It adds the bubble to the conversation container and scrolls it into view.
+- `who` indicates whether it is a user or AI message
+- `isError` changes the styling for errors
+- `scrollIntoView` keeps the latest message visible
 
 ---
 
-### `setLoading(isLoading)`
+### Loading spinner logic
 
 ```javascript
-function setLoading(isLoading){
+function setLoading(isLoading) {
   sendBtn.classList.toggle('loading', isLoading);
   sendBtn.disabled = isLoading;
-  if (isLoading){
+  if (isLoading) {
     sendIcon.innerHTML = '<div class="spinner"></div>';
   } else {
-    sendIcon.innerHTML = `
-      <svg ...>...</svg>`;
-    refreshSendState();
+    sendIcon.innerHTML = `<svg ...></svg>`;
   }
 }
 ```
 
-This gives the send button a loading state while waiting for the backend response.
-
-- disables the button so the user cannot send again
-- swaps the send icon to a spinner
-- re-enables it after the request completes
+This prevents duplicate sends while waiting for a response and gives visual feedback.
 
 ---
 
-### File attachment chips
-
-```javascript
-attachBtn.addEventListener('click', () => fileInput.click());
-```
-
-This opens the file picker when the user clicks the attach button.
+### File chip handling
 
 ```javascript
 fileInput.addEventListener('change', () => {
@@ -720,79 +661,66 @@ fileInput.addEventListener('change', () => {
 });
 ```
 
-This handles file selection and turns each selected file into a visual chip.
+This listens for file selection and converts each file into a chip-like visual item.
 
-```javascript
-function addChip(file){
-  const chip = document.createElement('div');
-  chip.className = 'chip';
-  chip.innerHTML = `...`;
-  chip.querySelector('.chip-remove').addEventListener('click', () => {
-    chip.remove();
-    refreshSendState();
-  });
-  attachWrap.appendChild(chip);
-}
-```
-
-This creates a small pill-like UI element showing the file name and a remove button.
+These chips help represent attached files without actually sending the file content through the demo UI.
 
 ---
 
-## 8) App data flow (simple version)
+## 8) App data flow: simple version
 
-### Flow A: page load
+### Flow A: loading the page
 
 1. Browser requests `/`
-2. Flask route `home()` runs
+2. Flask runs `home()`
 3. `render_template("index.html", messages=messages)` loads the page
-4. Template displays saved messages
-5. Browser renders the HTML
+4. the template displays the message list
+5. the browser renders the page
 
-### Flow B: submit message
+### Flow B: sending a message
 
-1. User types text and maybe chooses a file
-2. Form posts to `/send`
-3. Flask route `send()` reads:
-   - `request.form.get("message")`
-   - `request.files.get("attachment")`
-4. It stores the result in `messages`
-5. It redirects back to `/`
-6. Browser loads the page again
-7. Template shows all messages, including the new one
+1. the user types a message and maybe uploads a file
+2. the form submits to `/send`
+3. Flask reads the data with `request.form` and `request.files`
+4. the app saves it to `messages`
+5. the app redirects to `/`
+6. the browser reloads and sees the new message
 
 ---
 
-## 9) App data flow (advanced demo)
+## 9) App data flow: advanced demo
 
-### Flow C: frontend chat request
+### Flow C: browser to server
 
-1. User types in the contenteditable editor
-2. JavaScript `trySend()` reads `editor.textContent`
-3. JavaScript `fetch('/send')` sends JSON to the backend
-4. Server route `send_message()` receives JSON and validates it
-5. Message is appended to `messages`
-6. If an API key exists, `call_openrouter()` sends the message to OpenRouter
-7. OpenRouter returns a reply
-8. Flask sends JSON back: `{ "status": "ok", "reply": "..." }`
-9. JavaScript adds the AI reply as a bubble to the page
+1. user types text in the editor
+2. JavaScript sends `fetch('/send')`
+3. the body contains JSON: `{ "message": "hello" }`
+4. Flask route `send_message()` receives it
+5. the message is validated and saved to `messages`
 
-### Flow D: no API key
+### Flow D: server to AI or fallback
 
-If `OPENROUTER_API_KEY` is empty:
+6. if `OPENROUTER_API_KEY` exists, the server calls `call_openrouter()`
+7. the AI returns a reply
+8. if no API key is set, the server returns a local echo message instead
+9. Flask sends JSON back to the browser, like:
 
-- the server does not call OpenRouter
-- it creates a fallback reply such as: `Server received: hello`
-- the frontend still displays it as if it were an AI response
+```json
+{ "status": "ok", "reply": "Server received: hello" }
+```
 
-This is useful for testing the app without paying for or using an external service.
+### Flow E: browser update
+
+10. JavaScript receives that JSON
+11. it adds a new bubble to the conversation UI
+12. the chat screen updates without reloading the page
 
 ---
 
-## 10) Important keywords explained
+## 10) Important keywords and concepts explained
 
 ### `@app.route(...)`
-A decorator that connects a URL path to a Python function.
+A decorator that binds a URL to a Python function.
 
 Example:
 
@@ -800,16 +728,16 @@ Example:
 @app.route("/send", methods=["POST"])
 ```
 
-This means: when the browser sends a POST request to `/send`, run that function.
+This means: when a request hits `/send`, run the function below.
 
 ### `methods=["POST"]`
-Specifies which HTTP methods are allowed for the route.
+Defines which HTTP method is allowed for that route.
 
-- GET means read data
-- POST means send data
+- `GET` = read data
+- `POST` = send data
 
 ### `request.form`
-Contains data submitted from an HTML form.
+Contains form data submitted by HTML form fields.
 
 Example:
 
@@ -818,16 +746,16 @@ request.form.get("message")
 ```
 
 ### `request.files`
-Contains uploaded files from a form using `multipart/form-data`.
+Contains uploaded files from a form.
 
 ### `render_template(...)`
-Renders an HTML template from the `templates` folder.
+Loads and renders an HTML file from the `templates` directory.
 
 ### `redirect(...)`
-Tells the browser to go to a different route.
+Sends the user to a different URL.
 
 ### `url_for(...)`
-Builds a route URL from the function name.
+Builds a URL from the function name.
 
 Example:
 
@@ -835,45 +763,36 @@ Example:
 url_for("home")
 ```
 
-becomes `/`.
+returns `/`.
 
 ### `jsonify(...)`
-Creates a JSON response from Python data.
+Converts Python objects into JSON for the browser.
 
 ### `messages = []`
-A Python list used as temporary storage in memory.
+A temporary in-memory list used for simple storage.
+
+### `request.get_json(...)`
+Reads JSON from the client request body.
 
 ### `if __name__ == "__main__":`
-Runs the app only when the file is executed directly, not when imported elsewhere.
+Runs the app only when the file is executed directly, not when it is imported somewhere else.
 
-### `app.run(debug=True)`
-Starts the Flask development server with debug mode enabled.
-
-### `fetch(...)`
-JavaScript function used to make an HTTP request from the browser to the server.
-
-### `contenteditable="true"`
-An HTML attribute that lets a div behave like an editable text field.
-
-### `JSON.stringify(...)`
-Converts a JavaScript object into a JSON string for sending to the backend.
+### `app.run(...)`
+Starts the local Flask development server.
 
 ---
 
 ## 11) Summary
 
-This project is a very small web app that demonstrates:
+This project is a small full-stack Flask demo that shows how a real web application works:
 
-- Flask route handling
-- HTML forms and file uploads
-- in-memory message storage
-- template rendering
-- JSON responses
-- frontend JavaScript interaction
-- optional AI integration through OpenRouter
+- the client sends data from a browser
+- the Flask server receives it
+- Python logic processes the request
+- data is stored in memory
+- a response is returned to the browser
+- the user interface updates
 
-The key idea is simple:
+The simple version proves the basic request/response model. The demo version adds an AI layer using OpenRouter, which turns the project into a minimal API-driven chat application.
 
-The browser sends data, the Flask backend reads it, stores or processes it, and responds. The frontend then updates the page to show the result.
-
-That is the core of how most full-stack web apps work.
+In one sentence: this app is a small example of how a web interface, a backend server, and an AI endpoint can work together in a complete request cycle.
