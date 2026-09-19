@@ -1,0 +1,158 @@
+/* ---------- Colors (change them here) ---------- */
+:root {
+  --bg: #F4F1EA;
+  --box: #ffffff;
+  --border: #e5e1d8;
+  --text: #2d2a26;
+  --muted: #6b6660;
+  --accent: #D97757;
+}
+
+/* ---------- Page ---------- */
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 24px;
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+}
+
+.page {
+  width: 100%;
+  max-width: 720px;
+}
+
+h1 {
+  text-align: center;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--muted);
+  margin-bottom: 20px;
+}
+
+/* ---------- Sent messages ---------- */
+.messages {
+  margin-bottom: 16px;
+}
+
+.message {
+  background: #ebe6da;
+  padding: 10px 14px;
+  border-radius: 14px;
+  margin-bottom: 8px;
+  width: fit-content;
+  max-width: 100%;
+}
+
+.file-tag {
+  font-size: 13px;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+
+/* ---------- Input box ---------- */
+.composer {
+  background: var(--box);
+  border: 1px solid var(--border);
+  border-radius: 26px;
+  padding: 14px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+}
+
+/* Highlight the box when the user clicks inside it (pure CSS, no JS) */
+.composer:focus-within {
+  border-color: #c9c2b2;
+  box-shadow: 0 0 0 4px rgba(217, 119, 87, 0.15);
+}
+
+textarea {
+  width: 100%;
+  border: none;
+  outline: none;
+  resize: none;
+  font-size: 16px;
+  font-family: inherit;
+  color: var(--text);
+  background: transparent;
+}
+
+/* ---------- Bottom row (attach, model, send) ---------- */
+.toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 8px;
+}
+
+.left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Hide the ugly default file input; the paperclip label replaces it */
+input[type="file"] {
+  display: none;
+}
+
+.icon-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.icon-btn:hover {
+  background: #f0ede4;
+  color: var(--text);
+}
+
+.icon-btn svg {
+  width: 19px;
+  height: 19px;
+}
+
+.model-pill {
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 6px 12px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+/* ---------- Send button ---------- */
+.send-btn {
+  width: 34px;
+  height: 34px;
+  border: none;
+  border-radius: 50%;
+  background: var(--accent);
+  color: white;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+}
+
+.send-btn:hover {
+  background: #c96a4c;
+}
+
+.send-btn:active {
+  transform: scale(0.9);
+}
+
+.send-btn svg {
+  width: 16px;
+  height: 16px;
+}
