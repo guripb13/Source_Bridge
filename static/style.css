@@ -47,7 +47,7 @@ h1 {
   overflow-y: auto;
   margin-bottom: 16px;
   padding-right: 4px;
-  scrollbar-width: none;          /* Firefox */
+  scrollbar-width: none;
   -ms-overflow-style: none;
 }
 
@@ -86,7 +86,6 @@ h1 {
   padding: 14px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
   flex-shrink: 0;
-  transition: transform 0.6s ease;
 }
 
 /* Highlight the box when the user clicks inside it (pure CSS, no JS) */
@@ -180,24 +179,23 @@ input[type="file"] {
   width: 16px;
   height: 16px;
 }
-/* ---------- Smooth centered → bottom movement ---------- */
+/* ---------- EMPTY STATE: real layout, no pixel guessing ---------- */
 
-
-/* The title and messages fade in and out */
-h1,
-.messages {
-  transition: opacity 0.5s ease;
+/* Center the heading + input box together as a pair */
+.page.empty {
+  justify-content: center;
 }
 
-/* EMPTY STATE: box sits in the middle of the screen */
-.page.empty .composer {
-  transform: translateY(-40vh);
-}
-
+/* Heading is first in the column, so it sits right above the box */
 .page.empty h1 {
-  opacity: 0;
+  
+  margin-bottom: 24px;
 }
+
+/* No messages yet: the messages area takes no space */
 .page.empty .messages {
+  flex: 0;
+  margin: 0;
   opacity: 0;
   pointer-events: none;
 }
@@ -285,30 +283,74 @@ h1,
 }
 
 /* "Other" text box: slides open only when needed */
+
 .lang-other {
-  display: block;
-  width: 100%;
-  max-height: 0;
-  opacity: 0;
-  padding: 0 12px;
-  margin-top: 0;
+  flex: 1;
+  min-width: 0;
+  padding: 9px 12px;
   border: 1px solid var(--border);
   border-radius: 10px;
   font-size: 14px;
   font-family: inherit;
   outline: none;
-  overflow: hidden;
-  transition: max-height 0.25s ease, opacity 0.25s ease, padding 0.25s ease, margin-top 0.25s ease;
-}
-
-.lang-menu.show-other .lang-other {
-  max-height: 44px;
-  opacity: 1;
-  padding: 9px 12px;
-  margin-top: 6px;
 }
 
 .lang-other:focus {
   border-color: #c9c2b2;
   box-shadow: 0 0 0 3px rgba(217, 119, 87, 0.15);
+}
+
+
+
+/* Row that holds the text box + tick button */
+.lang-other-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  transition: max-height 0.25s ease, opacity 0.25s ease, margin-top 0.25s ease;
+}
+
+.lang-menu.show-other .lang-other-row {
+  max-height: 50px;
+  opacity: 1;
+  margin-top: 6px;
+}
+
+/* The tick button */
+.lang-done {
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  border: none;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  transition: background 0.2s ease, opacity 0.2s ease, transform 0.1s ease;
+}
+
+.lang-done:hover:not(:disabled) {
+  background: #c96a4c;
+}
+
+.lang-done:active:not(:disabled) {
+  transform: scale(0.9);
+}
+
+/* Light and unclickable while the box is empty */
+.lang-done:disabled {
+  background: #edc4b4;
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.lang-done svg {
+  width: 16px;
+  height: 16px;
 }

@@ -2,6 +2,41 @@ const page = document.querySelector(".page");
   const form = document.getElementById("form");
   const box = document.getElementById("message");
   const messages = document.getElementById("messages");
+  const title = document.getElementById("title");
+
+// Leaves the empty state with a smooth animation
+function leaveEmptyState() {
+  if (!page.classList.contains("empty")) return;     // only runs once
+
+  // 1. Measure where the heading and input box are now
+  const titleBefore = title.getBoundingClientRect();
+  const formBefore = form.getBoundingClientRect();
+
+  // 2. Switch to the final layout (this happens instantly)
+  page.classList.remove("empty");
+
+  // 3. Measure where they ended up
+  const titleAfter = title.getBoundingClientRect();
+  const formAfter = form.getBoundingClientRect();
+
+  // 4. Animate each one from its old position to its new position
+  const timing = { duration: 600, easing: "ease" };
+
+  title.animate([
+    { transform: `translateY(${titleBefore.top - titleAfter.top}px)` },
+    { transform: "translateY(0)" }
+  ], timing);
+
+  form.animate([
+    { transform: `translateY(${formBefore.top - formAfter.top}px)` },
+    { transform: "translateY(0)" }
+  ], timing);
+
+  messages.animate([
+    { opacity: 0 },
+    { opacity: 1 }
+  ], timing);
+}
 
   // Enter sends, Shift+Enter makes a new line
   box.addEventListener("keydown", function (event) {
@@ -17,7 +52,7 @@ const page = document.querySelector(".page");
     const text = box.value.trim();
     if (!text) return;
 
-    page.classList.remove("empty");                    // starts the smooth slide down
+        leaveEmptyState();                                 // smooth slide to the final layout
 
     // 1. Show the user's message
     const userDiv = document.createElement("div");
@@ -90,6 +125,7 @@ options.forEach(function (option) {
       langOther.focus();
       langLabel.textContent = langOther.value.trim() || "Other";
       languageField.value = langOther.value.trim() || "Other";
+      langDone.disabled = langOther.value.trim() === "";  
     } else {
       langMenu.classList.remove("show-other");
       langLabel.textContent = lang;
@@ -98,18 +134,29 @@ options.forEach(function (option) {
     }
   });
 });
-
+const langDone = document.getElementById("langDone");
 // Typing a custom language
 langOther.addEventListener("input", function () {
-  const custom = langOther.value.trim() || "Other";
-  langLabel.textContent = custom;
-  languageField.value = custom;
+  const custom = langOther.value.trim();
+
+  langLabel.textContent = custom || "Other";
+  languageField.value = custom || "Other";
+
+  langDone.disabled = custom === "";   
 });
 
 // Pressing Enter in the custom box closes the menu (and does not send the chat)
 langOther.addEventListener("keydown", function (event) {
-  if (event.key === "Enter") {
+ if (event.key === "Enter") {
     event.preventDefault();
-    langPicker.classList.remove("open");
+    if (langOther.value.trim() !== "") {
+      langPicker.classList.remove("open");
+    }
   }
+});
+// Tick button: close the language menu
+
+
+langDone.addEventListener("click", function () {
+  langPicker.classList.remove("open");
 });

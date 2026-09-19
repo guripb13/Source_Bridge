@@ -8,8 +8,8 @@
 </head>
 <body>
 
-<div class="page empty">
-  <h1>SOURCE BRIDGE</h1>
+<div class="page empty" id="page">
+ <h1 id="title">SOURCE BRIDGE</h1> 
 
   <!-- Messages and replies appear here -->
   <div class="messages" id="messages"></div>
@@ -46,7 +46,14 @@
     <button type="button" class="lang-option" data-lang="other">Other...</button>
 
     <!-- Only shows when "Other" is chosen -->
-    <input type="text" class="lang-other" id="langOther" placeholder="Type a language...">
+    <div class="lang-other-row" id="langOtherRow">
+  <input type="text" class="lang-other" id="langOther" placeholder="Type a language...">
+  <button type="button" class="lang-done" id="langDone" title="Done" disabled>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="20 6 9 17 4 12"></polyline>
+    </svg>
+  </button>
+</div>
   </div>
 
   <!-- Hidden field: this is what gets sent to Flask -->
