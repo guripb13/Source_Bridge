@@ -47,8 +47,13 @@ h1 {
   overflow-y: auto;
   margin-bottom: 16px;
   padding-right: 4px;
+  scrollbar-width: none;          /* Firefox */
+  -ms-overflow-style: none;
 }
 
+.messages::-webkit-scrollbar {
+  display: none;                  /* Chrome, Edge, Safari */
+}
 .reply {
   background: #fdeee8;
   border: 1px solid #f3cfc2;
