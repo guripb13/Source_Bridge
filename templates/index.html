@@ -20,6 +20,10 @@
         {% endif %}
         {{ m.text }}
       </div>
+
+      {% if m.reply %}
+        <div class="message reply">{{ m.reply }}</div>
+      {% endif %}
     {% endfor %}
   </div>
 

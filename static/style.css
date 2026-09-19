@@ -23,6 +23,10 @@ body {
   font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
 }
 
+.reply {
+  background: #fdeee8;
+  border: 1px solid #f3cfc2;
+}
 .page {
   width: 100%;
   max-width: 720px;
