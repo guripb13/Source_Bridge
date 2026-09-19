@@ -11,31 +11,15 @@
 <div class="page">
   <h1>Message input</h1>
 
-  <!-- Messages that were already sent -->
-  <div class="messages">
-    {% for m in messages %}
-      <div class="message">
-        {% if m.file %}
-          <div class="file-tag">📎 {{ m.file }}</div>
-        {% endif %}
-        {{ m.text }}
-      </div>
+  <!-- Messages and replies appear here -->
+  <div class="messages" id="messages"></div>
 
-      {% if m.reply %}
-        <div class="message reply">{{ m.reply }}</div>
-      {% endif %}
-    {% endfor %}
-  </div>
+  <form class="composer" id="form" method="POST" action="{{ url_for('send') }}" enctype="multipart/form-data">
 
-  <!-- The input box. enctype is needed so files can be sent. -->
-  <form class="composer" method="POST" action="{{ url_for('send') }}" enctype="multipart/form-data">
-
-    <!-- Text area for typing -->
-    <textarea name="message" rows="2" placeholder="How can I help you today?"></textarea>
+    <textarea name="message" id="message" rows="2" placeholder="How can I help you today?"></textarea>
 
     <div class="toolbar">
       <div class="left">
-        <!-- Attach button: a label styled as a button, linked to the hidden file input -->
         <input type="file" name="attachment" id="attachment">
         <label for="attachment" class="icon-btn" title="Attach file">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -46,7 +30,6 @@
         <span class="model-pill">Claude Sonnet</span>
       </div>
 
-      <!-- Send button -->
       <button type="submit" class="send-btn" title="Send">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
           <line x1="12" y1="19" x2="12" y2="5"></line>
@@ -56,6 +39,48 @@
     </div>
   </form>
 </div>
+
+<script>
+  const form = document.getElementById("form");
+  const box = document.getElementById("message");
+  const messages = document.getElementById("messages");
+
+  form.addEventListener("submit", async function (event) {
+    event.preventDefault();                         // stop the page from reloading
+
+    const text = box.value.trim();
+    if (!text) return;
+
+    // 1. Show the user's message
+    const userDiv = document.createElement("div");
+    userDiv.className = "message";
+    userDiv.style.whiteSpace = "pre-wrap";
+    userDiv.textContent = text;
+    messages.appendChild(userDiv);
+
+    // 2. Create an empty reply box that we will fill up
+    const replyDiv = document.createElement("div");
+    replyDiv.className = "message reply";
+    replyDiv.style.whiteSpace = "pre-wrap";
+    messages.appendChild(replyDiv);
+
+    // 3. Send the form to Flask
+    const data = new FormData(form);
+    box.value = "";                                 // clear the input box
+
+    const response = await fetch("/send", { method: "POST", body: data });
+
+    // 4. Read the reply piece by piece
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+
+    while (true) {
+      const result = await reader.read();
+      if (result.done) break;                       // no more pieces
+      replyDiv.textContent += decoder.decode(result.value, { stream: true });
+    }
+  });
+</script>
 
 </body>
 </html>

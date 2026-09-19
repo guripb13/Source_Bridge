@@ -26,6 +26,9 @@ body {
 .reply {
   background: #fdeee8;
   border: 1px solid #f3cfc2;
+  white-space: pre-wrap;
+  font-family: Consolas, Menlo, monospace;
+  font-size: 14px;
 }
 .page {
   width: 100%;
@@ -52,6 +55,7 @@ h1 {
   margin-bottom: 8px;
   width: fit-content;
   max-width: 100%;
+  white-space: pre-wrap;  
 }
 
 .file-tag {
