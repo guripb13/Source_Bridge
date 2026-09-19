@@ -4,13 +4,12 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Chat Input Box</title>
-  <script src="{{ url_for('static', filename='script.js') }}"></script>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
 
 <div class="page empty">
-  <h1>Source Bridge</h1>
+  <h1>SOURCE BRIDGE</h1>
 
   <!-- Messages and replies appear here -->
   <div class="messages" id="messages"></div>
@@ -28,7 +27,7 @@
           </svg>
         </label>
 
-        <span class="model-pill">Claude Sonnet</span>
+        <span class="model-pill">Gemini 2.5 Flash</span>
       </div>
 
       <button type="submit" class="send-btn" title="Send">
@@ -40,5 +39,7 @@
     </div>
   </form>
 </div>
+
+<script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>
 </html>
