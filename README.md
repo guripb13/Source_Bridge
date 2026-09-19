@@ -21,10 +21,7 @@ A small Flask project containing a chat-style message composer prototype. It inc
 
 From the project root, create and activate a virtual environment:
 
-```powershell
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-```
+
 
 Install the dependencies:
 
