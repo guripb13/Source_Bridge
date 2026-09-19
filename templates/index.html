@@ -24,7 +24,7 @@
   </div>
 
   <!-- The input box. enctype is needed so files can be sent. -->
-  <form class="composer" method="POST" enctype="multipart/form-data">
+  <form class="composer" method="POST" action="{{ url_for('send') }}" enctype="multipart/form-data">
 
     <!-- Text area for typing -->
     <textarea name="message" rows="2" placeholder="How can I help you today?"></textarea>
