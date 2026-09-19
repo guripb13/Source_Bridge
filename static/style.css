@@ -201,3 +201,114 @@ h1,
   opacity: 0;
   pointer-events: none;
 }
+
+/* ---------- language picker pill---------- */
+/* ---------- Language picker ---------- */
+.lang-picker {
+  position: relative;               /* the menu is positioned relative to this */
+}
+
+.model-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.model-pill:hover {
+  background: #f0ede4;
+  border-color: #c9c2b2;
+}
+
+.model-pill svg {
+  width: 14px;
+  height: 14px;
+  transition: transform 0.25s ease;
+}
+
+.lang-picker.open .model-pill svg {
+  transform: rotate(180deg);        /* arrow flips when open */
+}
+
+/* The menu: hidden by default, floats ABOVE the button */
+.lang-menu {
+  position: absolute;
+  bottom: calc(100% + 8px);         /* sits just above the button */
+  left: 0;
+  min-width: 180px;
+  background: var(--box);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 6px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+
+  opacity: 0;
+  transform: translateY(8px) scale(0.96);
+  transform-origin: bottom left;
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  z-index: 10;
+}
+
+.lang-picker.open .lang-menu {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
+}
+
+.lang-option {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: none;
+  background: transparent;
+  padding: 9px 12px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-family: inherit;
+  color: var(--text);
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.lang-option:hover {
+  background: #f0ede4;
+}
+
+.lang-option.active {
+  background: #fdeee8;
+  color: var(--accent);
+  font-weight: 500;
+}
+
+/* "Other" text box: slides open only when needed */
+.lang-other {
+  display: block;
+  width: 100%;
+  max-height: 0;
+  opacity: 0;
+  padding: 0 12px;
+  margin-top: 0;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font-size: 14px;
+  font-family: inherit;
+  outline: none;
+  overflow: hidden;
+  transition: max-height 0.25s ease, opacity 0.25s ease, padding 0.25s ease, margin-top 0.25s ease;
+}
+
+.lang-menu.show-other .lang-other {
+  max-height: 44px;
+  opacity: 1;
+  padding: 9px 12px;
+  margin-top: 6px;
+}
+
+.lang-other:focus {
+  border-color: #c9c2b2;
+  box-shadow: 0 0 0 3px rgba(217, 119, 87, 0.15);
+}

@@ -27,7 +27,31 @@
           </svg>
         </label>
 
-        <span class="model-pill">Gemini 2.5 Flash</span>
+        <div class="lang-picker" id="langPicker">
+
+  <!-- The button -->
+  <button type="button" class="model-pill" id="langBtn">
+    <span id="langLabel">Java</span>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="6 9 12 15 18 9"></polyline>
+    </svg>
+  </button>
+
+  <!-- The menu that opens above the button -->
+  <div class="lang-menu" id="langMenu">
+    <button type="button" class="lang-option" data-lang="Python">Python</button>
+    <button type="button" class="lang-option" data-lang="C">C</button>
+    <button type="button" class="lang-option" data-lang="C++">C++</button>
+    <button type="button" class="lang-option active" data-lang="Java">Java</button>
+    <button type="button" class="lang-option" data-lang="other">Other...</button>
+
+    <!-- Only shows when "Other" is chosen -->
+    <input type="text" class="lang-other" id="langOther" placeholder="Type a language...">
+  </div>
+
+  <!-- Hidden field: this is what gets sent to Flask -->
+  <input type="hidden" name="language" id="language" value="Java">
+</div>
       </div>
 
       <button type="submit" class="send-btn" title="Send">

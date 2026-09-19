@@ -53,3 +53,63 @@ const page = document.querySelector(".page");
       replyDiv.textContent = "Error: " + error.message;
     }
   });
+
+  // language selector
+  // ---------- Language picker ----------
+const langPicker = document.getElementById("langPicker");
+const langBtn = document.getElementById("langBtn");
+const langMenu = document.getElementById("langMenu");
+const langLabel = document.getElementById("langLabel");
+const langOther = document.getElementById("langOther");
+const languageField = document.getElementById("language");
+const options = document.querySelectorAll(".lang-option");
+
+// Open / close the menu when the button is clicked
+langBtn.addEventListener("click", function (event) {
+  event.stopPropagation();
+  langPicker.classList.toggle("open");
+});
+
+// Clicking anywhere else closes the menu
+document.addEventListener("click", function (event) {
+  if (!langPicker.contains(event.target)) {
+    langPicker.classList.remove("open");
+  }
+});
+
+// Choosing an option
+options.forEach(function (option) {
+  option.addEventListener("click", function () {
+    options.forEach(function (o) { o.classList.remove("active"); });
+    option.classList.add("active");
+
+    const lang = option.dataset.lang;
+
+    if (lang === "other") {
+      langMenu.classList.add("show-other");       // reveal the text box
+      langOther.focus();
+      langLabel.textContent = langOther.value.trim() || "Other";
+      languageField.value = langOther.value.trim() || "Other";
+    } else {
+      langMenu.classList.remove("show-other");
+      langLabel.textContent = lang;
+      languageField.value = lang;
+      langPicker.classList.remove("open");        // close after choosing
+    }
+  });
+});
+
+// Typing a custom language
+langOther.addEventListener("input", function () {
+  const custom = langOther.value.trim() || "Other";
+  langLabel.textContent = custom;
+  languageField.value = custom;
+});
+
+// Pressing Enter in the custom box closes the menu (and does not send the chat)
+langOther.addEventListener("keydown", function (event) {
+  if (event.key === "Enter") {
+    event.preventDefault();
+    langPicker.classList.remove("open");
+  }
+});

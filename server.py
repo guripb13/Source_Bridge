@@ -4,10 +4,11 @@ from google.genai import types
 
 app = Flask(__name__)
 
-TASK = """Convert the given code to Java.
+def build_task(language):
+    return f"""Convert the given code to {language}.
 Return only the code. No explanations, no comments, no markdown.
-Format it like a normal Java file: one statement per line, braces on their own lines where usual, and 4 spaces of indentation for each nested level."""
-client = genai.Client(api_key="Your API Key")
+Format it like a normal {language} file: one statement per line, and proper indentation for each nested level."""
+client = genai.Client(api_key="your_api_key")  # Replace with your actual API key
 
 
 @app.route("/")
@@ -18,7 +19,7 @@ def home():
 @app.route("/send", methods=["POST"])
 def send():
     text = request.form.get("message", "").strip()
-
+    language = request.form.get("language", "Java").strip() or "Java"
     def generate():
         if not text:
             return
@@ -27,7 +28,7 @@ def send():
             for chunk in client.models.generate_content_stream(
                 model="gemini-2.5-flash",
                 contents=text,
-                config=types.GenerateContentConfig(system_instruction=TASK),
+                config=types.GenerateContentConfig(system_instruction=build_task(language)),
             ):
                 if chunk.text:
                     yield chunk.text      # send each chunk to the browser immediately
