@@ -3,7 +3,48 @@ const form = document.getElementById("form");
 const box = document.getElementById("message");
 const messages = document.getElementById("messages");
 const title = document.getElementById("title");
+// Outward arrows = expand, inward arrows = shrink
 
+const composer = form;
+const expandBtn = document.getElementById("expandBtn");
+
+expandBtn.addEventListener("click", function () {
+  const expanded = composer.classList.toggle("expanded");
+  expandBtn.title = expanded ? "Shrink input" : "Expand input";
+  box.focus();
+});
+
+
+// ---------- Hint: "click here to expand" when the text gets long ----------
+const expandHint = document.getElementById("expandHint");
+let hintShown = false;                 // only show it once per page load
+let hintTimer;
+
+function hideExpandHint() {
+  expandHint.classList.remove("show");
+  expandBtn.classList.remove("attention");
+  clearTimeout(hintTimer);
+}
+
+// Counts how many lines the text takes up, including wrapped lines
+function countLines() {
+  const lineHeight = parseFloat(getComputedStyle(box).lineHeight) || 24;
+  return Math.round(box.scrollHeight / lineHeight);
+}
+
+box.addEventListener("input", function () {
+  if (hintShown) return;                                   // already shown once
+  if (composer.classList.contains("expanded")) return;     // already expanded
+  if (countLines() <= 2) return;                           // still short
+
+  hintShown = true;
+  expandHint.classList.add("show");
+  expandBtn.classList.add("attention");
+  hintTimer = setTimeout(hideExpandHint, 6000);            // auto-hide after 6 seconds
+});
+
+// Clicking the expand button dismisses the hint
+expandBtn.addEventListener("click", hideExpandHint);
 
 // one time tip about dragging messages
 
@@ -206,6 +247,7 @@ function slideOlderMessages(oldPositions) {
     // 3. Send the form to Flask
     const data = new FormData(form);
     box.value = "";
+    composer.classList.remove("expanded"); 
 
     // 4. Read the reply piece by piece
     try {

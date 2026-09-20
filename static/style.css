@@ -95,6 +95,7 @@ h1 {
 }
 
 textarea {
+  line-height: 1.5;
   width: 100%;
   border: none;
   outline: none;
@@ -103,6 +104,12 @@ textarea {
   font-family: inherit;
   color: var(--text);
   background: transparent;
+  scrollbar-width: none;            /* Firefox */
+  -ms-overflow-style: none;         /* old Edge / Internet Explorer */
+}
+
+textarea::-webkit-scrollbar {
+  display: none;                    /* Chrome, Edge, Safari */
 }
 
 /* ---------- Bottom row (attach, model, send) ---------- */
@@ -695,6 +702,8 @@ body.drag-mode .bubble-wrap:hover::after {
 .tips-corner.open .tips-item:nth-child(2) { transition-delay: 0.08s; }
 .tips-corner.open .tips-item:nth-child(3) { transition-delay: 0.16s; }
 .tips-corner.open .tips-item:nth-child(4) { transition-delay: 0.24s; }
+.tips-corner.open .tips-item:nth-child(5) { transition-delay: 0.32s; }
+.tips-corner.open .tips-item:nth-child(6) { transition-delay: 0.40s; }
 
 .tips-card kbd {
   background: rgba(255, 255, 255, 0.18);
@@ -703,4 +712,140 @@ body.drag-mode .bubble-wrap:hover::after {
   padding: 1px 6px;
   font-family: inherit;
   font-size: 12px;
+}
+
+
+
+
+/* ---------- Expand input button ---------- */
+.composer {
+  position: relative;               /* lets the button sit in the top-right corner */
+}
+
+.expand-btn {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0.6;
+  transition: background 0.15s ease, color 0.15s ease, opacity 0.15s ease, transform 0.1s ease;
+}
+
+.expand-btn:hover {
+  background: #f0ede4;
+  color: var(--text);
+  opacity: 1;
+}
+
+.expand-btn:active {
+  transform: scale(0.9);
+}
+
+/* Both icons sit on top of each other and cross-fade */
+.expand-btn svg {
+  position: absolute;
+  width: 15px;
+  height: 15px;
+  transition: opacity 0.3s ease, transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Collapsed: expand icon visible, shrink icon hidden */
+.expand-btn .icon-expand {
+  opacity: 1;
+  transform: rotate(0deg) scale(1);
+}
+
+.expand-btn .icon-shrink {
+  opacity: 0;
+  transform: rotate(-90deg) scale(0.4);
+}
+
+/* Expanded: the two swap */
+.composer.expanded .expand-btn .icon-expand {
+  opacity: 0;
+  transform: rotate(90deg) scale(0.4);
+}
+
+.composer.expanded .expand-btn .icon-shrink {
+  opacity: 1;
+  transform: rotate(0deg) scale(1);
+}
+
+
+
+/* Keep typed text from running under the button */
+textarea {
+  padding-right: 34px;
+  height: 52px;                     /* starting height (about 2 rows) */
+  max-height: 60vh;
+  transition: height 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Expanded: about 30% of the screen height */
+.composer.expanded textarea {
+  height: 30vh;
+}
+
+
+
+/* ---------- Expand hint bubble ---------- */
+.expand-hint {
+  position: absolute;
+  top: 44px;                         /* just below the expand button */
+  right: 8px;
+  background: #2d2a26;
+  color: #fff;
+  font-size: 12px;
+  line-height: 1.4;
+  padding: 7px 11px;
+  border-radius: 10px;
+  white-space: nowrap;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18);
+  z-index: 5;
+
+  /* hidden by default */
+  opacity: 0;
+  transform: translateY(-6px) scale(0.95);
+  transform-origin: top right;
+  pointer-events: none;
+  transition: opacity 0.3s ease, transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* little arrow pointing up at the button */
+.expand-hint::before {
+  content: "";
+  position: absolute;
+  top: -5px;
+  right: 14px;
+  width: 10px;
+  height: 10px;
+  background: #2d2a26;
+  transform: rotate(45deg);
+  border-radius: 2px;
+}
+
+.expand-hint.show {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+/* the button gently pulses while the hint is showing */
+.expand-btn.attention {
+  color: var(--accent);
+  opacity: 1;
+  animation: expand-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes expand-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(217, 119, 87, 0.35); }
+  50%      { box-shadow: 0 0 0 6px rgba(217, 119, 87, 0); }
 }
