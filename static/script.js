@@ -130,6 +130,39 @@ function leaveEmptyState() {
   ], timing);
 }
 
+
+// Makes a new bubble fly up from the input box to its place in the chat
+function flyFromInput(bubbleWrap, inputRect) {
+  const end = bubbleWrap.getBoundingClientRect();
+
+  // Offset from the final spot back to the input box
+  const dx = inputRect.left - end.left;
+  const dy = inputRect.top - end.top;
+
+  bubbleWrap.animate([
+    { transform: `translate(${dx}px, ${dy}px) scale(0.92)`, opacity: 0.3 },
+    { transform: "translate(0, 0) scale(1)", opacity: 1 }
+  ], { duration: 550, easing: "cubic-bezier(0.22, 1, 0.36, 1)" });
+}
+
+// Slides the older messages smoothly when new content pushes them
+function slideOlderMessages(oldPositions) {
+  document.querySelectorAll(".bubble-wrap").forEach(function (wrap) {
+    const before = oldPositions.get(wrap);
+    if (before === undefined) return;            // new bubbles are handled elsewhere
+
+    const shift = before - wrap.getBoundingClientRect().top;
+    if (shift === 0) return;
+
+    wrap.animate([
+      { transform: `translateY(${shift}px)` },
+      { transform: "translateY(0)" }
+    ], { duration: 450, easing: "cubic-bezier(0.22, 1, 0.36, 1)" });
+  });
+}
+
+
+
   // Enter sends, Shift+Enter makes a new line
   box.addEventListener("keydown", function (event) {
     if (event.key === "Enter" && !event.shiftKey) {
@@ -144,7 +177,16 @@ function leaveEmptyState() {
     const text = box.value.trim();
     if (!text) return;
 
-        leaveEmptyState();                                 // smooth slide to the final layout
+    // Remember where the typed text is, before anything changes
+    const inputRect = box.getBoundingClientRect();
+
+    // Remember where every older message is right now
+    const oldPositions = new Map();
+    document.querySelectorAll(".bubble-wrap").forEach(function (wrap) {
+      oldPositions.set(wrap, wrap.getBoundingClientRect().top);
+    });
+
+    leaveEmptyState();                                 // smooth slide to the final layout
     showTipOnce();
 
     // 1. Show the user's message
@@ -156,7 +198,10 @@ function leaveEmptyState() {
     // Only this new pair keeps its copy button visible
     markLatest(userDiv.parentElement, replyDiv.parentElement);
 
+    // Scroll to the newest message, then animate
     messages.scrollTop = messages.scrollHeight;
+    slideOlderMessages(oldPositions);
+    flyFromInput(userDiv.parentElement, inputRect);
 
     // 3. Send the form to Flask
     const data = new FormData(form);
