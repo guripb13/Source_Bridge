@@ -354,3 +354,61 @@ input[type="file"] {
   width: 16px;
   height: 16px;
 }
+
+/*adding copy button*/
+/* ---------- Copy button ---------- */
+.bubble-wrap {
+  margin-bottom: 8px;
+  width: fit-content;
+  max-width: 100%;
+}
+
+/* The bubble no longer needs its own bottom gap, the wrapper handles it */
+.bubble-wrap .message {
+  margin-bottom: 2px;
+}
+
+.copy-btn {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  opacity: 0.6;
+  transition: background 0.15s ease, color 0.15s ease, opacity 0.15s ease, transform 0.1s ease;
+}
+
+/* Show the button only once the bubble has text */
+.bubble-wrap.has-text .copy-btn {
+  display: flex;
+  animation: copy-fade 0.25s ease;
+}
+
+@keyframes copy-fade {
+  from { opacity: 0; }
+  to   { opacity: 0.6; }
+}
+.copy-btn:hover {
+  background: #ebe6da;
+  color: var(--text);
+  opacity: 1;
+}
+
+.copy-btn:active {
+  transform: scale(0.9);
+}
+
+.copy-btn.copied {
+  color: var(--accent);
+  opacity: 1;
+}
+
+.copy-btn svg {
+  width: 15px;
+  height: 15px;
+}

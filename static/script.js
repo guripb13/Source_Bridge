@@ -1,9 +1,52 @@
 const page = document.querySelector(".page");        
-  const form = document.getElementById("form");
-  const box = document.getElementById("message");
-  const messages = document.getElementById("messages");
-  const title = document.getElementById("title");
+const form = document.getElementById("form");
+const box = document.getElementById("message");
+const messages = document.getElementById("messages");
+const title = document.getElementById("title");
+// adding the copy button to the message div
+// Builds a message bubble with a copy button under it.
+// Returns the bubble (so text can be added to it later).
+function createBubble(className, text) {
+  const wrap = document.createElement("div");
+  wrap.className = "bubble-wrap";
 
+  const bubble = document.createElement("div");
+  bubble.className = className;
+  bubble.textContent = text;
+
+  const copyBtn = document.createElement("button");
+  copyBtn.type = "button";
+  copyBtn.className = "copy-btn";
+  copyBtn.title = "Copy";
+  copyBtn.innerHTML = COPY_ICON;
+
+  copyBtn.addEventListener("click", async function () {
+    try {
+      await navigator.clipboard.writeText(bubble.textContent);
+      copyBtn.innerHTML = TICK_ICON;
+      copyBtn.classList.add("copied");
+      setTimeout(function () {
+        copyBtn.innerHTML = COPY_ICON;
+        copyBtn.classList.remove("copied");
+      }, 1500);
+    } catch (error) {
+      copyBtn.title = "Copy failed";
+    }
+  });
+
+  wrap.appendChild(bubble);
+  wrap.appendChild(copyBtn);
+  messages.appendChild(wrap);
+
+  // Show the copy button only when there is text
+  wrap.classList.toggle("has-text", text.trim() !== "");
+
+  return bubble;
+}
+
+// The two icons (copy and tick)
+const COPY_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>`;
+const TICK_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
 // Leaves the empty state with a smooth animation
 function leaveEmptyState() {
   if (!page.classList.contains("empty")) return;     // only runs once
@@ -54,18 +97,11 @@ function leaveEmptyState() {
 
         leaveEmptyState();                                 // smooth slide to the final layout
 
-    // 1. Show the user's message
-    const userDiv = document.createElement("div");
-    userDiv.className = "message";
-    userDiv.style.whiteSpace = "pre-wrap";
-    userDiv.textContent = text;
-    messages.appendChild(userDiv);
+        // 1. Show the user's message
+    createBubble("message", text);
 
     // 2. Create an empty reply box that we will fill up
-    const replyDiv = document.createElement("div");
-    replyDiv.className = "message reply";
-    replyDiv.style.whiteSpace = "pre-wrap";
-    messages.appendChild(replyDiv);
+    const replyDiv = createBubble("message reply", "");
     messages.scrollTop = messages.scrollHeight;
 
     // 3. Send the form to Flask
@@ -82,10 +118,12 @@ function leaveEmptyState() {
         const result = await reader.read();
         if (result.done) break;
         replyDiv.textContent += decoder.decode(result.value, { stream: true });
+        replyDiv.parentElement.classList.add("has-text");
         messages.scrollTop = messages.scrollHeight;
       }
     } catch (error) {
       replyDiv.textContent = "Error: " + error.message;
+      replyDiv.parentElement.classList.add("has-text");
     }
   });
 
