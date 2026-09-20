@@ -267,11 +267,17 @@ function setDragMode(on) {
 }
 
 document.addEventListener("keydown", function (event) {
-  if (event.key === "Control") setDragMode(true);
+  if (event.key === "Alt") {
+    event.preventDefault();          // stops the browser menu from grabbing focus on Windows
+    setDragMode(true);
+  }
 });
 
 document.addEventListener("keyup", function (event) {
-  if (event.key === "Control") setDragMode(false);
+  if (event.key === "Alt") {
+    event.preventDefault();
+    setDragMode(false);
+  }
 });
 
 // If the window loses focus while Ctrl is down, turn the mode off
