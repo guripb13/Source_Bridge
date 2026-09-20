@@ -540,3 +540,129 @@ body.drag-mode .bubble-wrap:hover::after {
   color: #fff;
   background: rgba(255, 255, 255, 0.15);
 }
+
+
+
+
+
+/* ---------- Top-left tips button ---------- */
+.tips-corner {
+  position: fixed;
+  top: 16px;
+  left: 16px;
+  z-index: 20;
+}
+
+/* Tips button starts hidden, and fades in once the first tip is gone */
+.tips-corner {
+  opacity: 0;
+  transform: translateY(-8px);
+  pointer-events: none;
+  transition: opacity 0.5s ease, transform 0.5s ease;
+}
+
+.tips-corner.available {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+.tips-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px 7px 10px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--box);
+  color: var(--muted);
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.1s ease;
+}
+
+.tips-btn:hover {
+  background: #f0ede4;
+  border-color: #c9c2b2;
+  color: var(--text);
+}
+
+.tips-btn:active {
+  transform: scale(0.95);
+}
+
+.tips-btn svg {
+  width: 16px;
+  height: 16px;
+  transition: transform 0.3s ease, color 0.2s ease;
+}
+
+/* The bulb glows and tilts while the card is open */
+.tips-corner.open .tips-btn {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.tips-corner.open .tips-btn svg {
+  transform: rotate(-12deg) scale(1.1);
+}
+
+/* The card: hidden by default, drops down from the button */
+.tips-card {
+  position: absolute;
+  top: calc(100% + 10px);
+  left: 0;
+  width: 290px;
+  max-width: calc(100vw - 32px);
+  padding: 14px 16px;
+  background: #2d2a26;
+  color: #fff;
+  border-radius: 16px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.2);
+  font-size: 13px;
+  line-height: 1.5;
+
+  opacity: 0;
+  transform: translateY(-8px) scale(0.96);
+  transform-origin: top left;
+  pointer-events: none;
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.tips-corner.open .tips-card {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
+}
+
+.tips-title {
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.tips-item {
+  padding: 8px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  opacity: 0;
+  transform: translateY(-4px);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+/* The tips fade in one after another */
+.tips-corner.open .tips-item {
+  opacity: 1;
+  transform: translateY(0);
+}
+.tips-corner.open .tips-item:nth-child(2) { transition-delay: 0.08s; }
+.tips-corner.open .tips-item:nth-child(3) { transition-delay: 0.16s; }
+.tips-corner.open .tips-item:nth-child(4) { transition-delay: 0.24s; }
+
+.tips-card kbd {
+  background: rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 5px;
+  padding: 1px 6px;
+  font-family: inherit;
+  font-size: 12px;
+}

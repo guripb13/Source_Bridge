@@ -14,20 +14,30 @@ let tipTimer;
 function hideTip() {
   tip.classList.remove("show");
   clearTimeout(tipTimer);
+
+  // the tip is gone, so now the Tips button can appear
+  setTimeout(function () {
+    document.getElementById("tipsCorner").classList.add("available");
+  }, 400);                                  // wait for the tip's slide-away to finish
 }
 
 // Shows the tip only the very first time (remembered in this browser)
 function showTipOnce() {
-  if (localStorage.getItem("dragTipSeen")) return;
+  if (localStorage.getItem("dragTipSeen")) {
+    document.getElementById("tipsCorner").classList.add("available");    // returning user
+    return;
+  }
   localStorage.setItem("dragTipSeen", "yes");
 
-  // small delay so it appears after the layout animation starts
   setTimeout(function () {
     tip.classList.add("show");
-    tipTimer = setTimeout(hideTip, 7000);        // auto-hide after 7 seconds
+    tipTimer = setTimeout(hideTip, 7000);
   }, 700);
 }
-
+// Returning users who already saw the first tip get the Tips button immediately
+if (localStorage.getItem("dragTipSeen")) {
+  document.getElementById("tipsCorner").classList.add("available");
+}
 tipClose.addEventListener("click", hideTip);
 
 
@@ -275,5 +285,33 @@ messages.addEventListener("mouseover", function (event) {
   if (!document.body.classList.contains("drag-mode")) return;
   if (event.target.closest(".message")) {
     document.body.classList.add("hover-started");
+  }
+});
+
+
+
+
+
+// ---------- Top-left tips button ----------
+const tipsCorner = document.getElementById("tipsCorner");
+const tipsBtn = document.getElementById("tipsBtn");
+
+// Click the button to open / close the tips card
+tipsBtn.addEventListener("click", function (event) {
+  event.stopPropagation();
+  tipsCorner.classList.toggle("open");
+});
+
+// Clicking anywhere else closes it
+document.addEventListener("click", function (event) {
+  if (!tipsCorner.contains(event.target)) {
+    tipsCorner.classList.remove("open");
+  }
+});
+
+// Escape key closes it too
+document.addEventListener("keydown", function (event) {
+  if (event.key === "Escape") {
+    tipsCorner.classList.remove("open");
   }
 });
