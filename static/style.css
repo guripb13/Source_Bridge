@@ -412,3 +412,131 @@ input[type="file"] {
   width: 15px;
   height: 15px;
 }
+
+
+
+
+/* ---------- Ctrl + drag hint ---------- */
+
+/* STAGE 1: Ctrl held. Every message gets a normal dashed border, no fading */
+body.drag-mode .message {
+  cursor: grab;
+  user-select: none;
+  outline: 2px dashed rgba(217, 119, 87, 0.55);
+  outline-offset: 2px;
+  opacity: 1;
+  transition: outline-color 0.25s ease, opacity 0.25s ease, transform 0.25s ease;
+}
+
+/* STAGE 2: after the first hover, everything fades except the hovered message */
+body.drag-mode.hover-started .message {
+  outline-color: rgba(217, 119, 87, 0.18);
+  opacity: 0.55;
+}
+
+/* The message under the mouse is always fully lit */
+body.drag-mode .message:hover {
+  outline-color: var(--accent);
+  opacity: 1;
+  transform: translateY(-2px);
+}
+
+body.drag-mode .message:active {
+  cursor: grabbing;
+}
+
+/* The bubble being dragged fades a little */
+.message.dragging {
+  opacity: 0.5;
+}
+
+/* Small tooltip that appears while Ctrl is held and you hover a message */
+body.drag-mode .bubble-wrap {
+  position: relative;
+}
+
+body.drag-mode .bubble-wrap:hover::after {
+  content: "Drag me anywhere";
+  position: absolute;
+  top: -26px;
+  left: 0;
+  background: #2d2a26;
+  color: #fff;
+  font-size: 12px;
+  padding: 4px 9px;
+  border-radius: 8px;
+  white-space: nowrap;
+  pointer-events: none;
+  animation: hint-in 0.15s ease;
+}
+
+@keyframes hint-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+
+/* ---------- One-time tip ---------- */
+.tip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  align-self: center;
+  max-width: 100%;
+  margin-bottom: 0;
+  padding: 0 14px;
+  background: #2d2a26;
+  color: #fff;
+  font-size: 13px;
+  line-height: 1.4;
+  border-radius: 14px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+  flex-shrink: 0;
+
+  /* hidden state: collapsed, faded, pushed down */
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  transform: translateY(12px) scale(0.97);
+  pointer-events: none;
+  transition: max-height 0.4s ease, opacity 0.35s ease, transform 0.4s ease, margin-bottom 0.4s ease, padding 0.4s ease;
+}
+
+/* visible state */
+.tip.show {
+  max-height: 90px;
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  margin-bottom: 12px;
+  padding: 10px 14px;
+  pointer-events: auto;
+}
+
+.tip-icon {
+  font-size: 16px;
+}
+
+.tip kbd {
+  background: rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 5px;
+  padding: 1px 6px;
+  font-family: inherit;
+  font-size: 12px;
+}
+
+.tip-close {
+  border: none;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 13px;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 6px;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.tip-close:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.15);
+}

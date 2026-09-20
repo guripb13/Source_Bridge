@@ -3,6 +3,36 @@ const form = document.getElementById("form");
 const box = document.getElementById("message");
 const messages = document.getElementById("messages");
 const title = document.getElementById("title");
+
+
+// one time tip about dragging messages
+
+const tip = document.getElementById("tip");
+const tipClose = document.getElementById("tipClose");
+let tipTimer;
+
+function hideTip() {
+  tip.classList.remove("show");
+  clearTimeout(tipTimer);
+}
+
+// Shows the tip only the very first time (remembered in this browser)
+function showTipOnce() {
+  if (localStorage.getItem("dragTipSeen")) return;
+  localStorage.setItem("dragTipSeen", "yes");
+
+  // small delay so it appears after the layout animation starts
+  setTimeout(function () {
+    tip.classList.add("show");
+    tipTimer = setTimeout(hideTip, 7000);        // auto-hide after 7 seconds
+  }, 700);
+}
+
+tipClose.addEventListener("click", hideTip);
+
+
+
+
 // adding the copy button to the message div
 // Builds a message bubble with a copy button under it.
 // Returns the bubble (so text can be added to it later).
@@ -96,7 +126,7 @@ function leaveEmptyState() {
     if (!text) return;
 
         leaveEmptyState();                                 // smooth slide to the final layout
-
+        showTipOnce();
         // 1. Show the user's message
     createBubble("message", text);
 
@@ -197,4 +227,53 @@ langOther.addEventListener("keydown", function (event) {
 
 langDone.addEventListener("click", function () {
   langPicker.classList.remove("open");
+});
+
+
+
+// ---------- Ctrl + drag a message anywhere ----------
+
+// While Ctrl is held, messages become draggable (and show a grab hint)
+function setDragMode(on) {
+  document.body.classList.toggle("drag-mode", on);
+  if (!on) document.body.classList.remove("hover-started");    
+  document.querySelectorAll(".message").forEach(function (bubble) {
+    bubble.draggable = on;
+  });
+}
+
+document.addEventListener("keydown", function (event) {
+  if (event.key === "Control") setDragMode(true);
+});
+
+document.addEventListener("keyup", function (event) {
+  if (event.key === "Control") setDragMode(false);
+});
+
+// If the window loses focus while Ctrl is down, turn the mode off
+window.addEventListener("blur", function () {
+  setDragMode(false);
+});
+
+// When a drag starts, put the message text into the drag
+messages.addEventListener("dragstart", function (event) {
+  const bubble = event.target.closest(".message");
+  if (!bubble) return;
+
+  event.dataTransfer.setData("text/plain", bubble.textContent);
+  event.dataTransfer.effectAllowed = "copy";
+
+  bubble.classList.add("dragging");
+});
+
+messages.addEventListener("dragend", function (event) {
+  const bubble = event.target.closest(".message");
+  if (bubble) bubble.classList.remove("dragging");
+});
+// Once the mouse hovers a message while Ctrl is held, start the fading
+messages.addEventListener("mouseover", function (event) {
+  if (!document.body.classList.contains("drag-mode")) return;
+  if (event.target.closest(".message")) {
+    document.body.classList.add("hover-started");
+  }
 });

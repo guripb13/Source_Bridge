@@ -13,7 +13,13 @@
 
   <!-- Messages and replies appear here -->
   <div class="messages" id="messages"></div>
-
+   <div class="tip" id="tip">
+    <span class="tip-icon">💡</span>
+    <span class="tip-text">
+      Tip: hold <kbd>Ctrl</kbd> and drag any message or reply to drop it anywhere.
+    </span>
+    <button type="button" class="tip-close" id="tipClose" title="Close">✕</button>
+  </div>
   <form class="composer" id="form" method="POST" action="{{ url_for('send') }}" enctype="multipart/form-data">
 
     <textarea name="message" id="message" rows="2" placeholder="How can I help you today?"></textarea>
