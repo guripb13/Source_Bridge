@@ -23,10 +23,7 @@ function hideTip() {
 
 // Shows the tip only the very first time (remembered in this browser)
 function showTipOnce() {
-  if (localStorage.getItem("dragTipSeen")) {
-    document.getElementById("tipsCorner").classList.add("available");    // returning user
-    return;
-  }
+  if (localStorage.getItem("dragTipSeen")) return;      // already seen, do nothing
   localStorage.setItem("dragTipSeen", "yes");
 
   setTimeout(function () {
@@ -34,6 +31,9 @@ function showTipOnce() {
     tipTimer = setTimeout(hideTip, 7000);
   }, 700);
 }
+
+
+
 // Returning users who already saw the first tip get the Tips button immediately
 if (localStorage.getItem("dragTipSeen")) {
   document.getElementById("tipsCorner").classList.add("available");
@@ -53,7 +53,7 @@ function createBubble(className, text) {
   const bubble = document.createElement("div");
   bubble.className = className;
   bubble.textContent = text;
-
+  bubble.draggable = document.body.classList.contains("drag-mode"); 
   const copyBtn = document.createElement("button");
   copyBtn.type = "button";
   copyBtn.className = "copy-btn";
@@ -83,6 +83,15 @@ function createBubble(className, text) {
 
   return bubble;
 }
+
+// Marks only the newest message and reply as "latest"
+function markLatest(...wraps) {
+  document.querySelectorAll(".bubble-wrap.latest").forEach(function (w) {
+    w.classList.remove("latest");
+  });
+  wraps.forEach(function (w) { w.classList.add("latest"); });
+}
+
 
 // The two icons (copy and tick)
 const COPY_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>`;
@@ -136,12 +145,17 @@ function leaveEmptyState() {
     if (!text) return;
 
         leaveEmptyState();                                 // smooth slide to the final layout
-        showTipOnce();
-        // 1. Show the user's message
-    createBubble("message", text);
+    showTipOnce();
+
+    // 1. Show the user's message
+    const userDiv = createBubble("message", text);
 
     // 2. Create an empty reply box that we will fill up
     const replyDiv = createBubble("message reply", "");
+
+    // Only this new pair keeps its copy button visible
+    markLatest(userDiv.parentElement, replyDiv.parentElement);
+
     messages.scrollTop = messages.scrollHeight;
 
     // 3. Send the form to Flask

@@ -46,7 +46,7 @@ h1 {
   flex: 1;
   overflow-y: auto;
   margin-bottom: 16px;
-  padding-right: 4px;
+  padding: 6px 8px;               
   scrollbar-width: none;
   -ms-overflow-style: none;
 }
@@ -355,21 +355,27 @@ input[type="file"] {
   height: 16px;
 }
 
-/*adding copy button*/
 /* ---------- Copy button ---------- */
+/* ---------- Copy button ---------- */
+
+/* Bubble and copy button sit side by side in one row */
 .bubble-wrap {
-  margin-bottom: 8px;
+  display: flex;
+  align-items: center;              /* button stays vertically centred on the bubble */
+  gap: 6px;
   width: fit-content;
   max-width: 100%;
+  margin-bottom: 4px;               /* small gap: reply feels attached to its message */
 }
 
-/* The bubble no longer needs its own bottom gap, the wrapper handles it */
 .bubble-wrap .message {
-  margin-bottom: 2px;
+  margin-bottom: 0;
+  min-width: 0;                     /* lets long replies wrap instead of pushing the button out */
 }
 
 .copy-btn {
-  display: none;
+  flex-shrink: 0;
+  display: flex;
   align-items: center;
   justify-content: center;
   width: 28px;
@@ -379,20 +385,25 @@ input[type="file"] {
   background: transparent;
   color: var(--muted);
   cursor: pointer;
+
+  /* hidden by default, but keeps its space so nothing jumps on hover */
+  opacity: 0;
+  visibility: hidden;
+  transition: background 0.15s ease, color 0.15s ease, opacity 0.2s ease, visibility 0.2s ease, transform 0.1s ease;
+}
+
+/* Newest message and reply: button always visible (once there is text) */
+.bubble-wrap.has-text.latest .copy-btn {
   opacity: 0.6;
-  transition: background 0.15s ease, color 0.15s ease, opacity 0.15s ease, transform 0.1s ease;
+  visibility: visible;
 }
 
-/* Show the button only once the bubble has text */
-.bubble-wrap.has-text .copy-btn {
-  display: flex;
-  animation: copy-fade 0.25s ease;
+/* Older messages: button visible only while hovered */
+.bubble-wrap.has-text:hover .copy-btn {
+  opacity: 0.6;
+  visibility: visible;
 }
 
-@keyframes copy-fade {
-  from { opacity: 0; }
-  to   { opacity: 0.6; }
-}
 .copy-btn:hover {
   background: #ebe6da;
   color: var(--text);
@@ -412,6 +423,33 @@ input[type="file"] {
   width: 15px;
   height: 15px;
 }
+/* AI replies: the copy button sits UNDER the bubble instead of beside it */
+ /* AI replies: the copy button floats UNDER the bubble, inside space that is always reserved */
+.bubble-wrap:has(.reply) {
+  position: relative;
+  display: block;                   /* back to a normal block, no flex row */
+  width: 100%;
+  margin-bottom: 30px;              /* permanent space for the button, so nothing ever moves */
+}
+
+.bubble-wrap:has(.reply) .message {
+  max-width: 100%;
+}
+
+.bubble-wrap:has(.reply) .copy-btn {
+  position: absolute;               /* floats: takes no layout space */
+  left: 0;
+  bottom: -28px;
+}
+/* Extra space before each new question, so pairs stay visually grouped */
+.bubble-wrap:has(.message:not(.reply)) {
+  margin-top: 18px;
+}
+
+.bubble-wrap:first-child {
+  margin-top: 0;
+}
+
 
 
 
