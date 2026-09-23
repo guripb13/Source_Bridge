@@ -9,7 +9,7 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
   <script src="{{ url_for('static', filename='script.js') }}" defer></script>
 </head>
-<body>
+<body data-me-url="{{ url_for('current_user') }}" data-history-url="{{ url_for('translation_history') }}" data-saved-url="{{ url_for('saved_translations') }}" data-save-url="{{ url_for('set_translation_saved', translation_id=0) }}" data-logout-url="{{ url_for('logout') }}">
   <!-- Inline icons keep the interface independent of CDNs and icon libraries. -->
   <svg class="icon-library" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
     <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></symbol>
@@ -32,6 +32,8 @@
     <symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7m4-7v7"/></symbol>
     <symbol id="i-code" viewBox="0 0 24 24"><path d="m7 6-6 6 6 6m10-12 6 6-6 6m-4-15-2 18"/></symbol>
     <symbol id="i-stop" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2"/></symbol>
+    <symbol id="i-history" viewBox="0 0 24 24"><path d="M3 11a9 9 0 1 1 2.6 7M3 4v7h7m2-5v6l4 2"/></symbol>
+    <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 7a9 9 0 0 0-15-2L2 8m0-6v6h6m-4 9a9 9 0 0 0 15 2l3-3m0 6v-6h-6"/></symbol>
     <symbol id="i-python" viewBox="0 0 32 32">
       <path fill="#3776AB" stroke="none" d="M16 2C8 2 8 5 8 5v6h9v2H5s-5 0-5 7 5 7 5 7h3v-5s0-5 5-5h9s5 0 5-5V7s0-5-11-5Z" transform="translate(2 0) scale(.9)"/>
       <path fill="#FFD343" stroke="none" d="M16 30c8 0 8-3 8-3v-6h-9v-2h12s5 0 5-7-5-7-5-7h-3v5s0 5-5 5h-9s-5 0-5 5v5s0 5 11 5Z" transform="translate(2 3) scale(.9)"/>
@@ -58,8 +60,8 @@
       <button type="button" class="icon-button theme-button" id="themeToggle" aria-label="Switch to dark mode" title="Switch to dark mode">
         <svg class="icon" aria-hidden="true"><use id="themeIcon" href="#i-moon"/></svg>
       </button>
-      <button type="button" class="sign-in-button" data-dialog="signInDialog" aria-label="Sign in information">
-        <svg class="icon" aria-hidden="true"><use href="#i-user"/></svg><span>Sign In</span>
+      <button type="button" class="sign-in-button" id="accountButton" data-dialog="signInDialog" aria-label="Sign in">
+        <svg class="icon" aria-hidden="true"><use href="#i-user"/></svg><span id="accountButtonLabel">Sign In</span>
       </button>
     </div>
   </header>
@@ -73,6 +75,9 @@
       </button>
       <button type="button" class="nav-item" id="savedNav" data-view="saved" title="Saved translations">
         <svg class="icon" aria-hidden="true"><use href="#i-bookmark"/></svg><span class="nav-label">Saved</span><span class="saved-count" id="savedCount" hidden>0</span>
+      </button>
+      <button type="button" class="nav-item" id="historyNav" data-view="history" title="Translation history">
+        <svg class="icon" aria-hidden="true"><use href="#i-history"/></svg><span class="nav-label">History</span>
       </button>
       <button type="button" class="nav-item" data-dialog="settingsDialog" title="Settings">
         <svg class="icon" aria-hidden="true"><use href="#i-settings"/></svg><span class="nav-label">Settings</span>
@@ -88,7 +93,7 @@
         <h1 id="pageTitle">Translate, Learn &amp; Explore Code</h1>
         <p>Convert your code between programming languages using AI.</p>
       </div>
-      <!-- The backend contract stays the same: POST message + language to /send. -->
+      <!-- POST message + language to /send; JavaScript opts into completion events. -->
       <form class="workspace-grid" id="form" method="POST" action="{{ url_for('send') }}" enctype="multipart/form-data">
         <section class="editor-card source-card" aria-labelledby="sourceTitle">
           <div class="editor-heading">
@@ -145,9 +150,26 @@
     </section>
 
     <section id="savedView" aria-labelledby="savedTitle" hidden>
-      <div class="page-intro"><h1 id="savedTitle">Your saved translations</h1><p>Code you choose to keep, saved in this browser.</p></div>
-      <div class="saved-empty" id="savedEmpty"><svg class="icon" aria-hidden="true"><use href="#i-bookmark"/></svg><h2>A place for your code</h2><p>Use the bookmark beside a translation to save it here.</p><button type="button" class="pill-button" data-view="translate">Start translating<svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></button></div>
+      <div class="page-intro"><h1 id="savedTitle">Your saved translations</h1><p id="savedDescription">Code you choose to keep.</p></div>
+      <div class="collection-toolbar">
+        <div class="scope-switch" aria-label="Saved translation location"><button type="button" id="savedAccountTab" aria-pressed="false">My account</button><button type="button" id="savedBrowserTab" aria-pressed="true">This browser</button></div>
+        <button type="button" class="text-button" id="refreshSaved"><svg class="icon" aria-hidden="true"><use href="#i-refresh"/></svg><span>Refresh</span></button>
+      </div>
+      <p id="savedStatus" class="collection-status" role="status" aria-live="polite"></p>
+      <div id="savedSignIn" class="account-prompt" hidden><p>Sign in to view the translations bookmarked in your account.</p><button type="button" class="pill-button" data-dialog="signInDialog">Sign In</button></div>
+      <div class="saved-empty" id="savedEmpty"><svg class="icon" aria-hidden="true"><use href="#i-bookmark"/></svg><h2>A place for your code</h2><p id="savedEmptyText">Use the bookmark beside a translation to save it here.</p><button type="button" class="pill-button" data-view="translate">Start translating<svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></button></div>
       <div class="saved-list" id="savedList"></div>
+      <nav class="collection-pagination" id="savedPagination" aria-label="Saved translation pages" hidden><button type="button" class="text-button" id="savedPrevious">Previous</button><span id="savedPageInfo"></span><button type="button" class="text-button" id="savedNext">Next</button></nav>
+    </section>
+
+    <section id="historyView" aria-labelledby="historyTitle" hidden>
+      <div class="page-intro"><h1 id="historyTitle">Your translation history</h1><p>Translations completed while you are signed in.</p></div>
+      <div class="collection-toolbar history-toolbar"><button type="button" class="text-button" id="refreshHistory"><svg class="icon" aria-hidden="true"><use href="#i-refresh"/></svg><span>Refresh</span></button></div>
+      <p id="historyStatus" class="collection-status" role="status" aria-live="polite"></p>
+      <div id="historySignIn" class="account-prompt" hidden><p>Sign in to view your translation history.</p><button type="button" class="pill-button" data-dialog="signInDialog">Sign In</button></div>
+      <div class="saved-empty" id="historyEmpty" hidden><svg class="icon" aria-hidden="true"><use href="#i-history"/></svg><h2>Your next idea starts here</h2><p>Complete a translation while signed in to see it here.</p><button type="button" class="pill-button" data-view="translate">Start translating<svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></button></div>
+      <div class="saved-list" id="historyList"></div>
+      <nav class="collection-pagination" id="historyPagination" aria-label="Translation history pages" hidden><button type="button" class="text-button" id="historyPrevious">Previous</button><span id="historyPageInfo"></span><button type="button" class="text-button" id="historyNext">Next</button></nav>
     </section>
   </main>
 
@@ -165,8 +187,27 @@
   </dialog>
 
   <dialog class="app-dialog" id="signInDialog" aria-labelledby="signInTitle">
-    <div class="dialog-heading"><h2 id="signInTitle">You're welcome here</h2><button type="button" class="icon-button" data-close-dialog aria-label="Close sign in information"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></button></div>
-    <p class="dialog-description">Sign-in isn't available yet. You can translate, download, and save code in this browser without an account.</p><button type="button" class="pill-button dialog-primary" data-close-dialog>Continue translating<svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></button>
+    <div class="dialog-heading"><h2 id="signInTitle">Welcome to Source Bridge</h2><button type="button" class="icon-button" data-close-dialog aria-label="Close sign in"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></button></div>
+    <p class="dialog-description">Keep your translation history and bookmarks in your account.</p>
+    <div class="scope-switch auth-switch" aria-label="Account action"><button type="button" id="showLogin" aria-pressed="true">Sign In</button><button type="button" id="showRegister" aria-pressed="false">Create account</button></div>
+    <form id="loginForm" class="auth-form" method="POST" action="{{ url_for('login') }}">
+      <label for="loginEmail">Email address</label><input id="loginEmail" name="email" type="email" autocomplete="username" maxlength="254" required>
+      <label for="loginPassword">Password</label><input id="loginPassword" name="password" type="password" autocomplete="current-password" maxlength="128" required>
+      <button type="submit" class="pill-button auth-submit" id="loginSubmit">Sign In</button>
+    </form>
+    <form id="registerForm" class="auth-form" method="POST" action="{{ url_for('register') }}" hidden>
+      <label for="registerName">Your name</label><input id="registerName" name="name" type="text" autocomplete="name" maxlength="100" required>
+      <label for="registerEmail">Email address</label><input id="registerEmail" name="email" type="email" autocomplete="email" maxlength="254" required>
+      <label for="registerPassword">Password</label><input id="registerPassword" name="password" type="password" autocomplete="new-password" minlength="15" maxlength="128" aria-describedby="passwordHelp" required>
+      <p class="field-help" id="passwordHelp">Use 15–128 characters. A memorable phrase works well.</p>
+      <button type="submit" class="pill-button auth-submit" id="registerSubmit">Create account</button>
+    </form>
+    <p id="authError" class="auth-error" role="alert" hidden></p><p id="authStatus" class="auth-status" role="status" aria-live="polite"></p>
+  </dialog>
+  <dialog class="app-dialog" id="accountDialog" aria-labelledby="accountTitle">
+    <div class="dialog-heading"><h2 id="accountTitle">Your account</h2><button type="button" class="icon-button" data-close-dialog aria-label="Close account"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></button></div>
+    <p id="accountName" class="account-name"></p><p id="accountEmail" class="dialog-description"></p>
+    <button type="button" class="pill-button" id="logoutButton">Sign Out</button><p id="accountError" class="auth-error" role="alert" hidden></p>
   </dialog>
   <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 </body>

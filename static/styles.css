@@ -341,3 +341,46 @@ body.drag-mode .code-surface { border-style: dashed; border-color: var(--green);
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
 }
+
+/* Account forms and database collections use the existing workspace palette. */
+.sign-in-button > span { max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sign-in-button:disabled { opacity: .6; }
+.scope-switch { display: inline-flex; gap: 4px; padding: 4px; border: 1px solid var(--border); border-radius: 13px; background: var(--gutter); }
+.scope-switch button { border: 0; border-radius: 9px; background: transparent; padding: 10px 15px; font-size: 14px; font-weight: 500; }
+.scope-switch button[aria-pressed="true"] { background: var(--green-soft); color: var(--ink); font-weight: 650; }
+.scope-switch button:disabled, .text-button:disabled { opacity: .5; }
+.auth-switch { display: flex; margin-bottom: 20px; }
+.auth-switch button { flex: 1; }
+.auth-form { display: grid; gap: 9px; }
+.auth-form label { font-size: 14px; font-weight: 600; margin-top: 9px; }
+.auth-form input { width: 100%; min-width: 0; padding: 12px 13px; border: 1px solid var(--border); border-radius: 10px; background: var(--page); color: var(--ink); font-size: 16px; }
+.auth-form input:disabled { opacity: .65; }
+.auth-submit { width: 100%; margin-top: 15px; font-size: 16px; }
+.field-help { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.6; }
+.auth-error, .auth-status { margin: 17px 0 0; font-size: 14px; line-height: 1.65; overflow-wrap: anywhere; }
+.auth-error { color: var(--error); }
+.auth-status { color: var(--green); }
+.auth-status:empty { display: none; }
+.account-name { margin: 0 0 8px; font-size: 20px; font-weight: 600; overflow-wrap: anywhere; }
+#accountEmail { overflow-wrap: anywhere; }
+.collection-toolbar, .collection-status, .collection-pagination, .account-prompt { max-width: 1200px; margin-left: auto; margin-right: auto; }
+.collection-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 15px; }
+.history-toolbar { justify-content: flex-end; }
+.collection-status { color: var(--muted); font-size: 14px; line-height: 1.6; }
+.collection-status:empty { display: none; }
+.collection-status.is-error { color: var(--error); }
+.account-prompt { text-align: center; padding: 38px 20px; border: 1px dashed var(--green-edge); border-radius: 16px; }
+.account-prompt p { color: var(--muted); margin: 0 0 22px; line-height: 1.65; }
+.collection-pagination { display: flex; justify-content: center; align-items: center; gap: 18px; padding-top: 24px; font-size: 13px; color: var(--muted); }
+.collection-pagination .text-button { font-size: 14px; color: var(--ink); }
+.saved-card-actions { gap: 12px; flex-wrap: wrap; }
+.bookmark-action { font-size: 14px; color: var(--green); }
+.bookmark-action .icon { width: 18px; height: 18px; }
+.bookmark-action.is-saved .icon { fill: var(--green-soft); }
+@media (max-width: 600px) {
+  .collection-toolbar { align-items: center; gap: 7px; }
+  .scope-switch button { padding: 9px 11px; font-size: 13px; }
+  .collection-toolbar > .text-button { font-size: 13px; gap: 5px; }
+  .collection-toolbar > .text-button .icon { width: 19px; height: 19px; }
+  .collection-pagination { gap: 10px; }
+}

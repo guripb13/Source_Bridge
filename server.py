@@ -1,8 +1,81 @@
+from flask import session
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+import os
+import json
+from dotenv import load_dotenv
 from flask import Flask, request, render_template, Response
+from flask_sqlalchemy import SQLAlchemy
 from google import genai
 from google.genai import types
+from datetime import datetime, timezone
+from werkzeug.security import generate_password_hash, check_password_hash
+import re
+from flask import jsonify
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
+
+
+load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
 
 app = Flask(__name__)
+
+app.config["SECRET_KEY"] = os.environ["SOURCE_BRIDGE_SECRET_KEY"]
+app.config["SESSION_COOKIE_HTTPONLY"] = True
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+
+app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///source_bridge.db"
+
+db = SQLAlchemy()
+db.init_app(app)
+limiter = Limiter(
+    get_remote_address,
+    app=app,
+    default_limits=[],
+    storage_uri="memory://",
+)
+
+# Used to perform a password check even when an email is unknown.
+LOGIN_DUMMY_HASH = generate_password_hash("unused-account-password")
+class User(db.Model):
+    __tablename__ = "users"
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    email = db.Column(db.String(254), unique=True, nullable=False)
+    password_hash = db.Column(db.String(255), nullable=False)
+    created_at = db.Column(
+        db.DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+
+    def set_password(self, password):
+        self.password_hash = generate_password_hash(password)
+
+    def check_password(self, password):
+        return check_password_hash(self.password_hash, password)
+
+
+class Translation(db.Model):
+    __tablename__ = "translations"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(
+        db.Integer,
+        db.ForeignKey("users.id"),
+        nullable=True,
+        index=True,
+    )
+    source_code = db.Column(db.Text, nullable=False)
+    translated_code = db.Column(db.Text, nullable=False)
+    target_language = db.Column(db.String(100), nullable=False)
+    is_saved = db.Column(db.Boolean, default=False, nullable=False)
+    created_at = db.Column(
+        db.DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+
 def build_task(language):
     return f"""You are a code translation engine. Your target language is {language}.
 
@@ -21,7 +94,7 @@ Step 3 - Translation:
 Convert the given code to {language}.
 Return only the translated code (with syntax-error comments where applicable). No explanations, no markdown, no extra messages of any kind.
 Format it like a normal {language} file: one statement per line, and proper indentation for each nested level."""
-client = genai.Client(api_key="AQ.Ab8RN6LeU1KUeg3S3BOYlMb-kIGzcw5tdJJzqa14q1nCo2wsDQ")  # Replace with your actual API key
+client = genai.Client(api_key="")  # Replace with your actual API key
 
 
 @app.route("/")
@@ -33,23 +106,428 @@ def home():
 def send():
     text = request.form.get("message", "").strip()
     language = request.form.get("language", "Java").strip() or "Java"
+    logged_in_user_id = session.get("user_id")
+    # Opt in explicitly; existing callers still receive the original plain text.
+    use_events = request.headers.get("Accept", "").strip().lower() == "application/x-ndjson"
+
+    def event(kind, **data):
+        return json.dumps({"type": kind, **data}, ensure_ascii=True) + "\n"
+
     def generate():
         if not text:
+            if use_events:
+                yield event("error", message="Please provide some source code.")
             return
+
+        chunks = []
+
         try:
-            # generate_content_stream gives the answer in small chunks
             for chunk in client.models.generate_content_stream(
                 model="gemini-3.6-flash",
                 contents=text,
-                config=types.GenerateContentConfig(system_instruction=build_task(language)),
+                config=types.GenerateContentConfig(
+                    system_instruction=build_task(language)
+                ),
             ):
                 if chunk.text:
-                    yield chunk.text      # send each chunk to the browser immediately
+                    chunks.append(chunk.text)
+                    yield event("chunk", text=chunk.text) if use_events else chunk.text
+
         except Exception as e:
-            yield f"Error: {e}"
+            message = f"Error: {e}"
+            yield event("error", message=message) if use_events else message
+            return
 
-    return Response(generate(), mimetype="text/plain")
+        translated_code = "".join(chunks)
 
+        # Skip empty results and the AI's input-validation errors.
+        if (
+            not translated_code.strip()
+            or translated_code.lstrip().lower().startswith("error:")
+        ):
+            if use_events:
+                yield event(
+                    "error",
+                    message=translated_code.strip() or "No code was returned. Please try again.",
+                )
+            return
+
+        # Save only after generation finishes successfully.
+        translation_id = None
+        created_at = None
+        with app.app_context():
+            try:
+                translation = Translation(
+                    user_id=logged_in_user_id,
+                    source_code=text,
+                    translated_code=translated_code,
+                    target_language=language,
+                    is_saved=False,
+                )
+
+                db.session.add(translation)
+                db.session.flush()
+                committed_id = translation.id
+                committed_at = translation.created_at.replace(tzinfo=timezone.utc).isoformat()
+                db.session.commit()
+                translation_id = committed_id
+                created_at = committed_at
+
+            except Exception:
+                db.session.rollback()
+                app.logger.exception(
+                    "Translation completed, but saving to the database failed."
+                )
+
+        # This is a separate event, never part of the translated source code.
+        # The ID is sent only after commit succeeds, so it identifies this result.
+        if use_events:
+            yield event(
+                "complete",
+                translation_id=translation_id,
+                user_id=logged_in_user_id,
+                is_saved=False,
+                created_at=created_at,
+                persisted=translation_id is not None,
+            )
+
+    response = Response(
+        generate(),
+        mimetype="application/x-ndjson" if use_events else "text/plain",
+    )
+    if use_events:
+        response.headers["Cache-Control"] = "no-store"
+        response.headers["X-Accel-Buffering"] = "no"
+    return response
+
+@app.route("/register", methods=["POST"])
+def register():
+    if not request.is_json:
+        return jsonify(error="Send the details as JSON."), 415
+
+    data = request.get_json(silent=True)
+
+    if not isinstance(data, dict):
+        return jsonify(error="Invalid registration details."), 400
+
+    name = data.get("name")
+    email = data.get("email")
+    password = data.get("password")
+
+    if not all(isinstance(value, str) for value in (name, email, password)):
+        return jsonify(
+            error="Name, email and password are required as text."
+        ), 400
+
+    name = name.strip()
+    email = email.strip().lower()
+
+    if not 1 <= len(name) <= 100:
+        return jsonify(error="Name must contain 1–100 characters."), 400
+
+    if (
+        len(email) > 254
+        or re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", email) is None
+    ):
+        return jsonify(error="Enter a valid email address."), 400
+
+    if not 15 <= len(password) <= 128 or not password.strip():
+        return jsonify(
+            error="Password must contain 15–128 characters and cannot be blank."
+        ), 400
+
+    try:
+        user = User(name=name, email=email)
+        user.set_password(password)
+
+        db.session.add(user)
+        db.session.commit()
+
+    except IntegrityError:
+        db.session.rollback()
+        return jsonify(error="This email is already registered."), 409
+
+    except SQLAlchemyError:
+        db.session.rollback()
+        app.logger.exception("Account registration failed.")
+        return jsonify(
+            error="Could not create the account. Please try again."
+        ), 500
+
+    return jsonify(message="Account created successfully."), 201
+
+@app.route("/login", methods=["POST"])
+@limiter.limit("5 per minute")
+def login():
+    if not request.is_json:
+        return jsonify(error="Send the details as JSON."), 415
+
+    data = request.get_json(silent=True)
+
+    if not isinstance(data, dict):
+        return jsonify(error="Invalid login details."), 400
+
+    email = data.get("email")
+    password = data.get("password")
+
+    if not isinstance(email, str) or not isinstance(password, str):
+        return jsonify(error="Email and password are required as text."), 400
+
+    email = email.strip().lower()
+
+    if not email or len(email) > 254 or not 1 <= len(password) <= 128:
+        return jsonify(error="Incorrect email or password."), 401
+
+    try:
+        user = db.session.execute(
+            db.select(User).where(User.email == email)
+        ).scalar_one_or_none()
+
+    except SQLAlchemyError:
+        db.session.rollback()
+        app.logger.exception("Login database lookup failed.")
+        return jsonify(error="Could not log in. Please try again."), 500
+
+    password_matches = (
+        user.check_password(password)
+        if user is not None
+        else check_password_hash(LOGIN_DUMMY_HASH, password)
+    )
+
+    if user is None or not password_matches:
+        return jsonify(error="Incorrect email or password."), 401
+
+    session.clear()
+    session["user_id"] = user.id
+
+    return jsonify(message="Logged in successfully.")
+
+
+@app.route("/me", methods=["GET"])
+def current_user():
+    user_id = session.get("user_id")
+
+    try:
+        user = db.session.get(User, user_id) if user_id is not None else None
+
+    except SQLAlchemyError:
+        db.session.rollback()
+        app.logger.exception("Current-user database lookup failed.")
+        return jsonify(error="Could not check the login session."), 500
+
+    if user is None:
+        session.pop("user_id", None)
+
+    response = jsonify(
+        authenticated=user is not None,
+        user={
+            "id": user.id,
+            "name": user.name,
+            "email": user.email,
+        } if user is not None else None,
+    )
+    response.headers["Cache-Control"] = "no-store"
+    return response
+
+
+@app.route("/logout", methods=["POST"])
+def logout():
+    if not request.is_json:
+        return jsonify(error="Send the request as JSON."), 415
+
+    if not isinstance(request.get_json(silent=True), dict):
+        return jsonify(error="Invalid logout request."), 400
+
+    session.clear()
+    return jsonify(message="Logged out successfully.")
+
+
+@app.errorhandler(429)
+def login_rate_limit_exceeded(error):
+    return jsonify(
+        error="Too many login attempts. Wait one minute and try again."
+    ), 429
+
+@app.route("/history", methods=["GET"])
+def translation_history():
+    user_id = session.get("user_id")
+
+    if user_id is None:
+        return jsonify(error="Please sign in to view your history."), 401
+
+    page_number = request.args.get("page", default=1, type=int)
+
+    if not 1 <= page_number <= 1_000_000:
+        return jsonify(error="Invalid page number."), 400
+
+    try:
+        user = db.session.get(User, user_id)
+
+        if user is None:
+            session.clear()
+            return jsonify(error="Please sign in again."), 401
+
+        history = db.paginate(
+            db.select(Translation)
+            .where(Translation.user_id == user_id)
+            .order_by(Translation.id.desc()),
+            page=page_number,
+            per_page=20,
+            max_per_page=20,
+            error_out=False,
+        )
+
+    except SQLAlchemyError:
+        db.session.rollback()
+        app.logger.exception("Could not load translation history.")
+        return jsonify(error="Could not load history. Please try again."), 500
+
+    response = jsonify(
+        page=history.page,
+        total_pages=history.pages,
+        total_translations=history.total,
+        translations=[
+            {
+                "id": item.id,
+                "user_id": item.user_id,
+                "source_code": item.source_code,
+                "translated_code": item.translated_code,
+                "target_language": item.target_language,
+                "is_saved": item.is_saved,
+                "created_at": item.created_at.replace(
+                    tzinfo=timezone.utc
+                ).isoformat(),
+            }
+            for item in history.items
+        ],
+    )
+
+    response.headers["Cache-Control"] = "no-store"
+    return response
+
+@app.route("/translations/<int:translation_id>/save", methods=["POST"])
+def set_translation_saved(translation_id):
+    user_id = session.get("user_id")
+
+    if user_id is None:
+        return jsonify(error="Please sign in to save translations."), 401
+
+    if not request.is_json:
+        return jsonify(error="Send the request as JSON."), 415
+
+    data = request.get_json(silent=True)
+
+    if (
+        not isinstance(data, dict)
+        or not isinstance(data.get("is_saved"), bool)
+    ):
+        return jsonify(error="is_saved must be true or false."), 400
+
+    is_saved = data["is_saved"]
+
+    try:
+        user = db.session.get(User, user_id)
+
+        if user is None:
+            session.clear()
+            return jsonify(error="Please sign in again."), 401
+
+        translation = db.session.execute(
+            db.select(Translation).where(
+                Translation.id == translation_id,
+                Translation.user_id == user_id,
+            )
+        ).scalar_one_or_none()
+
+        if translation is None:
+            return jsonify(error="Translation not found."), 404
+
+        translation.is_saved = is_saved
+        db.session.commit()
+
+    except SQLAlchemyError:
+        db.session.rollback()
+        app.logger.exception("Could not update saved translation.")
+        return jsonify(
+            error="Could not update the translation. Please try again."
+        ), 500
+
+    response = jsonify(
+        message=(
+            "Translation saved."
+            if is_saved
+            else "Translation removed from Saved."
+        ),
+        id=translation_id,
+        is_saved=is_saved,
+    )
+    response.headers["Cache-Control"] = "no-store"
+    return response
+
+@app.route("/saved", methods=["GET"])
+def saved_translations():
+    user_id = session.get("user_id")
+
+    if user_id is None:
+        return jsonify(error="Please sign in to view saved translations."), 401
+
+    try:
+        page_number = int(request.args.get("page", "1"))
+    except (TypeError, ValueError):
+        return jsonify(error="Invalid page number."), 400
+
+    if not 1 <= page_number <= 1_000_000:
+        return jsonify(error="Invalid page number."), 400
+
+    try:
+        user = db.session.get(User, user_id)
+
+        if user is None:
+            session.clear()
+            return jsonify(error="Please sign in again."), 401
+
+        saved = db.paginate(
+            db.select(Translation)
+            .where(
+                Translation.user_id == user_id,
+                Translation.is_saved.is_(True),
+            )
+            .order_by(Translation.id.desc()),
+            page=page_number,
+            per_page=20,
+            max_per_page=20,
+            error_out=False,
+        )
+
+    except SQLAlchemyError:
+        db.session.rollback()
+        app.logger.exception("Could not load saved translations.")
+        return jsonify(
+            error="Could not load saved translations. Please try again."
+        ), 500
+
+    response = jsonify(
+        page=saved.page,
+        total_pages=saved.pages,
+        total_translations=saved.total,
+        translations=[
+            {
+                "id": item.id,
+                "user_id": item.user_id,
+                "source_code": item.source_code,
+                "translated_code": item.translated_code,
+                "target_language": item.target_language,
+                "is_saved": item.is_saved,
+                "created_at": item.created_at.replace(
+                    tzinfo=timezone.utc
+                ).isoformat(),
+            }
+            for item in saved.items
+        ],
+    )
+
+    response.headers["Cache-Control"] = "no-store"
+    return response
 
 if __name__ == "__main__":
     app.run(debug=True)
