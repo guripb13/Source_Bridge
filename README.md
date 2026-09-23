@@ -1,7 +1,7 @@
 # Source Bridge
 
 A small Flask project containing a chat-style message composer prototype. It includes a standalone frontend demo and a Flask-backed version that can echo messages or call an OpenRouter model.
-
+now live
 ## Features
 
 - Contenteditable chat input
