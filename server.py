@@ -8,7 +8,7 @@ def build_task(language):
     return f"""Convert the given code to {language}.
 Return only the code. No explanations, no comments, no markdown.
 Format it like a normal {language} file: one statement per line, and proper indentation for each nested level."""
-client = genai.Client(api_key="AQ.Ab8RN6LeU1KUeg3S3BOYlMb-kIGzcw5tdJJzqa14q1nCo2wsDQ")  # Replace with your actual API key
+client = genai.Client(api_key="")  # Replace with your actual API key
 
 
 @app.route("/")
