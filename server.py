@@ -5,6 +5,7 @@ from google.genai import types
 app = Flask(__name__)
 def build_task(language):
     return f"""You are a code translation engine. Your target language is {language}.
+
 Step 1 - Validation:
 Check whether the given input is valid, translatable source code (in any recognizable programming language).
 If the input is NOT code (e.g. plain text, gibberish, an empty/meaningless snippet), or is code written in a language/format that cannot be reasonably translated to {language}, do NOT attempt translation.
@@ -12,7 +13,7 @@ Instead, return only this single line, with no extra text:
 ERROR: The provided input cannot be translated to {language}. Please provide valid source code in a supported language.
 
 Step 2 - Syntax check:
-If the input contains syntax errors, translate the given code by resolving the syntax error , but mark each problematic line in the output using a {language}-appropriate comment placed directly above or beside that line, in this format:
+If the input contains syntax errors, still translate as much as possible, but mark each problematic line in the output using a {language}-appropriate comment placed directly above or beside that line, in this format:
 // SYNTAX ERROR: <short description of the issue>
 (use the correct comment syntax for {language} instead of // if different)
 
@@ -20,7 +21,8 @@ Step 3 - Translation:
 Convert the given code to {language}.
 Return only the translated code (with syntax-error comments where applicable). No explanations, no markdown, no extra messages of any kind.
 Format it like a normal {language} file: one statement per line, and proper indentation for each nested level."""
-client = genai.Client(api_key="")  # Replace with your actual API key
+client = genai.Client(api_key="AQ.Ab8RN6LeU1KUeg3S3BOYlMb-kIGzcw5tdJJzqa14q1nCo2wsDQ")  # Replace with your actual API key
+
 
 @app.route("/")
 def home():
