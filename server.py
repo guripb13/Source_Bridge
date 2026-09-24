@@ -1,17 +1,30 @@
-from flask import session
+import os
+import re
+import json
+from datetime import timezone
+
+from flask import Flask, request, render_template, Response, session, jsonify
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
-import os
-import json
-from dotenv import load_dotenv
-from flask import Flask, request, render_template, Response
-from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
+from werkzeug.security import check_password_hash
 from google import genai
 from google.genai import types
 
+from database import db, User, Translation, LOGIN_DUMMY_HASH
+
 app = Flask(__name__)
+app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-key-change-me")
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///sourcebridge.db"
 db.init_app(app)
+
+with app.app_context():
+    db.create_all()
+
+limiter = Limiter(get_remote_address, app=app, default_limits=[])
+
+client = genai.Client(api_key="AIzaSyCnDB53ztXXPpBnVh7BypkoBg08VSC47gk") # Replace with your actual API key
+
 
 def build_task(language):
     return f"""You are a code translation engine. Your target language is {language}.
@@ -31,7 +44,6 @@ Step 3 - Translation:
 Convert the given code to {language}.
 Return only the translated code (with syntax-error comments where applicable). No explanations, no markdown, no extra messages of any kind.
 Format it like a normal {language} file: one statement per line, and proper indentation for each nested level."""
-client = genai.Client(api_key="")  # Replace with your actual API key
 
 
 @app.route("/")
@@ -137,6 +149,7 @@ def send():
         response.headers["X-Accel-Buffering"] = "no"
     return response
 
+
 @app.route("/register", methods=["POST"])
 def register():
     if not request.is_json:
@@ -192,6 +205,7 @@ def register():
         ), 500
 
     return jsonify(message="Account created successfully."), 201
+
 
 @app.route("/login", methods=["POST"])
 @limiter.limit("5 per minute")
@@ -285,6 +299,7 @@ def login_rate_limit_exceeded(error):
         error="Too many login attempts. Wait one minute and try again."
     ), 429
 
+
 @app.route("/history", methods=["GET"])
 def translation_history():
     user_id = session.get("user_id")
@@ -341,6 +356,7 @@ def translation_history():
 
     response.headers["Cache-Control"] = "no-store"
     return response
+
 
 @app.route("/translations/<int:translation_id>/save", methods=["POST"])
 def set_translation_saved(translation_id):
@@ -400,6 +416,7 @@ def set_translation_saved(translation_id):
     )
     response.headers["Cache-Control"] = "no-store"
     return response
+
 
 @app.route("/saved", methods=["GET"])
 def saved_translations():
@@ -465,6 +482,7 @@ def saved_translations():
 
     response.headers["Cache-Control"] = "no-store"
     return response
+
 
 if __name__ == "__main__":
     app.run(debug=True)
