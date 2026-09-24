@@ -1,130 +1,214 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Chat Input Box</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <meta name="color-scheme" content="light dark">
+  <meta name="description" content="Source Bridge — translate, learn and explore code.">
+  <title>Source Bridge — Code Translator</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+  <script src="{{ url_for('static', filename='script.js') }}" defer></script>
 </head>
-<body>
-<!-- Top-left tips button -->
-<div class="tips-corner" id="tipsCorner">
-  <button type="button" class="tips-btn" id="tipsBtn" title="Tips">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M9 18h6"></path>
-      <path d="M10 22h4"></path>
-      <path d="M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.2 1 2V17h6v-.3c0-.8.4-1.5 1-2A7 7 0 0 0 12 2z"></path>
-    </svg>
-    <span>Tips</span>
-  </button>
+<body data-me-url="{{ url_for('current_user') }}" data-history-url="{{ url_for('translation_history') }}" data-saved-url="{{ url_for('saved_translations') }}" data-save-url="{{ url_for('set_translation_saved', translation_id=0) }}" data-logout-url="{{ url_for('logout') }}">
+  <!-- Inline icons keep the interface independent of CDNs and icon libraries. -->
+  <svg class="icon-library" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></symbol>
+    <symbol id="i-panel" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M9 4v16m7-12-3 4 3 4"/></symbol>
+    <symbol id="i-home" viewBox="0 0 24 24"><path d="m3 10 9-8 9 8M5 9v12h5v-7h4v7h5V9"/></symbol>
+    <symbol id="i-bookmark" viewBox="0 0 24 24"><path d="M6 3h12a1 1 0 0 1 1 1v18l-7-5-7 5V4a1 1 0 0 1 1-1Z"/></symbol>
+    <symbol id="i-settings" viewBox="0 0 24 24"><path d="m9 3 .7-1h4.6l.7 3 2 .9 2.8-.9 2.2 3.8-2.1 2.1v2.2l2.1 2.1-2.2 3.8-2.8-.9-2 .9-.7 3H9.7l-.7-3-2-.9-2.8.9L2 15.2l2.1-2.1v-2.2L2 8.8 2.2 8.4 4.2 5 7 5.9l2-.9V3Z"/><circle cx="12" cy="12" r="3"/></symbol>
+    <symbol id="i-bulb" viewBox="0 0 24 24"><path d="M9 18h6m-5 4h4M8 14a7 7 0 1 1 8 0c-1 .8-1 2-1 4H9c0-2 0-3.2-1-4Z"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20.9 13.1A9 9 0 0 1 10.9 3 9 9 0 1 0 20.9 13.1Z"/></symbol>
+    <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></symbol>
+    <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="7" r="4"/><path d="M3 22v-2a9 9 0 0 1 18 0v2Z"/></symbol>
+    <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 2H5a1 1 0 0 0-1 1v18a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V8Zm0 0v6h6"/></symbol>
+    <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="7" width="12" height="15" rx="2"/><path d="M5 17H4a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1h11a1 1 0 0 1 1 1v1"/></symbol>
+    <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M4 12h16m-7-7 7 7-7 7"/></symbol>
+    <symbol id="i-attach" viewBox="0 0 24 24"><path d="m20.4 11.1-8.5 8.5a5.5 5.5 0 0 1-7.8-7.8L13 3a3.5 3.5 0 0 1 5 5l-8.9 8.9a1.5 1.5 0 0 1-2.1-2.1L15 6.8"/></symbol>
+    <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3v12m-5-5 5 5 5-5M4 15v5a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-5"/></symbol>
+    <symbol id="i-close" viewBox="0 0 24 24"><path d="m6 6 12 12M6 18 18 6"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7m4-7v7"/></symbol>
+    <symbol id="i-code" viewBox="0 0 24 24"><path d="m7 6-6 6 6 6m10-12 6 6-6 6m-4-15-2 18"/></symbol>
+    <symbol id="i-stop" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2"/></symbol>
+    <symbol id="i-history" viewBox="0 0 24 24"><path d="M3 11a9 9 0 1 1 2.6 7M3 4v7h7m2-5v6l4 2"/></symbol>
+    <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 7a9 9 0 0 0-15-2L2 8m0-6v6h6m-4 9a9 9 0 0 0 15 2l3-3m0 6v-6h-6"/></symbol>
+    <symbol id="i-python" viewBox="0 0 32 32">
+      <path fill="#3776AB" stroke="none" d="M16 2C8 2 8 5 8 5v6h9v2H5s-5 0-5 7 5 7 5 7h3v-5s0-5 5-5h9s5 0 5-5V7s0-5-11-5Z" transform="translate(2 0) scale(.9)"/>
+      <path fill="#FFD343" stroke="none" d="M16 30c8 0 8-3 8-3v-6h-9v-2h12s5 0 5-7-5-7-5-7h-3v5s0 5-5 5h-9s-5 0-5 5v5s0 5 11 5Z" transform="translate(2 3) scale(.9)"/>
+      <circle cx="12.1" cy="5.8" r="1.2" fill="white" stroke="none"/><circle cx="20.3" cy="26.2" r="1.2" fill="white" stroke="none"/>
+    </symbol>
+  </svg>
 
-  <div class="tips-card" id="tipsCard">
-    <div class="tips-title">💡 Quick tips</div>
-    <div class="tips-item">
-      Hold <kbd>Alt</kbd> and drag any message or reply to drop it anywhere: another app, a text editor, or the input box.
+  <a class="skip-link" href="#mainContent">Skip to workspace</a>
+  <header class="topbar">
+    <div class="brand-group">
+      <button type="button" class="icon-button sidebar-toggle" id="sidebarToggle" aria-label="Collapse sidebar" title="Collapse sidebar" aria-controls="sidebar" aria-expanded="true">
+        <svg class="icon desktop-menu" aria-hidden="true"><use href="#i-panel"/></svg>
+        <svg class="icon mobile-menu" aria-hidden="true"><use href="#i-menu"/></svg>
+      </button>
+      <a class="brand" href="{{ url_for('home') }}" aria-label="Source Bridge home">
+        <span class="brand-mark" aria-hidden="true">SB</span>
+        <span>Source Bridge</span>
+      </a>
     </div>
-    <div class="tips-item">
-      Press <kbd>Enter</kbd> to send, <kbd>Shift</kbd> + <kbd>Enter</kbd> for a new line.
-    </div>
-    <div class="tips-item">
-      Pasting long code? Click the expand icon in the top-right of the input box to make it taller.
-    </div>
-    <div class="tips-item">
-      Pick the target language with the button next to the paperclip. Choose <b>Other</b> to type your own.
-    </div>
-    <div class="tips-item">
-      Click the copy icon next to your message, or under a reply, to copy it. On older messages, hover to reveal it.
-    </div>
-  </div>
-</div>
-<div class="page empty" id="page">
- <h1 id="title">SOURCE BRIDGE</h1> 
-
-  <!-- Messages and replies appear here -->
-  <div class="messages" id="messages"></div>
-   <div class="tip" id="tip">
-    <span class="tip-icon">💡</span>
-    <span class="tip-text">
-      Tip: hold <kbd>Alt</kbd> and drag any message or reply to drop it anywhere.
-    </span>
-    <button type="button" class="tip-close" id="tipClose" title="Close">✕</button>
-  </div>
-  <form class="composer" id="form" method="POST" action="{{ url_for('send') }}" enctype="multipart/form-data">
-        <button type="button" class="expand-btn" id="expandBtn" title="Expand input">
-      <!-- Outward arrows (shown when collapsed) -->
-      <svg class="icon-expand" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <polyline points="15 3 21 3 21 9"></polyline>
-        <polyline points="9 21 3 21 3 15"></polyline>
-        <line x1="21" y1="3" x2="14" y2="10"></line>
-        <line x1="3" y1="21" x2="10" y2="14"></line>
-      </svg>
-
-      <!-- Inward arrows (shown when expanded) -->
-      <svg class="icon-shrink" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <polyline points="4 14 10 14 10 20"></polyline>
-        <polyline points="20 10 14 10 14 4"></polyline>
-        <line x1="14" y1="10" x2="21" y2="3"></line>
-        <line x1="3" y1="21" x2="10" y2="14"></line>
-      </svg>
-    </button>
-        <div class="expand-hint" id="expandHint">
-      Click here to expand the box
-    </div>
-    <textarea name="message" id="message" rows="2" placeholder="How can I help you today?"></textarea>
-
-    <div class="toolbar">
-      <div class="left">
-        <input type="file" name="attachment" id="attachment">
-        <label for="attachment" class="icon-btn" title="Attach file">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
-          </svg>
-        </label>
-
-        <div class="lang-picker" id="langPicker">
-
-  <!-- The button -->
-  <button type="button" class="model-pill" id="langBtn">
-    <span id="langLabel">Java</span>
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <polyline points="6 9 12 15 18 9"></polyline>
-    </svg>
-  </button>
-
-  <!-- The menu that opens above the button -->
-  <div class="lang-menu" id="langMenu">
-    <button type="button" class="lang-option" data-lang="Python">Python</button>
-    <button type="button" class="lang-option" data-lang="C">C</button>
-    <button type="button" class="lang-option" data-lang="C++">C++</button>
-    <button type="button" class="lang-option active" data-lang="Java">Java</button>
-    <button type="button" class="lang-option" data-lang="other">Other...</button>
-
-    <!-- Only shows when "Other" is chosen -->
-    <div class="lang-other-row" id="langOtherRow">
-  <input type="text" class="lang-other" id="langOther" placeholder="Type a language...">
-  <button type="button" class="lang-done" id="langDone" title="Done" disabled>
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
-      <polyline points="20 6 9 17 4 12"></polyline>
-    </svg>
-  </button>
-</div>
-  </div>
-
-  <!-- Hidden field: this is what gets sent to Flask -->
-  <input type="hidden" name="language" id="language" value="Java">
-</div>
-      </div>
-
-      <button type="submit" class="send-btn" title="Send">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
-          <line x1="12" y1="19" x2="12" y2="5"></line>
-          <polyline points="5 12 12 5 19 12"></polyline>
-        </svg>
+    <div class="header-actions">
+      <button type="button" class="text-button tips-button" data-dialog="tipsDialog" aria-label="Open tips">
+        <svg class="icon" aria-hidden="true"><use href="#i-bulb"/></svg><span>Tips</span>
+      </button>
+      <button type="button" class="icon-button theme-button" id="themeToggle" aria-label="Switch to dark mode" title="Switch to dark mode">
+        <svg class="icon" aria-hidden="true"><use id="themeIcon" href="#i-moon"/></svg>
+      </button>
+      <button type="button" class="sign-in-button" id="accountButton" data-dialog="signInDialog" aria-label="Sign in">
+        <svg class="icon" aria-hidden="true"><use href="#i-user"/></svg><span id="accountButtonLabel">Sign In</span>
       </button>
     </div>
-  </form>
-</div>
+  </header>
 
-<script src="{{ url_for('static', filename='script.js') }}"></script>
+  <button type="button" class="sidebar-backdrop" id="sidebarBackdrop" aria-label="Close navigation" tabindex="-1" hidden></button>
+  <aside class="sidebar" id="sidebar" aria-label="Main navigation">
+    <div class="mobile-sidebar-heading"><span>Your workspace</span><button type="button" class="icon-button" id="sidebarClose" aria-label="Close navigation"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></button></div>
+    <nav class="nav-list" aria-label="Workspace">
+      <button type="button" class="nav-item active" id="translateNav" data-view="translate" aria-current="page" title="Translate">
+        <svg class="icon" aria-hidden="true"><use href="#i-home"/></svg><span class="nav-label">Translate</span>
+      </button>
+      <button type="button" class="nav-item" id="savedNav" data-view="saved" title="Saved translations">
+        <svg class="icon" aria-hidden="true"><use href="#i-bookmark"/></svg><span class="nav-label">Saved</span><span class="saved-count" id="savedCount" hidden>0</span>
+      </button>
+      <button type="button" class="nav-item" id="historyNav" data-view="history" title="Translation history">
+        <svg class="icon" aria-hidden="true"><use href="#i-history"/></svg><span class="nav-label">History</span>
+      </button>
+      <button type="button" class="nav-item" data-dialog="settingsDialog" title="Settings">
+        <svg class="icon" aria-hidden="true"><use href="#i-settings"/></svg><span class="nav-label">Settings</span>
+      </button>
+    </nav>
+    <div class="sidebar-footer" aria-hidden="true"><div class="sidebar-divider"></div><p>Code<br>Without<br><span>Borders</span></p></div>
+    <svg class="sidebar-landscape" viewBox="0 0 260 190" preserveAspectRatio="none" aria-hidden="true"><path d="M0 97Q36 37 73 94T147 82T219 71T260 87V190H0Z"/><path d="M0 126Q48 52 89 110T169 139T260 173V190H0Z"/><path d="M0 85Q34 49 72 107T142 150T260 188V190H0Z"/></svg>
+  </aside>
+
+  <main class="main-content" id="mainContent" tabindex="-1">
+    <section id="translateView" aria-labelledby="pageTitle">
+      <div class="page-intro">
+        <h1 id="pageTitle">Translate, Learn &amp; Explore Code</h1>
+        <p>Convert your code between programming languages using AI.</p>
+      </div>
+      <!-- POST message + language to /send; JavaScript opts into completion events. -->
+      <form class="workspace-grid" id="form" method="POST" action="{{ url_for('send') }}" enctype="multipart/form-data">
+        <section class="editor-card source-card" aria-labelledby="sourceTitle">
+          <div class="editor-heading">
+            <h2 id="sourceTitle"><svg class="icon" aria-hidden="true"><use href="#i-file"/></svg><span>Source Code</span></h2>
+            <button type="button" class="text-button copy-button" id="copySource" aria-label="Copy source code" disabled><svg class="icon" aria-hidden="true"><use href="#i-copy"/></svg><span>Copy</span></button>
+          </div>
+          <div class="code-surface" id="sourceSurface">
+            <div class="line-gutter" aria-hidden="true"><div class="line-numbers" id="sourceLines">1&#10;2&#10;3&#10;4&#10;5</div></div>
+            <textarea class="code-editor" id="message" name="message" aria-label="Source code" placeholder="Paste your code here..." spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off" wrap="off" aria-describedby="keyboardHint"></textarea>
+          </div>
+        </section>
+
+        <div class="conversion-controls">
+          <div class="language-control">
+            <label for="language">Translate to</label>
+            <div class="language-select">
+              <svg class="language-icon" aria-hidden="true"><use id="languageIcon" href="#i-python"/></svg>
+              <select id="language" name="language" aria-label="Target programming language">
+                <option value="Python" selected>Python</option><option value="Java">Java</option><option value="C">C</option><option value="C++">C++</option><option value="JavaScript">JavaScript</option><option value="TypeScript">TypeScript</option><option value="C#">C#</option><option value="Go">Go</option><option value="Rust">Rust</option><option value="PHP">PHP</option><option value="Swift">Swift</option><option value="Kotlin">Kotlin</option><option value="Ruby">Ruby</option><option value="SQL">SQL</option><option value="other">Other...</option>
+              </select>
+              <svg class="select-chevron icon" aria-hidden="true"><use href="#i-chevron"/></svg>
+            </div>
+            <div class="custom-language" id="customLanguageRow" hidden><label class="sr-only" for="customLanguage">Custom target language</label><input id="customLanguage" type="text" placeholder="Language name" maxlength="60" autocomplete="off"></div>
+          </div>
+          <button type="submit" class="translate-button" id="translateButton" disabled aria-label="Translate code">
+            <span class="translate-circle"><svg class="icon translate-arrow" aria-hidden="true"><use href="#i-arrow"/></svg><svg class="icon stop-icon" aria-hidden="true"><use href="#i-stop"/></svg></span>
+            <span id="translateLabel">Translate</span>
+          </button>
+        </div>
+
+        <section class="editor-card output-card" aria-labelledby="outputTitle" aria-busy="false">
+          <div class="editor-heading">
+            <h2 id="outputTitle"><svg class="icon" aria-hidden="true"><use href="#i-file"/></svg><span>Translated Code</span></h2>
+            <div class="editor-actions">
+              <button type="button" class="icon-button save-button" id="saveButton" title="Save translation in this browser" aria-label="Save translation in this browser" aria-pressed="false" disabled><svg class="icon" aria-hidden="true"><use href="#i-bookmark"/></svg></button>
+              <button type="button" class="text-button copy-button" id="copyOutput" aria-label="Copy translated code" disabled><svg class="icon" aria-hidden="true"><use href="#i-copy"/></svg><span>Copy</span></button>
+            </div>
+          </div>
+          <div class="code-surface" id="outputSurface">
+            <div class="line-gutter" aria-hidden="true"><div class="line-numbers" id="outputLines">1&#10;2&#10;3&#10;4&#10;5</div></div>
+            <textarea class="code-editor" id="translatedCode" aria-label="Translated code" placeholder="Your translated code will appear here..." spellcheck="false" wrap="off" readonly></textarea>
+          </div>
+        </section>
+
+        <div class="upload-actions">
+          <input type="file" id="attachment" class="sr-only" tabindex="-1" accept=".py,.java,.cpp,.cc,.c,.h,.hpp,.js,.jsx,.ts,.tsx,.txt,.cs,.go,.rs,.php,.rb,.swift,.kt,.kts,.sql,.html,.css,.json,.xml,.sh,.r,.lua,.scala,.dart,.vue,.svelte,.yaml,.yml,.md,text/*">
+          <button type="button" class="pill-button" id="uploadButton"><svg class="icon" aria-hidden="true"><use href="#i-attach"/></svg><span>Upload File</span></button>
+          <span class="file-help" id="fileHelp">Supports .py, .java, .cpp, .c, .js, .txt &amp; more</span>
+        </div>
+        <div class="download-actions"><button type="button" class="pill-button" id="downloadButton" disabled><svg class="icon" aria-hidden="true"><use href="#i-download"/></svg><span>Download</span></button></div>
+      </form>
+      <div class="workspace-bottom"><p class="status-message" id="statusMessage" role="status" aria-live="polite"></p><p class="keyboard-hint" id="keyboardHint"><kbd id="shortcutModifier">Ctrl</kbd> + <kbd>Enter</kbd> to translate</p></div>
+      <noscript><p class="noscript-message">Please enable JavaScript to use the code translator.</p></noscript>
+    </section>
+
+    <section id="savedView" aria-labelledby="savedTitle" hidden>
+      <div class="page-intro"><h1 id="savedTitle">Your saved translations</h1><p id="savedDescription">Code you choose to keep.</p></div>
+      <div class="collection-toolbar">
+        <div class="scope-switch" aria-label="Saved translation location"><button type="button" id="savedAccountTab" aria-pressed="false">My account</button><button type="button" id="savedBrowserTab" aria-pressed="true">This browser</button></div>
+        <button type="button" class="text-button" id="refreshSaved"><svg class="icon" aria-hidden="true"><use href="#i-refresh"/></svg><span>Refresh</span></button>
+      </div>
+      <p id="savedStatus" class="collection-status" role="status" aria-live="polite"></p>
+      <div id="savedSignIn" class="account-prompt" hidden><p>Sign in to view the translations bookmarked in your account.</p><button type="button" class="pill-button" data-dialog="signInDialog">Sign In</button></div>
+      <div class="saved-empty" id="savedEmpty"><svg class="icon" aria-hidden="true"><use href="#i-bookmark"/></svg><h2>A place for your code</h2><p id="savedEmptyText">Use the bookmark beside a translation to save it here.</p><button type="button" class="pill-button" data-view="translate">Start translating<svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></button></div>
+      <div class="saved-list" id="savedList"></div>
+      <nav class="collection-pagination" id="savedPagination" aria-label="Saved translation pages" hidden><button type="button" class="text-button" id="savedPrevious">Previous</button><span id="savedPageInfo"></span><button type="button" class="text-button" id="savedNext">Next</button></nav>
+    </section>
+
+    <section id="historyView" aria-labelledby="historyTitle" hidden>
+      <div class="page-intro"><h1 id="historyTitle">Your translation history</h1><p>Translations completed while you are signed in.</p></div>
+      <div class="collection-toolbar history-toolbar"><button type="button" class="text-button" id="refreshHistory"><svg class="icon" aria-hidden="true"><use href="#i-refresh"/></svg><span>Refresh</span></button></div>
+      <p id="historyStatus" class="collection-status" role="status" aria-live="polite"></p>
+      <div id="historySignIn" class="account-prompt" hidden><p>Sign in to view your translation history.</p><button type="button" class="pill-button" data-dialog="signInDialog">Sign In</button></div>
+      <div class="saved-empty" id="historyEmpty" hidden><svg class="icon" aria-hidden="true"><use href="#i-history"/></svg><h2>Your next idea starts here</h2><p>Complete a translation while signed in to see it here.</p><button type="button" class="pill-button" data-view="translate">Start translating<svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></button></div>
+      <div class="saved-list" id="historyList"></div>
+      <nav class="collection-pagination" id="historyPagination" aria-label="Translation history pages" hidden><button type="button" class="text-button" id="historyPrevious">Previous</button><span id="historyPageInfo"></span><button type="button" class="text-button" id="historyNext">Next</button></nav>
+    </section>
+  </main>
+
+  <dialog class="app-dialog" id="tipsDialog" aria-labelledby="tipsTitle">
+    <div class="dialog-heading"><h2 id="tipsTitle">A few helpful tips</h2><button type="button" class="icon-button" data-close-dialog aria-label="Close tips"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></button></div>
+    <ul class="tips-list"><li><strong>Start with your code.</strong> Paste it into the source editor or upload a text-based code file.</li><li><strong>Choose a language.</strong> Pick your target, or select Other to enter a different language.</li><li><strong>Keep writing.</strong> Enter creates a new line. Ctrl + Enter (⌘ + Enter on Mac) starts a translation.</li><li><strong>Take it with you.</strong> Copy, download, or bookmark a finished translation. Hold Alt and drag code into another app.</li><li><strong>Review the result.</strong> Check and test translated code before using it in your project.</li></ul>
+  </dialog>
+
+  <dialog class="app-dialog" id="settingsDialog" aria-labelledby="settingsTitle">
+    <div class="dialog-heading"><h2 id="settingsTitle">Make yourself at home</h2><button type="button" class="icon-button" data-close-dialog aria-label="Close settings"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></button></div>
+    <p class="dialog-description">Adjust your workspace. Preferences stay in this browser.</p>
+    <label class="setting-row" for="themeSetting"><span>Appearance</span><select id="themeSetting"><option value="light">Light</option><option value="dark">Dark</option><option value="system">System</option></select></label>
+    <label class="setting-row" for="fontSizeSetting"><span>Code text size</span><select id="fontSizeSetting"><option value="13">13 px</option><option value="14">14 px</option><option value="15" selected>15 px</option><option value="16">16 px</option><option value="18">18 px</option></select></label>
+    <label class="setting-row" for="lineNumbersSetting"><span>Show line numbers</span><input type="checkbox" id="lineNumbersSetting" checked></label>
+  </dialog>
+
+  <dialog class="app-dialog" id="signInDialog" aria-labelledby="signInTitle">
+    <div class="dialog-heading"><h2 id="signInTitle">Welcome to Source Bridge</h2><button type="button" class="icon-button" data-close-dialog aria-label="Close sign in"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></button></div>
+    <p class="dialog-description">Keep your translation history and bookmarks in your account.</p>
+    <div class="scope-switch auth-switch" aria-label="Account action"><button type="button" id="showLogin" aria-pressed="true">Sign In</button><button type="button" id="showRegister" aria-pressed="false">Create account</button></div>
+    <form id="loginForm" class="auth-form" method="POST" action="{{ url_for('login') }}">
+      <label for="loginEmail">Email address</label><input id="loginEmail" name="email" type="email" autocomplete="username" maxlength="254" required>
+      <label for="loginPassword">Password</label><input id="loginPassword" name="password" type="password" autocomplete="current-password" maxlength="128" required>
+      <button type="submit" class="pill-button auth-submit" id="loginSubmit">Sign In</button>
+    </form>
+    <form id="registerForm" class="auth-form" method="POST" action="{{ url_for('register') }}" hidden>
+      <label for="registerName">Your name</label><input id="registerName" name="name" type="text" autocomplete="name" maxlength="100" required>
+      <label for="registerEmail">Email address</label><input id="registerEmail" name="email" type="email" autocomplete="email" maxlength="254" required>
+      <label for="registerPassword">Password</label><input id="registerPassword" name="password" type="password" autocomplete="new-password" minlength="15" maxlength="128" aria-describedby="passwordHelp" required>
+      <p class="field-help" id="passwordHelp">Use 15–128 characters. A memorable phrase works well.</p>
+      <button type="submit" class="pill-button auth-submit" id="registerSubmit">Create account</button>
+    </form>
+    <p id="authError" class="auth-error" role="alert" hidden></p><p id="authStatus" class="auth-status" role="status" aria-live="polite"></p>
+  </dialog>
+  <dialog class="app-dialog" id="accountDialog" aria-labelledby="accountTitle">
+    <div class="dialog-heading"><h2 id="accountTitle">Your account</h2><button type="button" class="icon-button" data-close-dialog aria-label="Close account"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></button></div>
+    <p id="accountName" class="account-name"></p><p id="accountEmail" class="dialog-description"></p>
+    <button type="button" class="pill-button" id="logoutButton">Sign Out</button><p id="accountError" class="auth-error" role="alert" hidden></p>
+  </dialog>
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 </body>
 </html>
