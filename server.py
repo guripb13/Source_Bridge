@@ -1,9 +1,13 @@
 from flask import Flask, request, render_template, Response
 from google import genai
 from google.genai import types
-
+from models import db, User, History
 app = Flask(__name__)
+app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///sourcebridge.db"
+db.init_app(app)
 
+with app.app_context():
+    db.create_all()
 def build_task(language):
     return f"""You are a code translation engine. Your target language is {language}.
 
