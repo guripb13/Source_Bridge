@@ -146,7 +146,7 @@ body.hide-line-numbers .line-gutter { display: none; }
 .translate-button { display: flex; flex-direction: column; align-items: center; gap: 16px; padding: 0; background: none; border: none; font-size: 19px; font-weight: 600; border-radius: 15px; }
 .translate-circle { width: 86px; height: 86px; border-radius: 50%; display: grid; place-items: center; background: var(--green); color: #fff; box-shadow: 0 6px 15px rgb(55 91 43 / 12%); transition: background .2s, transform .2s; position: relative; }
 .translate-circle .icon { width: 37px; height: 37px; stroke-width: 1.8; }
-.translate-button:hover:not(:disabled) .translate-circle { background: var(--green-hover); transform: translateX(3px); }
+.translate-button:hover:not(:disabled) .translate-circle { background: var(--green-hover); transform: translateY(-3px); }
 .translate-button:active:not(:disabled) .translate-circle { transform: scale(.96); }
 .translate-button:disabled .translate-circle { opacity: .76; }
 .stop-icon { display: none; }
