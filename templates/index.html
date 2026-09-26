@@ -66,10 +66,7 @@
   <button type="button" class="sidebar-backdrop" id="sidebarBackdrop" aria-label="Close navigation" tabindex="-1" hidden></button>
   <aside class="sidebar" id="sidebar" aria-label="Main navigation">
     <div class="mobile-sidebar-heading"><span>Your workspace</span><button type="button" class="icon-button" id="sidebarClose" aria-label="Close navigation"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></button></div>
-    <button type="button" class="icon-button sidebar-toggle" id="sidebarToggle" aria-label="Collapse sidebar" title="Collapse sidebar" aria-controls="sidebar" aria-expanded="true">
-        <svg class="icon desktop-menu" aria-hidden="true"><use href="#i-panel"/></svg>
-        <svg class="icon mobile-menu" aria-hidden="true"><use href="#i-menu"/></svg>
-      </button>
+    
     <nav class="nav-list" aria-label="Workspace">
       
       <button type="button" class="nav-item active" id="translateNav" data-view="translate" aria-current="page" title="Translate">
@@ -85,8 +82,14 @@
         <svg class="icon" aria-hidden="true"><use href="#i-settings"/></svg><span class="nav-label">Settings</span>
       </button>
     </nav>
-    <div class="sidebar-footer" aria-hidden="true"><div class="sidebar-divider"></div><p>Code<br>Without<br><span>Borders</span></p></div>
+    
+    <button type="button" class="icon-button sidebar-toggle" id="sidebarToggle" aria-label="Collapse sidebar" title="Collapse sidebar" aria-controls="sidebar" aria-expanded="true">
+        <svg class="icon desktop-menu" aria-hidden="true"><use href="#i-panel"/></svg>
+        <svg class="icon mobile-menu" aria-hidden="true"><use href="#i-menu"/></svg>
+      </button>
+    <div class="sidebar-footer" aria-hidden="true"><p>Code<br>Without<br><span>Borders</span></p></div>
     <svg class="sidebar-landscape" viewBox="0 0 260 190" preserveAspectRatio="none" aria-hidden="true"><path d="M0 97Q36 37 73 94T147 82T219 71T260 87V190H0Z"/><path d="M0 126Q48 52 89 110T169 139T260 173V190H0Z"/><path d="M0 85Q34 49 72 107T142 150T260 188V190H0Z"/></svg>
+  
   </aside>
 
   <main class="main-content" id="mainContent" tabindex="-1">

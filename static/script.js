@@ -396,29 +396,67 @@
     $("authError").hidden = true; $("authStatus").textContent = "";
   });
 
+    const viewOrder = { translate: 0, saved: 1, history: 2 };
+
   function showView(view) {
     if (!["translate", "saved", "history"].includes(view)) return;
+    if (view === currentView) return;
+
+    const goingDown = viewOrder[view] > viewOrder[currentView];
+    const main = $("mainContent");
+    const oldSectionId = { translate: "translateView", saved: "savedView", history: "historyView" }[currentView];
+    const newSectionId = { translate: "translateView", saved: "savedView", history: "historyView" }[view];
+
     currentView = view;
-    $("translateView").hidden = view !== "translate";
-    $("savedView").hidden = view !== "saved";
-    $("historyView").hidden = view !== "history";
-    [$("translateNav"), $("savedNav"), $("historyNav")].forEach((button) => {
-      const current = button.dataset.view === view;
-      button.classList.toggle("active", current);
-      if (current) button.setAttribute("aria-current", "page");
-      else button.removeAttribute("aria-current");
-    });
-    if (view === "saved") {
-      renderSaved();
-      if (currentUser && savedScope === "account") void loadCollection("saved", collections.saved.page);
+
+    function finishSwitch() {
+      $("translateView").hidden = view !== "translate";
+      $("savedView").hidden = view !== "saved";
+      $("historyView").hidden = view !== "history";
+      [$("translateNav"), $("savedNav"), $("historyNav")].forEach((button) => {
+        const current = button.dataset.view === view;
+        button.classList.toggle("active", current);
+        if (current) button.setAttribute("aria-current", "page");
+        else button.removeAttribute("aria-current");
+      });
+      if (view === "saved") {
+        renderSaved();
+        if (currentUser && savedScope === "account") void loadCollection("saved", collections.saved.page);
+      }
+      if (view === "history") {
+        renderHistory();
+        if (currentUser) void loadCollection("history", collections.history.page);
+      }
+      if (mobileOpen) closeSidebar();
     }
-    if (view === "history") {
-      renderHistory();
-      if (currentUser) void loadCollection("history", collections.history.page);
+
+    // Respect users who've asked for reduced motion.
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      finishSwitch();
+      main.focus({ preventScroll: true });
+      return;
     }
-    if (mobileOpen) closeSidebar();
-    $("mainContent").focus({ preventScroll: true });
+
+    const exitClass = goingDown ? "view-exit-up" : "view-exit-down";
+    const enterClass = goingDown ? "view-enter-from-bottom" : "view-enter-from-top";
+
+    main.classList.add(exitClass);
+    main.addEventListener("animationend", function onExit() {
+      main.removeEventListener("animationend", onExit);
+      main.classList.remove(exitClass);
+      finishSwitch();
+      main.classList.add(enterClass);
+      main.addEventListener("animationend", function onEnter() {
+        main.removeEventListener("animationend", onEnter);
+        main.classList.remove(enterClass);
+        main.focus({ preventScroll: true });
+      }, { once: true });
+    }, { once: true });
   }
+
+  document.querySelectorAll("[data-view]").forEach((button) => {
+    button.addEventListener("click", () => showView(button.dataset.view));
+  });
   document.querySelectorAll("[data-view]").forEach((button) => {
     button.addEventListener("click", () => showView(button.dataset.view));
   });

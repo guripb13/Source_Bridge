@@ -55,7 +55,13 @@
 ::view-transition-new(root) {
   z-index: 2;
 }
-
+html {
+  scrollbar-width: none;      /* Firefox */
+  -ms-overflow-style: none;   /* old Edge/IE */
+}
+html::-webkit-scrollbar {
+  display: none;              /* Chrome, Safari, new Edge */
+}
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--page); color: var(--ink); min-width: 320px; }
 button, input, textarea, select { font: inherit; }
@@ -149,6 +155,25 @@ body.sidebar-collapsed .main-content { margin-left: var(--sidebar-rail); }
 
 /* Translation workspace */
 .main-content { margin-left: var(--sidebar-width); padding: 58px 28px 28px; min-height: calc(100dvh - var(--header-height)); transition: margin-left .25s ease; }
+@keyframes viewExitUp {
+  to { opacity: 0; transform: translateY(-24px); }
+}
+@keyframes viewExitDown {
+  to { opacity: 0; transform: translateY(24px); }
+}
+@keyframes viewEnterFromBottom {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes viewEnterFromTop {
+  from { opacity: 0; transform: translateY(-24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.view-exit-up { animation: viewExitUp .22s ease forwards; }
+.view-exit-down { animation: viewExitDown .22s ease forwards; }
+.view-enter-from-bottom { animation: viewEnterFromBottom .28s ease forwards; }
+.view-enter-from-top { animation: viewEnterFromTop .28s ease forwards; }
 .page-intro { text-align: center; margin: 0 auto 42px; }
 .page-intro h1 { margin: 0 0 12px; font-size: clamp(29px, 3.3vw, 48px); line-height: 1.16; font-weight: 650; letter-spacing: -1.5px; }
 .page-intro > p { margin: 0; color: var(--muted); font-size: clamp(16px, 1.75vw, 23px); line-height: 1.5; }
