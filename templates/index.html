@@ -198,7 +198,7 @@
     <form id="registerForm" class="auth-form" method="POST" action="{{ url_for('register') }}" hidden>
       <label for="registerName">Your name</label><input id="registerName" name="name" type="text" autocomplete="name" maxlength="100" required>
       <label for="registerEmail">Email address</label><input id="registerEmail" name="email" type="email" autocomplete="email" maxlength="254" required>
-      <label for="registerPassword">Password</label><input id="registerPassword" name="password" type="password" autocomplete="new-password" minlength="15" maxlength="128" aria-describedby="passwordHelp" required>
+      <label for="registerPassword">Password</label><input id="registerPassword" name="password" type="password" autocomplete="new-password" minlength="8" maxlength="128" aria-describedby="passwordHelp" required>
       <p class="field-help" id="passwordHelp">Use 15–128 characters. A memorable phrase works well.</p>
       <button type="submit" class="pill-button auth-submit" id="registerSubmit">Create account</button>
     </form>

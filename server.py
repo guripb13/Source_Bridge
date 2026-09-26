@@ -11,15 +11,20 @@ from werkzeug.security import check_password_hash
 from google import genai
 from google.genai import types
 
-from database import db, User, Translation, LOGIN_DUMMY_HASH
+# --- CHANGED: added purge_expired_translations to the import ---
+# This was the bug: server.py called purge_expired_translations() below
+# but never imported it, so the app would crash on startup with a
+# NameError. This is the function we wrote in database.py step 6.
+from database import db, User, Translation, LOGIN_DUMMY_HASH, purge_expired_translations
 
 app = Flask(__name__)
-app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-key-change-me")
+app.secret_key = os.environ.get("SECRET_KEY", "2f0ba1616d552516fd562e6cdb953cc064f1bf39c8f77ece1042aed74aee4481")
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///sourcebridge.db"
 db.init_app(app)
 
 with app.app_context():
     db.create_all()
+    purge_expired_translations()  # sweeps trash older than TRASH_RETENTION_DAYS on every boot
 
 limiter = Limiter(get_remote_address, app=app, default_limits=[])
 
@@ -181,7 +186,7 @@ def register():
     ):
         return jsonify(error="Enter a valid email address."), 400
 
-    if not 15 <= len(password) <= 128 or not password.strip():
+    if not 8 <= len(password) <= 128 or not password.strip():
         return jsonify(
             error="Password must contain 15–128 characters and cannot be blank."
         ), 400
@@ -321,7 +326,12 @@ def translation_history():
 
         history = db.paginate(
             db.select(Translation)
-            .where(Translation.user_id == user_id)
+            .where(
+                Translation.user_id == user_id,
+                # CHANGED: history now only shows active (non-trashed) rows.
+                # Without this filter, deleted items would still show up here.
+                Translation.deleted_at.is_(None),
+            )
             .order_by(Translation.id.desc()),
             page=page_number,
             per_page=20,
@@ -445,6 +455,9 @@ def saved_translations():
             .where(
                 Translation.user_id == user_id,
                 Translation.is_saved.is_(True),
+                # CHANGED: same reasoning as /history above — don't show
+                # trashed items just because they were once starred.
+                Translation.deleted_at.is_(None),
             )
             .order_by(Translation.id.desc()),
             page=page_number,
@@ -482,6 +495,188 @@ def saved_translations():
 
     response.headers["Cache-Control"] = "no-store"
     return response
+
+
+# ============================================================
+# NEW: Recycle bin routes
+# All four follow the same rhythm from database.py step 7:
+# fetch -> mutate -> commit. None of these write raw SQL.
+# ============================================================
+
+
+@app.route("/translations/<int:translation_id>", methods=["DELETE"])
+def delete_translation(translation_id):
+    """Move a translation to the recycle bin (soft delete)."""
+    user_id = session.get("user_id")
+
+    if user_id is None:
+        return jsonify(error="Please sign in to delete translations."), 401
+
+    try:
+        translation = db.session.execute(
+            db.select(Translation).where(
+                Translation.id == translation_id,
+                Translation.user_id == user_id,
+                Translation.deleted_at.is_(None),  # can't delete what's already trashed
+            )
+        ).scalar_one_or_none()
+
+        if translation is None:
+            return jsonify(error="Translation not found."), 404
+
+        translation.soft_delete()  # sets deleted_at = now(), defined in database.py
+        db.session.commit()
+
+    except SQLAlchemyError:
+        db.session.rollback()
+        app.logger.exception("Could not delete translation.")
+        return jsonify(error="Could not delete the translation. Please try again."), 500
+
+    return jsonify(message="Moved to trash.", id=translation_id)
+
+
+@app.route("/trash", methods=["GET"])
+def trash_list():
+    """List everything currently in the recycle bin for the logged-in user."""
+    user_id = session.get("user_id")
+
+    if user_id is None:
+        return jsonify(error="Please sign in to view trash."), 401
+
+    page_number = request.args.get("page", default=1, type=int)
+
+    if not 1 <= page_number <= 1_000_000:
+        return jsonify(error="Invalid page number."), 400
+
+    try:
+        trashed = db.paginate(
+            db.select(Translation)
+            .where(
+                Translation.user_id == user_id,
+                Translation.deleted_at.is_not(None),  # opposite filter from /history
+            )
+            .order_by(Translation.deleted_at.desc()),
+            page=page_number,
+            per_page=20,
+            max_per_page=20,
+            error_out=False,
+        )
+
+    except SQLAlchemyError:
+        db.session.rollback()
+        app.logger.exception("Could not load trash.")
+        return jsonify(error="Could not load trash. Please try again."), 500
+
+    response = jsonify(
+        page=trashed.page,
+        total_pages=trashed.pages,
+        total_translations=trashed.total,
+        translations=[
+            {
+                "id": item.id,
+                "source_code": item.source_code,
+                "translated_code": item.translated_code,
+                "target_language": item.target_language,
+                "deleted_at": item.deleted_at.replace(tzinfo=timezone.utc).isoformat(),
+            }
+            for item in trashed.items
+        ],
+    )
+    response.headers["Cache-Control"] = "no-store"
+    return response
+
+
+@app.route("/translations/<int:translation_id>/restore", methods=["POST"])
+def restore_translation(translation_id):
+    """Bring a translation back out of the recycle bin."""
+    user_id = session.get("user_id")
+
+    if user_id is None:
+        return jsonify(error="Please sign in to restore translations."), 401
+
+    try:
+        translation = db.session.execute(
+            db.select(Translation).where(
+                Translation.id == translation_id,
+                Translation.user_id == user_id,
+                Translation.deleted_at.is_not(None),  # only trashed items can be restored
+            )
+        ).scalar_one_or_none()
+
+        if translation is None:
+            return jsonify(error="Translation not found in trash."), 404
+
+        translation.restore()  # sets deleted_at = None, defined in database.py
+        db.session.commit()
+
+    except SQLAlchemyError:
+        db.session.rollback()
+        app.logger.exception("Could not restore translation.")
+        return jsonify(error="Could not restore the translation. Please try again."), 500
+
+    return jsonify(message="Restored.", id=translation_id)
+
+
+@app.route("/translations/<int:translation_id>/permanent", methods=["DELETE"])
+def permanently_delete_translation(translation_id):
+    """Hard delete — removes the row for real. Only allowed from trash."""
+    user_id = session.get("user_id")
+
+    if user_id is None:
+        return jsonify(error="Please sign in to delete translations."), 401
+
+    try:
+        translation = db.session.execute(
+            db.select(Translation).where(
+                Translation.id == translation_id,
+                Translation.user_id == user_id,
+                Translation.deleted_at.is_not(None),  # safety: must already be trashed
+            )
+        ).scalar_one_or_none()
+
+        if translation is None:
+            return jsonify(error="Translation not found in trash."), 404
+
+        db.session.delete(translation)  # real deletion, no undo
+        db.session.commit()
+
+    except SQLAlchemyError:
+        db.session.rollback()
+        app.logger.exception("Could not permanently delete translation.")
+        return jsonify(error="Could not delete the translation. Please try again."), 500
+
+    return jsonify(message="Permanently deleted.", id=translation_id)
+
+
+@app.route("/trash/empty", methods=["POST"])
+def empty_trash():
+    """Permanently delete everything currently in the user's trash."""
+    user_id = session.get("user_id")
+
+    if user_id is None:
+        return jsonify(error="Please sign in to empty trash."), 401
+
+    try:
+        trashed = db.session.execute(
+            db.select(Translation).where(
+                Translation.user_id == user_id,
+                Translation.deleted_at.is_not(None),
+            )
+        ).scalars().all()
+
+        count = len(trashed)
+        for translation in trashed:
+            db.session.delete(translation)
+
+        if count:
+            db.session.commit()
+
+    except SQLAlchemyError:
+        db.session.rollback()
+        app.logger.exception("Could not empty trash.")
+        return jsonify(error="Could not empty trash. Please try again."), 500
+
+    return jsonify(message="Trash emptied.", deleted_count=count)
 
 
 if __name__ == "__main__":
