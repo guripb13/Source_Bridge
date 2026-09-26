@@ -992,11 +992,11 @@ function setLanguageIcon(langValue) {
       writeStorage(keys.sidebar, desktopCollapsed);
       updateSidebar();
     }
-  }, 100);
+  }, 800);
     const pageIntro = document.querySelector("#translateView .page-intro");
   if (pageIntro) {
     setTimeout(() => {
       pageIntro.classList.add("intro-collapsed");
-    }, 1000);
+    }, 1200);
   }
 })();

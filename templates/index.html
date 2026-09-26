@@ -6,6 +6,7 @@
   <meta name="color-scheme" content="light dark">
   <meta name="description" content="Source Bridge — translate, learn and explore code.">
   <title>Source Bridge — Code Translator</title>
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='logo.png') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
   <script src="{{ url_for('static', filename='script.js') }}" defer></script>
 </head>
@@ -45,7 +46,7 @@
   <header class="topbar">
     <div class="brand-group">
       <a class="brand" href="{{ url_for('home') }}" aria-label="Source Bridge home">
-        <span class="brand-mark" aria-hidden="true">SB</span>
+        <span class="brand-mark" aria-hidden="true"><img src="{{ url_for('static', filename='logo.png') }}" alt=""></span>
         <span>Source Bridge</span>
       </a>
     </div>
