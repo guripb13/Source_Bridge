@@ -441,6 +441,6 @@ body.drag-mode .code-surface { border-style: dashed; border-color: var(--green);
   max-height: 0;
   margin: 0;
   padding: 0;
-  filter: blur(3px);
+  filter: blur(2px);
   opacity:0;
 }
