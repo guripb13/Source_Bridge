@@ -96,7 +96,7 @@ body:not(.sidebar-collapsed) .sidebar-toggle {
   padding: 5px;
 }
 .sidebar-toggle:hover{
-   color: var(--green); 
+   color: var(--green-hover); 
 }
 .mobile-menu { display: none; }
 .text-button { display: inline-flex; align-items: center; justify-content: center; gap: 10px; background: transparent; border: 0; border-radius: 8px; padding: 8px; font-size: 16px; white-space: nowrap; transition: background .18s; }
