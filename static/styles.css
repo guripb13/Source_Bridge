@@ -42,6 +42,19 @@
   --error: #f0a29a;
   --shadow: 0 4px 18px rgb(0 0 0 / 10%);
 }
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+::view-transition-old(root) {
+  z-index: 1;
+}
+
+::view-transition-new(root) {
+  z-index: 2;
+}
 
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--page); color: var(--ink); min-width: 320px; }

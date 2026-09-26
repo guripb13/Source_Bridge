@@ -318,9 +318,45 @@
     syncScroll(output, $("outputLines"));
   }
   function savePreferences() { applyPreferences(); writeStorage(keys.preferences, preferences); }
-  $("themeToggle").addEventListener("click", () => {
-    preferences.theme = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
-    savePreferences();
+    $("themeToggle").addEventListener("click", (event) => {
+    const newTheme = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+
+    // Fallback for browsers without View Transitions support: just switch instantly.
+    if (!document.startViewTransition) {
+      preferences.theme = newTheme;
+      savePreferences();
+      return;
+    }
+
+    // Radial reveal origin = the button that was clicked.
+    const rect = $("themeToggle").getBoundingClientRect();
+    const x = rect.left + rect.width / 2;
+    const y = rect.top + rect.height / 2;
+    const endRadius = Math.hypot(
+      Math.max(x, window.innerWidth - x),
+      Math.max(y, window.innerHeight - y)
+    );
+
+    const transition = document.startViewTransition(() => {
+      preferences.theme = newTheme;
+      savePreferences();
+    });
+
+    transition.ready.then(() => {
+      document.documentElement.animate(
+        {
+          clipPath: [
+            `circle(0px at ${x}px ${y}px)`,
+            `circle(${endRadius}px at ${x}px ${y}px)`
+          ]
+        },
+        {
+          duration: 650,
+          easing: "ease-in-out",
+          pseudoElement: "::view-transition-new(root)"
+        }
+      );
+    });
   });
   $("themeSetting").addEventListener("change", (event) => { preferences.theme = event.target.value; savePreferences(); });
   $("fontSizeSetting").addEventListener("change", (event) => { preferences.fontSize = Number(event.target.value); savePreferences(); });
