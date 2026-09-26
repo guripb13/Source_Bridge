@@ -44,10 +44,6 @@
   <a class="skip-link" href="#mainContent">Skip to workspace</a>
   <header class="topbar">
     <div class="brand-group">
-      <button type="button" class="icon-button sidebar-toggle" id="sidebarToggle" aria-label="Collapse sidebar" title="Collapse sidebar" aria-controls="sidebar" aria-expanded="true">
-        <svg class="icon desktop-menu" aria-hidden="true"><use href="#i-panel"/></svg>
-        <svg class="icon mobile-menu" aria-hidden="true"><use href="#i-menu"/></svg>
-      </button>
       <a class="brand" href="{{ url_for('home') }}" aria-label="Source Bridge home">
         <span class="brand-mark" aria-hidden="true">SB</span>
         <span>Source Bridge</span>
@@ -69,7 +65,12 @@
   <button type="button" class="sidebar-backdrop" id="sidebarBackdrop" aria-label="Close navigation" tabindex="-1" hidden></button>
   <aside class="sidebar" id="sidebar" aria-label="Main navigation">
     <div class="mobile-sidebar-heading"><span>Your workspace</span><button type="button" class="icon-button" id="sidebarClose" aria-label="Close navigation"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></button></div>
+    <button type="button" class="icon-button sidebar-toggle" id="sidebarToggle" aria-label="Collapse sidebar" title="Collapse sidebar" aria-controls="sidebar" aria-expanded="true">
+        <svg class="icon desktop-menu" aria-hidden="true"><use href="#i-panel"/></svg>
+        <svg class="icon mobile-menu" aria-hidden="true"><use href="#i-menu"/></svg>
+      </button>
     <nav class="nav-list" aria-label="Workspace">
+      
       <button type="button" class="nav-item active" id="translateNav" data-view="translate" aria-current="page" title="Translate">
         <svg class="icon" aria-hidden="true"><use href="#i-home"/></svg><span class="nav-label">Translate</span>
       </button>
