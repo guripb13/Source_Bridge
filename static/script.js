@@ -437,10 +437,42 @@
   function languageChanged(focusCustom = false) {
     const other = language.value === "other";
     $("customLanguageRow").hidden = !other;
-    $("languageIcon").setAttribute("href", language.value === "Python" ? "#i-python" : "#i-code");
+    setLanguageIcon(language.value === "other" ? customLanguage.value : language.value);
     if (other && focusCustom) customLanguage.focus();
     refreshButtons();
   }
+  const LANGUAGE_ICON_SLUGS = {
+  "python": "python", "java": "java", "c": "c", "c++": "cplusplus", "cpp": "cplusplus",
+  "javascript": "javascript", "js": "javascript", "typescript": "typescript", "ts": "typescript",
+  "c#": "csharp", "csharp": "csharp", "go": "go", "golang": "go", "rust": "rust",
+  "php": "php", "swift": "swift", "kotlin": "kotlin", "ruby": "ruby", "sql": "mysql",
+  "mysql": "mysql", "node": "nodejs", "nodejs": "nodejs", "r": "r", "dart": "dart",
+  "scala": "scala", "perl": "perl", "haskell": "haskell", "lua": "lua",
+  "html": "html5", "css": "css3", "bash": "bash", "shell": "bash",
+  "matlab": "matlab", "objective-c": "objectivec", "objectivec": "objectivec"
+};
+
+function setLanguageIcon(langValue) {
+  const icon = $("languageIcon");
+  const key = (langValue || "").trim().toLowerCase();
+  const slug = LANGUAGE_ICON_SLUGS[key];
+
+  if (!slug) {
+    icon.removeAttribute("src");
+    icon.style.display = "none";
+    return;
+  }
+
+  const url = `https://cdn.jsdelivr.net/gh/devicons/devicon/icons/${slug}/${slug}-original.svg`;
+
+  // Force reload even if it's the same URL as before
+  icon.src = "";
+  icon.onload = () => { icon.style.display = ""; };
+  icon.onerror = () => { icon.style.display = "none"; };
+  icon.alt = `${langValue} logo`;
+  // Defer setting src so the browser registers it as a fresh load
+  requestAnimationFrame(() => { icon.src = url; });
+}
   language.addEventListener("change", () => languageChanged(true));
   customLanguage.addEventListener("input", refreshButtons);
   customLanguage.addEventListener("keydown", (event) => {
