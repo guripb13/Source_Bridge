@@ -52,7 +52,7 @@
     entry && typeof entry.id === "string" && typeof entry.source === "string" &&
     typeof entry.output === "string" && typeof entry.language === "string"
   ).slice(0, 30) : [];
-  let desktopCollapsed = readStorage(keys.sidebar, false) === true;
+  let desktopCollapsed =  false;
   let mobileOpen = false;
   let activeController = null;
   let completedTranslation = null;
@@ -984,4 +984,19 @@ function setLanguageIcon(langValue) {
   renderHistory();
   refreshButtons();
   void checkSession();
+
+  // DELETE this block:
+  setTimeout(() => {
+    if (!mobileQuery.matches && !desktopCollapsed) {
+      desktopCollapsed = true;
+      writeStorage(keys.sidebar, desktopCollapsed);
+      updateSidebar();
+    }
+  }, 100);
+    const pageIntro = document.querySelector("#translateView .page-intro");
+  if (pageIntro) {
+    setTimeout(() => {
+      pageIntro.classList.add("intro-collapsed");
+    }, 1000);
+  }
 })();

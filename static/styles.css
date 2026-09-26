@@ -384,3 +384,17 @@ body.drag-mode .code-surface { border-style: dashed; border-color: var(--green);
   .collection-toolbar > .text-button .icon { width: 19px; height: 19px; }
   .collection-pagination { gap: 10px; }
 }
+
+
+.page-intro {
+  transition: opacity 0.6s ease, transform 0.6s ease, max-height 0.6s ease, margin 0.6s ease, padding 0.6s ease;
+  overflow: hidden;
+  max-height: 200px;
+}
+.page-intro.intro-collapsed {
+  opacity: 0;
+  transform: translateY(-40px);
+  max-height: 0;
+  margin: 0;
+  padding: 0;
+}
