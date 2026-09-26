@@ -119,7 +119,7 @@ body:not(.sidebar-collapsed) .sidebar-toggle {
 .tips-button .icon { width: 28px; height: 28px; }
 .theme-button { width: 44px; height: 44px; border-radius: 50%; }
 .theme-button .icon { width: 29px; height: 29px; }
-.sign-in-button { display: inline-flex; justify-content: center; align-items: center; gap: 14px; background: transparent; border: 1.5px solid var(--green); border-radius: 99px; min-height: 51px; min-width: 162px; padding: 10px 24px; font-size: 18px; font-weight: 600; transition: background .18s; }
+.sign-in-button { user-select: none; ; display: inline-flex; justify-content: center; align-items: center; gap: 14px; background: transparent; border: 1.5px solid var(--green); border-radius: 99px; min-height: 51px; min-width: 162px; padding: 10px 24px; font-size: 18px; font-weight: 600; transition: background .18s; }
 .sign-in-button:hover { background: var(--green-soft); }
 
 /* Desktop sidebar collapses into an icon rail. Mobile uses a hidden drawer. */
