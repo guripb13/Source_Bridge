@@ -45,7 +45,7 @@ class Translation(db.Model):
     translated_code = db.Column(db.Text, nullable=False)
 
     # Auto-detected at translation time (not user-entered).
-    
+    source_language = db.Column(db.String(50), nullable=True)
     target_language = db.Column(db.String(50), nullable=False)
 
     # "Starred" flag — independent from trash/deleted_at.

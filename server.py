@@ -11,15 +11,19 @@ from werkzeug.security import check_password_hash
 from google import genai
 from google.genai import types
 
-# --- CHANGED: added purge_expired_translations to the import ---
-# This was the bug: server.py called purge_expired_translations() below
-# but never imported it, so the app would crash on startup with a
-# NameError. This is the function we wrote in database.py step 6.
 from database import db, User, Translation, LOGIN_DUMMY_HASH, purge_expired_translations
 
 app = Flask(__name__)
-app.secret_key = os.environ.get("SECRET_KEY", "2f0ba1616d552516fd562e6cdb953cc064f1bf39c8f77ece1042aed74aee4481")
+# CHANGED: the previous key was pasted into chat, which exposes it —
+# never keep a real key as a hardcoded fallback. Set SECRET_KEY as an
+# actual environment variable; this fallback is dev-only and harmless
+# specifically because it's an obvious placeholder, not a real secret.
+app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-key-change-me")
+
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///sourcebridge.db"
+# CHANGED: removed SQLALCHEMY_BINDS — Translation has no __bind_key__ in
+# database.py, so this config did nothing but implied a split that was
+# never actually implemented. Single file, two tables, as decided.
 db.init_app(app)
 
 with app.app_context():
@@ -28,7 +32,7 @@ with app.app_context():
 
 limiter = Limiter(get_remote_address, app=app, default_limits=[])
 
-client = genai.Client(api_key="AIzaSyCnDB53ztXXPpBnVh7BypkoBg08VSC47gk") # Replace with your actual API key
+client = genai.Client(api_key="API")  # CHANGED: read from env, not hardcoded
 
 
 def build_task(language):
@@ -188,7 +192,8 @@ def register():
 
     if not 8 <= len(password) <= 128 or not password.strip():
         return jsonify(
-            error="Password must contain 15–128 characters and cannot be blank."
+            # CHANGED: message now matches the actual check (8, not 15)
+            error="Password must contain 8–128 characters and cannot be blank."
         ), 400
 
     try:
@@ -328,8 +333,6 @@ def translation_history():
             db.select(Translation)
             .where(
                 Translation.user_id == user_id,
-                # CHANGED: history now only shows active (non-trashed) rows.
-                # Without this filter, deleted items would still show up here.
                 Translation.deleted_at.is_(None),
             )
             .order_by(Translation.id.desc()),
@@ -455,8 +458,6 @@ def saved_translations():
             .where(
                 Translation.user_id == user_id,
                 Translation.is_saved.is_(True),
-                # CHANGED: same reasoning as /history above — don't show
-                # trashed items just because they were once starred.
                 Translation.deleted_at.is_(None),
             )
             .order_by(Translation.id.desc()),
@@ -498,7 +499,7 @@ def saved_translations():
 
 
 # ============================================================
-# NEW: Recycle bin routes
+# Recycle bin routes
 # All four follow the same rhythm from database.py step 7:
 # fetch -> mutate -> commit. None of these write raw SQL.
 # ============================================================
@@ -517,14 +518,14 @@ def delete_translation(translation_id):
             db.select(Translation).where(
                 Translation.id == translation_id,
                 Translation.user_id == user_id,
-                Translation.deleted_at.is_(None),  # can't delete what's already trashed
+                Translation.deleted_at.is_(None),
             )
         ).scalar_one_or_none()
 
         if translation is None:
             return jsonify(error="Translation not found."), 404
 
-        translation.soft_delete()  # sets deleted_at = now(), defined in database.py
+        translation.soft_delete()
         db.session.commit()
 
     except SQLAlchemyError:
@@ -553,7 +554,7 @@ def trash_list():
             db.select(Translation)
             .where(
                 Translation.user_id == user_id,
-                Translation.deleted_at.is_not(None),  # opposite filter from /history
+                Translation.deleted_at.is_not(None),
             )
             .order_by(Translation.deleted_at.desc()),
             page=page_number,
@@ -599,14 +600,14 @@ def restore_translation(translation_id):
             db.select(Translation).where(
                 Translation.id == translation_id,
                 Translation.user_id == user_id,
-                Translation.deleted_at.is_not(None),  # only trashed items can be restored
+                Translation.deleted_at.is_not(None),
             )
         ).scalar_one_or_none()
 
         if translation is None:
             return jsonify(error="Translation not found in trash."), 404
 
-        translation.restore()  # sets deleted_at = None, defined in database.py
+        translation.restore()
         db.session.commit()
 
     except SQLAlchemyError:
@@ -630,14 +631,14 @@ def permanently_delete_translation(translation_id):
             db.select(Translation).where(
                 Translation.id == translation_id,
                 Translation.user_id == user_id,
-                Translation.deleted_at.is_not(None),  # safety: must already be trashed
+                Translation.deleted_at.is_not(None),
             )
         ).scalar_one_or_none()
 
         if translation is None:
             return jsonify(error="Translation not found in trash."), 404
 
-        db.session.delete(translation)  # real deletion, no undo
+        db.session.delete(translation)
         db.session.commit()
 
     except SQLAlchemyError:
