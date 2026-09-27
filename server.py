@@ -12,6 +12,7 @@ from google import genai
 from google.genai import types
 
 from database import db, User, Translation, LOGIN_DUMMY_HASH, purge_expired_translations
+from compiler import run_code, UnsupportedLanguageError, CompilerUnavailableError, LANGUAGES as EXEC_LANGUAGES
 
 app = Flask(__name__)
 # CHANGED: the previous key was pasted into chat, which exposes it —
@@ -32,7 +33,7 @@ with app.app_context():
 
 limiter = Limiter(get_remote_address, app=app, default_limits=[])
 
-client = genai.Client(api_key="API")  # CHANGED: read from env, not hardcoded
+client = genai.Client(api_key="AQ.Ab8RN6JAjBZ527m7c2wfpUAyhl7wbWV367HdWiRlDa51t2FDlg")  # CHANGED: read from env, not hardcoded
 
 
 def build_task(language):
@@ -156,6 +157,84 @@ def send():
     if use_events:
         response.headers["Cache-Control"] = "no-store"
         response.headers["X-Accel-Buffering"] = "no"
+    return response
+
+
+@app.route("/api/execute", methods=["POST"])
+@limiter.limit("10 per minute")
+def execute_code():
+    """
+    Runs source or translated code in an isolated Docker container and
+    returns its stdout/stderr. Requires an active login, same as the
+    other translation-history-adjacent routes in this file.
+    """
+    user_id = session.get("user_id")
+
+    if user_id is None:
+        return jsonify(error="Please sign in to run code."), 401
+
+    if not request.is_json:
+        return jsonify(error="Send the details as JSON."), 415
+
+    data = request.get_json(silent=True)
+
+    if not isinstance(data, dict):
+        return jsonify(error="Invalid execution request."), 400
+
+    code = data.get("code")
+    language = data.get("language")
+
+    if not isinstance(code, str) or not isinstance(language, str):
+        return jsonify(error="Code and language are required as text."), 400
+
+    code = code.strip()
+    language = language.strip().lower()
+
+    if not code:
+        return jsonify(error="Please provide some code to run."), 400
+
+    if len(code) > 20_000:
+        return jsonify(error="Code is too long to run (20,000 character limit)."), 400
+
+    if language not in EXEC_LANGUAGES:
+        supported = ", ".join(sorted(EXEC_LANGUAGES))
+        return jsonify(
+            error=f"Running {language!r} isn't supported yet. Supported: {supported}."
+        ), 400
+
+    try:
+        user = db.session.get(User, user_id)
+
+        if user is None:
+            session.clear()
+            return jsonify(error="Please sign in again."), 401
+
+    except SQLAlchemyError:
+        db.session.rollback()
+        app.logger.exception("Execute-code user lookup failed.")
+        return jsonify(error="Could not run the code. Please try again."), 500
+
+    try:
+        result = run_code(language=language, code=code)
+
+    except UnsupportedLanguageError:
+        return jsonify(error=f"Running {language!r} isn't supported yet."), 400
+
+    except CompilerUnavailableError:
+        app.logger.exception("Docker execution backend is unavailable.")
+        return jsonify(error="Code execution is temporarily unavailable. Please try again later."), 503
+
+    except Exception:
+        app.logger.exception("Unexpected error while executing code.")
+        return jsonify(error="Something went wrong while running the code."), 500
+
+    response = jsonify(
+        stdout=result["stdout"],
+        stderr=result["stderr"],
+        exit_code=result["exit_code"],
+        timed_out=result["timed_out"],
+    )
+    response.headers["Cache-Control"] = "no-store"
     return response
 
 

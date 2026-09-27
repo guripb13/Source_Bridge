@@ -64,7 +64,8 @@
     history: document.body.dataset.historyUrl,
     saved: document.body.dataset.savedUrl,
     save: document.body.dataset.saveUrl,
-    logout: document.body.dataset.logoutUrl
+    logout: document.body.dataset.logoutUrl,
+    execute: document.body.dataset.executeUrl
   };
   let currentUser = null;
   let sessionState = "checking";
@@ -481,6 +482,9 @@
     translateButton.disabled = !loading && (!source.value.trim() || !targetLanguage() || authPending || sessionState === "checking");
     $("copySource").disabled = !source.value;
     $("copyOutput").disabled = !output.value;
+    const canRun = Boolean(currentUser) && sessionState === "ready" && !authPending;
+    $("runSource").disabled = !canRun || !source.value.trim();
+    $("runOutput").disabled = !canRun || !output.value.trim();
     $("downloadButton").disabled = !completedTranslation || loading;
     const accountEntry = completedTranslation?.storage === "account";
     const canSave = !accountEntry || (completedTranslation.userId === currentUser?.id && Number.isInteger(completedTranslation.id));
@@ -774,6 +778,89 @@ function setLanguageIcon(langValue) {
   }
   $("copySource").addEventListener("click", () => copyText(source.value, $("copySource")));
   $("copyOutput").addEventListener("click", () => copyText(output.value, $("copyOutput")));
+
+  // Maps the dropdown's display names (used for translation) to the small
+  // set of languages the execution backend actually supports. Anything not
+  // listed here simply can't be run yet — the Run button stays disabled.
+  const executableLanguages = {
+    python: "python",
+    javascript: "javascript",
+    java: "java",
+    "c++": "cpp",
+  };
+
+  function outputExecLanguage() {
+    const targetLangName = targetLanguage().trim().toLowerCase();
+    return executableLanguages[targetLangName] || null;
+  }
+
+  function renderRunOutput(panel, { stdout, stderr, timedOut, errorMessage }) {
+    panel.hidden = false;
+    panel.classList.remove("is-loading", "has-error");
+    if (errorMessage) {
+      panel.classList.add("has-error");
+      panel.textContent = errorMessage;
+      return;
+    }
+    if (timedOut) {
+      panel.classList.add("has-error");
+      panel.textContent = stderr || "Execution timed out.";
+      return;
+    }
+    const parts = [];
+    if (stdout) parts.push(stdout);
+    if (stderr) parts.push(stderr);
+    if (!parts.length) parts.push("(no output)");
+    if (stderr && !stdout) panel.classList.add("has-error");
+    panel.textContent = parts.join("\n");
+  }
+
+  async function runCode(code, execLanguage, button, panel) {
+    if (!code.trim() || !execLanguage || button.disabled) return;
+
+    const originalDisabled = button.disabled;
+    button.disabled = true;
+    panel.hidden = false;
+    panel.classList.remove("has-error");
+    panel.classList.add("is-loading");
+    panel.textContent = "Running…";
+
+    try {
+      const response = await fetch(endpoints.execute, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code, language: execLanguage }),
+      });
+
+      let data = null;
+      try { data = await response.json(); } catch (_) { /* fall through to generic error below */ }
+
+      if (!response.ok) {
+        renderRunOutput(panel, { errorMessage: data?.error || "Could not run the code. Please try again." });
+        return;
+      }
+
+      panel.classList.remove("is-loading");
+      renderRunOutput(panel, {
+        stdout: data.stdout || "",
+        stderr: data.stderr || "",
+        timedOut: Boolean(data.timed_out),
+      });
+    } catch (_) {
+      renderRunOutput(panel, { errorMessage: "Network error while running the code. Please try again." });
+    } finally {
+      panel.classList.remove("is-loading");
+      button.disabled = originalDisabled;
+    }
+  }
+
+  $("runSource").addEventListener("click", () => {
+    runCode(source.value, $("sourceLanguage").value, $("runSource"), $("sourceRunOutput"));
+  });
+
+  $("runOutput").addEventListener("click", () => {
+    runCode(output.value, outputExecLanguage(), $("runOutput"), $("outputRunOutput"));
+  });
 
   function downloadName(translation) {
     const extension = extensionMap[translation.language.toLowerCase()] || "txt";
