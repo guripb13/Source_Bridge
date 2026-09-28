@@ -240,7 +240,14 @@
   function targetLanguage() { return language.value === "other" ? customLanguage.value.trim() : language.value; }
   function refreshButtons() {
     const loading = Boolean(activeController);
-    translateButton.disabled = !loading && (!source.value.trim() || !targetLanguage());
+    const sourceReady = Boolean(sourceLanguage.value);
+    translateButton.disabled = !loading && (!sourceReady || !source.value.trim() || !targetLanguage());
+    // Source box and upload stay locked until a source language is chosen.
+    source.disabled = !sourceReady;
+    $("uploadButton").disabled = loading || !sourceReady;
+    $("attachment").disabled = loading || !sourceReady;
+    source.placeholder = sourceReady ? "Paste your code here..." : "Select the source code language first...";
+    sourceLanguage.classList.toggle("is-placeholder", !sourceReady);
     $("copySource").disabled = !source.value;
     $("copyOutput").disabled = !output.value;
     $("downloadButton").disabled = !completedTranslation || loading;
@@ -304,6 +311,9 @@ function setLanguageIcon(langValue) {
   requestAnimationFrame(() => { icon.src = url; });
 }
 
+// Source language picked: unlock the source box
+sourceLanguage.addEventListener("change", () => { refreshButtons(); source.focus(); });
+
 // Triggered when the dropdown changes
 language.addEventListener("change", () => languageChanged(true));
   customLanguage.addEventListener("input", () => {
@@ -341,6 +351,7 @@ language.addEventListener("change", () => languageChanged(true));
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
     if (activeController) { activeController.abort(); return; }
+    if (!sourceLanguage.value) { setStatus("Select the source code language first.", true); sourceLanguage.focus(); return; }
     if (!source.value.trim()) { setStatus("Paste or upload some code first.", true); source.focus(); return; }
     const target = targetLanguage();
     if (!target) { setStatus("Enter a target programming language.", true); customLanguage.focus(); return; }
@@ -383,7 +394,7 @@ language.addEventListener("change", () => languageChanged(true));
       // Existing server.py returns upstream errors as plain text with HTTP 200.
       if (/^\s*Error:\s*/i.test(output.value)) throw new Error(output.value.trim());
       if (!output.value.trim()) throw new Error("No code was returned. Please try translating again.");
-      completedTranslation = { source: originalSource, output: output.value, language: target, fileName: originalFileName };
+      completedTranslation = { source: originalSource, output: output.value, language: target, sourceLanguage: sourceLanguage.value, fileName: originalFileName };
       setStatus(`Translated to ${target}. Ready to copy, save, or download.`);
     } catch (error) {
       if (error.name === "AbortError") setStatus("Translation stopped. Any partial result is shown above.");
@@ -407,6 +418,7 @@ language.addEventListener("change", () => languageChanged(true));
   }
   async function loadFile(file) {
     if (!file || activeController) return;
+    if (!sourceLanguage.value) { showLimitAlert("Select the source code language first."); return; }
     if (file.size > 1024 * 1024) { notify("Please choose a code file smaller than 1 MB."); return; }
     if (/^(image|audio|video)\//.test(file.type) || /\.(pdf|docx?|zip|exe|xlsx?|pptx?)$/i.test(file.name)) {
       notify("Choose a text-based code file, such as .py, .java, .cpp, or .txt."); return;
@@ -567,6 +579,7 @@ language.addEventListener("change", () => languageChanged(true));
     const known = Array.from(language.options).some((option) => option.value === entry.language && option.value !== "other");
     language.value = known ? entry.language : "other";
     customLanguage.value = known ? "" : entry.language;
+    if (entry.sourceLanguage) sourceLanguage.value = entry.sourceLanguage;
     completedTranslation = { ...entry, fileName: sourceFileName };
     source.scrollTop = 0; output.scrollTop = 0;
     languageChanged(); updateFileLabel();
