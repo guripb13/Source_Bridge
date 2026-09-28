@@ -10,6 +10,7 @@
   const source = $("message");
   const output = $("translatedCode");
   const language = $("language");
+  const sourceLanguage = $("sourceLanguage");
   const customLanguage = $("customLanguage");
   const translateButton = $("translateButton");
   const sidebar = $("sidebar");
@@ -222,6 +223,7 @@
     document.querySelector(".output-card").setAttribute("aria-busy", String(loading));
     source.readOnly = loading;
     language.disabled = loading;
+    sourceLanguage.disabled = loading;
     customLanguage.disabled = loading;
     $("uploadButton").disabled = loading;
     $("attachment").disabled = loading;
@@ -308,12 +310,15 @@ language.addEventListener("change", () => languageChanged(true));
     const target = targetLanguage();
     if (!target) { setStatus("Enter a target programming language.", true); customLanguage.focus(); return; }
 
+    if (sourceLanguage.value.toLowerCase() === target.toLowerCase()) { setStatus("Source and target languages are the same. Pick a different target.", true); return; }
+
     // Keep the same form field names and the same streaming endpoint as server.py.
     const originalSource = source.value;
     const originalFileName = sourceFileName;
     const data = new FormData();
     data.append("message", originalSource);
     data.append("language", target);
+    data.append("sourceLanguage", sourceLanguage.value);   // NEW
     const controller = new AbortController();
     activeController = controller;
     completedTranslation = null;

@@ -93,6 +93,15 @@
         <section class="editor-card source-card" aria-labelledby="sourceTitle">
           <div class="editor-heading">
             <h2 id="sourceTitle"><svg class="icon" aria-hidden="true"><use href="#i-file"/></svg><span>Source Code</span></h2>
+            <div class="source-lang-select">
+    <select class="language-select" style="width: 100%;padding: 10px;height: 50px;" id="sourceLanguage" name="sourceLanguage" aria-label="Source programming language">
+      <option value="Python" selected>Python</option>
+      <option value="Java">Java</option>
+      <option value="C">C</option>
+      <option value="C++">C++</option>
+    </select>
+    <svg class="select-chevron icon" aria-hidden="true"><use href="#i-chevron"/></svg>
+  </div>
             <button type="button" class="text-button copy-button" id="copySource" aria-label="Copy source code" disabled><svg class="icon" aria-hidden="true"><use href="#i-copy"/></svg><span>Copy</span></button>
           </div>
           <div class="code-surface" id="sourceSurface">

@@ -3,11 +3,11 @@ from google import genai
 from google.genai import types
 
 app = Flask(__name__)
-def build_task(language):
-    return f"""You are a code translation engine. Your target language is {language}.
+def build_task(language, source_language):
+    return f"""You are a code translation engine. The source code is written in {source_language}. Your target language is {language}.
 
 Step 1 - Validation:
-Check whether the given input is valid, translatable source code (in any recognizable programming language).
+Check whether the given input is valid {source_language} source code that can be translated to {language}.
 If the input is NOT code (e.g. plain text, gibberish, an empty/meaningless snippet), or is code written in a language/format that cannot be reasonably translated to {language}, do NOT attempt translation.
 Instead, return only this single line, with no extra text:
 ERROR: The provided input cannot be translated to {language}. Please provide valid source code in a supported language.
@@ -33,6 +33,8 @@ def home():
 def send():
     text = request.form.get("message", "").strip()
     language = request.form.get("language", "Java").strip() or "Java"
+    source_language = request.form.get("sourceLanguage", "").strip() or "the detected language"
+
     def generate():
         if not text:
             return
@@ -41,7 +43,7 @@ def send():
             for chunk in client.models.generate_content_stream(
                 model="gemini-3.6-flash",
                 contents=text,
-                config=types.GenerateContentConfig(system_instruction=build_task(language)),
+                config=types.GenerateContentConfig(system_instruction=build_task(language, source_language)),
             ):
                 if chunk.text:
                     yield chunk.text      # send each chunk to the browser immediately
