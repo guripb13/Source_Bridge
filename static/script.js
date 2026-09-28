@@ -203,6 +203,27 @@
     updateLines(editor, gutter);
   });
 
+  const MAX_LINES = 50;
+  const LIMIT_MESSAGE = `You can't enter more than ${MAX_LINES} lines of code.`;
+  let limitTimer;
+  function showLimitAlert(message = LIMIT_MESSAGE) {
+    const toast = $("limitToast");
+    $("limitToastText").textContent = message;
+    toast.classList.add("show");
+    clearTimeout(limitTimer);
+    limitTimer = setTimeout(() => toast.classList.remove("show"), 3500);
+  }
+  // Barrier: cut the source back to MAX_LINES and warn. Returns true if it had to cut.
+  function enforceLimit() {
+    const lines = source.value.split("\n");
+    if (lines.length <= MAX_LINES) return false;
+    const caret = source.selectionStart;
+    source.value = lines.slice(0, MAX_LINES).join("\n");
+    const pos = Math.min(caret, source.value.length);
+    source.setSelectionRange(pos, pos);
+    showLimitAlert();
+    return true;
+  }
   function targetLanguage() { return language.value === "other" ? customLanguage.value.trim() : language.value; }
   function refreshButtons() {
     const loading = Boolean(activeController);
@@ -281,6 +302,7 @@ language.addEventListener("change", () => languageChanged(true));
   });
   source.addEventListener("input", () => {
     fileReadVersion += 1;
+    enforceLimit();
     updateLines(source, $("sourceLines"));
     refreshButtons();
     if (completedTranslation) setStatus("Source updated. Translate again to refresh the result.");
@@ -381,7 +403,12 @@ language.addEventListener("change", () => languageChanged(true));
       const text = await file.text();
       if (version !== fileReadVersion || activeController) return;
       if (text.includes("\u0000")) { notify("This file isn't UTF-8 text. Please upload a plain-text code file."); return; }
-      source.value = text.replace(/^\uFEFF/, "");
+      let loaded = text.replace(/^\uFEFF/, "");
+      const fileLines = loaded.replace(/\s+$/, "").split("\n");
+      const tooLong = fileLines.length > MAX_LINES;
+      if (tooLong) loaded = fileLines.slice(0, MAX_LINES).join("\n");
+      source.value = loaded;
+      if (tooLong) showLimitAlert(`${LIMIT_MESSAGE} Only the first ${MAX_LINES} lines of this file were loaded.`);
       sourceFileName = file.name;
       source.scrollTop = 0;
       updateFileLabel();

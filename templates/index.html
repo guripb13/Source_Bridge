@@ -94,7 +94,7 @@
           <div class="editor-heading">
             <h2 id="sourceTitle"><svg class="icon" aria-hidden="true"><use href="#i-file"/></svg><span>Source Code</span></h2>
             <div class="source-lang-select">
-    <select class="language-select" style="width: 100%;padding: 10px;height: 50px;" id="sourceLanguage" name="sourceLanguage" aria-label="Source programming language">
+    <select id="sourceLanguage" name="sourceLanguage" aria-label="Source programming language">
       <option value="Python" selected>Python</option>
       <option value="Java">Java</option>
       <option value="C">C</option>
@@ -177,6 +177,7 @@
     <div class="dialog-heading"><h2 id="signInTitle">You're welcome here</h2><button type="button" class="icon-button" data-close-dialog aria-label="Close sign in information"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></button></div>
     <p class="dialog-description">Sign-in isn't available yet. You can translate, download, and save code in this browser without an account.</p><button type="button" class="pill-button dialog-primary" data-close-dialog>Continue translating<svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></button>
   </dialog>
+  <div class="limit-toast" id="limitToast" role="alert" aria-live="assertive"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg><span id="limitToastText">You can't enter more than 50 lines of code.</span></div>
   <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 </body>
 </html>
