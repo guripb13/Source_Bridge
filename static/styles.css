@@ -137,7 +137,8 @@ body.hide-line-numbers .line-gutter { display: none; }
 .language-control > label { display: block; font-size: 18px; text-align: center; font-weight: 500; margin-bottom: 15px; }
 .language-select { display: flex; align-items: center; position: relative; width: 100%; min-height: 60px; background: var(--surface); border: 1px solid var(--border); border-radius: 15px; }
 .language-select:focus-within { outline: 2px solid var(--focus); outline-offset: 2px; }
-.language-icon { position: absolute; left: 13px; width: 26px; height: 26px; pointer-events: none; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.language-icon { position: absolute; left: 13px; width: 26px; height: 26px; pointer-events: none; }
+/* the select's left padding leaves room for the icon */
 .language-select select { appearance: none; -webkit-appearance: none; background: transparent; color: var(--ink); border: 0; outline: none; border-radius: inherit; width: 100%; padding: 19px 29px 19px 47px; font-size: 16px; cursor: pointer; text-overflow: ellipsis; }
 .language-select select option { background: var(--surface); color: var(--ink); }
 .select-chevron { position: absolute; right: 11px; width: 16px; height: 16px; pointer-events: none; }
