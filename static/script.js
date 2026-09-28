@@ -232,7 +232,7 @@
   function languageChanged(focusCustom = false) {
     const other = language.value === "other";
     $("customLanguageRow").hidden = !other;
-    $("languageIcon").setAttribute("href", language.value === "Python" ? "#i-python" : "#i-code");
+    setLanguageIcon(targetLanguage());
     if (other && focusCustom) customLanguage.focus();
     refreshButtons();
   }
@@ -270,8 +270,10 @@ function setLanguageIcon(langValue) {
 
 // Triggered when the dropdown changes
 language.addEventListener("change", () => languageChanged(true));
-  language.addEventListener("change", () => languageChanged(true));
-  customLanguage.addEventListener("input", refreshButtons);
+  customLanguage.addEventListener("input", () => {
+    setLanguageIcon(customLanguage.value.trim());
+    refreshButtons();
+  });
   customLanguage.addEventListener("keydown", (event) => {
     if (event.key === "Enter" && !event.ctrlKey && !event.metaKey) { event.preventDefault(); source.focus(); }
   });
