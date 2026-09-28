@@ -236,6 +236,40 @@
     if (other && focusCustom) customLanguage.focus();
     refreshButtons();
   }
+  const LANGUAGE_ICON_SLUGS = {
+  "python": "python", "java": "java", "c": "c", "c++": "cplusplus", "cpp": "cplusplus",
+  "javascript": "javascript", "js": "javascript", "typescript": "typescript", "ts": "typescript",
+  "c#": "csharp", "csharp": "csharp", "go": "go", "golang": "go", "rust": "rust",
+  "php": "php", "swift": "swift", "kotlin": "kotlin", "ruby": "ruby", "sql": "mysql",
+  "mysql": "mysql", "node": "nodejs", "nodejs": "nodejs", "r": "r", "dart": "dart",
+  "scala": "scala", "perl": "perl", "haskell": "haskell", "lua": "lua",
+  "html": "html5", "css": "css3", "bash": "bash", "shell": "bash",
+  "matlab": "matlab", "objective-c": "objectivec", "objectivec": "objectivec"
+};
+
+function setLanguageIcon(langValue) {
+  const icon = $("languageIcon");
+  const key = (langValue || "").trim().toLowerCase();
+  const slug = LANGUAGE_ICON_SLUGS[key];
+
+  // Unknown language: hide the icon
+  if (!slug) {
+    icon.removeAttribute("src");
+    icon.style.display = "none";
+    return;
+  }
+
+  const url = `https://cdn.jsdelivr.net/gh/devicons/devicon/icons/${slug}/${slug}-original.svg`;
+
+  icon.src = "";
+  icon.onload = () => { icon.style.display = ""; };
+  icon.onerror = () => { icon.style.display = "none"; };   // hide if the CDN fails
+  icon.alt = `${langValue} logo`;
+  requestAnimationFrame(() => { icon.src = url; });
+}
+
+// Triggered when the dropdown changes
+language.addEventListener("change", () => languageChanged(true));
   language.addEventListener("change", () => languageChanged(true));
   customLanguage.addEventListener("input", refreshButtons);
   customLanguage.addEventListener("keydown", (event) => {
