@@ -11,6 +11,8 @@
   const output = $("translatedCode");
   const language = $("language");
   const sourceLanguage = $("sourceLanguage");
+  // Master list of target options, so the one matching the source can be left out.
+  const targetOptions = Array.from(language.options).map((o) => ({ value: o.value, label: o.textContent }));
   const customLanguage = $("customLanguage");
   const translateButton = $("translateButton");
   const sidebar = $("sidebar");
@@ -312,7 +314,19 @@ function setLanguageIcon(langValue) {
 }
 
 // Source language picked: unlock the source box
-sourceLanguage.addEventListener("change", () => { refreshButtons(); source.focus(); });
+function syncTargetOptions() {
+  const src = sourceLanguage.value.toLowerCase();
+  const current = language.value;
+  const options = targetOptions.filter((o) => !src || o.value.toLowerCase() !== src);
+  language.replaceChildren(...options.map((o) => {
+    const el = document.createElement("option");
+    el.value = o.value; el.textContent = o.label;
+    return el;
+  }));
+  language.value = options.some((o) => o.value === current) ? current : options[0].value;
+  languageChanged();
+}
+sourceLanguage.addEventListener("change", () => { syncTargetOptions(); refreshButtons(); source.focus(); });
 
 // Triggered when the dropdown changes
 language.addEventListener("change", () => languageChanged(true));
@@ -576,10 +590,10 @@ language.addEventListener("change", () => languageChanged(true));
     source.value = entry.source;
     output.value = entry.output;
     sourceFileName = typeof entry.fileName === "string" ? entry.fileName : "";
+    if (entry.sourceLanguage) { sourceLanguage.value = entry.sourceLanguage; syncTargetOptions(); }
     const known = Array.from(language.options).some((option) => option.value === entry.language && option.value !== "other");
     language.value = known ? entry.language : "other";
     customLanguage.value = known ? "" : entry.language;
-    if (entry.sourceLanguage) sourceLanguage.value = entry.sourceLanguage;
     completedTranslation = { ...entry, fileName: sourceFileName };
     source.scrollTop = 0; output.scrollTop = 0;
     languageChanged(); updateFileLabel();
