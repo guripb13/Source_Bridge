@@ -205,6 +205,8 @@
 
   const MAX_LINES = 50;
   const LIMIT_MESSAGE = `You can't enter more than ${MAX_LINES} lines of code.`;
+  const LAST_LINE_MAX_CHARS = 10;
+  const LAST_LINE_MESSAGE = `Line ${MAX_LINES} can have at most ${LAST_LINE_MAX_CHARS} characters.`;
   let limitTimer;
   function showLimitAlert(message = LIMIT_MESSAGE) {
     const toast = $("limitToast");
@@ -213,15 +215,26 @@
     clearTimeout(limitTimer);
     limitTimer = setTimeout(() => toast.classList.remove("show"), 3500);
   }
-  // Barrier: cut the source back to MAX_LINES and warn. Returns true if it had to cut.
+  // Returns the text cut down to the limits, plus which limit (if any) was hit.
+  function clampSource(text) {
+    let lines = text.split("\n");
+    let hit = "";
+    if (lines.length > MAX_LINES) { lines = lines.slice(0, MAX_LINES); hit = "lines"; }
+    if (lines.length === MAX_LINES && lines[MAX_LINES - 1].length > LAST_LINE_MAX_CHARS) {
+      lines[MAX_LINES - 1] = lines[MAX_LINES - 1].slice(0, LAST_LINE_MAX_CHARS);
+      hit = hit || "lastLine";
+    }
+    return { text: lines.join("\n"), hit };
+  }
+  // Barrier: cut the source back to the limits and warn. Returns true if it had to cut.
   function enforceLimit() {
-    const lines = source.value.split("\n");
-    if (lines.length <= MAX_LINES) return false;
+    const { text, hit } = clampSource(source.value);
+    if (!hit) return false;
     const caret = source.selectionStart;
-    source.value = lines.slice(0, MAX_LINES).join("\n");
-    const pos = Math.min(caret, source.value.length);
+    source.value = text;
+    const pos = Math.min(caret, text.length);
     source.setSelectionRange(pos, pos);
-    showLimitAlert();
+    showLimitAlert(hit === "lines" ? LIMIT_MESSAGE : LAST_LINE_MESSAGE);
     return true;
   }
   function targetLanguage() { return language.value === "other" ? customLanguage.value.trim() : language.value; }
@@ -404,11 +417,14 @@ language.addEventListener("change", () => languageChanged(true));
       if (version !== fileReadVersion || activeController) return;
       if (text.includes("\u0000")) { notify("This file isn't UTF-8 text. Please upload a plain-text code file."); return; }
       let loaded = text.replace(/^\uFEFF/, "");
-      const fileLines = loaded.replace(/\s+$/, "").split("\n");
-      const tooLong = fileLines.length > MAX_LINES;
-      if (tooLong) loaded = fileLines.slice(0, MAX_LINES).join("\n");
+      const clamped = clampSource(loaded.replace(/\s+$/, ""));
+      if (clamped.hit) {
+        loaded = clamped.text;
+        showLimitAlert(clamped.hit === "lines"
+          ? `${LIMIT_MESSAGE} Only the first ${MAX_LINES} lines of this file were loaded.`
+          : `${LAST_LINE_MESSAGE} The end of the last line was cut.`);
+      }
       source.value = loaded;
-      if (tooLong) showLimitAlert(`${LIMIT_MESSAGE} Only the first ${MAX_LINES} lines of this file were loaded.`);
       sourceFileName = file.name;
       source.scrollTop = 0;
       updateFileLabel();

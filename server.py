@@ -3,6 +3,8 @@ from google import genai
 from google.genai import types
 
 app = Flask(__name__)
+MAX_LINES = 50
+LAST_LINE_MAX_CHARS = 10
 def build_task(language, source_language):
     return f"""You are a code translation engine. The source code is written in {source_language}. Your target language is {language}.
 
@@ -34,6 +36,12 @@ def send():
     text = request.form.get("message", "").strip()
     language = request.form.get("language", "Java").strip() or "Java"
     source_language = request.form.get("sourceLanguage", "").strip() or "the detected language"
+
+    code_lines = text.splitlines()
+    if len(code_lines) > MAX_LINES:
+        return Response(f"Error: You can't enter more than {MAX_LINES} lines of code.", mimetype="text/plain")
+    if len(code_lines) == MAX_LINES and len(code_lines[-1]) > LAST_LINE_MAX_CHARS:
+        return Response(f"Error: Line {MAX_LINES} can have at most {LAST_LINE_MAX_CHARS} characters.", mimetype="text/plain")
 
     def generate():
         if not text:
