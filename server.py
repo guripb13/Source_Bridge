@@ -23,7 +23,7 @@ Step 3 - Translation:
 Convert the given code to {language}.
 Return only the translated code (with syntax-error comments where applicable). No explanations, no markdown, no extra messages of any kind.
 Format it like a normal {language} file: one statement per line, and proper indentation for each nested level."""
-client = genai.Client(api_key="AQ.Ab8RN6LeU1KUeg3S3BOYlMb-kIGzcw5tdJJzqa14q1nCo2wsDQ")  # Replace with your actual API key
+client = genai.Client(api_key="Api")  # Replace with your actual API key
 
 
 @app.route("/")

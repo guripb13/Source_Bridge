@@ -209,13 +209,8 @@
   const LIMIT_MESSAGE = `You can't enter more than ${MAX_LINES} lines of code.`;
   const LAST_LINE_MAX_CHARS = 10;
   const LAST_LINE_MESSAGE = `Line ${MAX_LINES} can have at most ${LAST_LINE_MAX_CHARS} characters.`;
-  let limitTimer;
   function showLimitAlert(message = LIMIT_MESSAGE) {
-    const toast = $("limitToast");
-    $("limitToastText").textContent = message;
-    toast.classList.add("show");
-    clearTimeout(limitTimer);
-    limitTimer = setTimeout(() => toast.classList.remove("show"), 3500);
+    notify(message);
   }
   // Returns the text cut down to the limits, plus which limit (if any) was hit.
   function clampSource(text) {
@@ -240,6 +235,30 @@
     return true;
   }
   function targetLanguage() { return language.value === "other" ? customLanguage.value.trim() : language.value; }
+  function detectCodeLanguage(code) {
+    const signatures = [
+      ["Java", /\bSystem\s*\.\s*(?:out|err)\b|\bimport\s+java\.|\bpackage\s+[\w.]+\s*;|\bpublic\s+(?:abstract\s+)?class\b|\bpublic\s+static\s+void\s+main\s*\(/],
+      ["C++", /#\s*include\s*[<"](?:iostream|vector|string|map|set)\b|\bstd\s*::|\busing\s+namespace\s+std\b|\btemplate\s*</],
+      ["C", /#\s*include\s*[<"](?:stdio|stdlib|string|stdbool|stdint)\.h[>"]|\b(?:printf|scanf|malloc|free)\s*\(/],
+      ["Python", /^\s*(?:from\s+\w[\w.]*\s+import\s+|import\s+\w[\w.]*)|^\s*def\s+\w+\s*\(|\bprint\s*\(/m],
+      ["JavaScript", /\bconsole\s*\.\s*(?:log|error|warn)\s*\(|\b(?:const|let)\s+[\w$]+\s*=|\bfunction\s+\w+\s*\(|=>/],
+      ["C#", /\busing\s+System\s*;|\bConsole\s*\.\s*Write(?:Line)?\s*\(/],
+      ["Go", /^\s*package\s+main\s*$|\bfunc\s+main\s*\(|\bfmt\s*\./m],
+      ["Rust", /\bfn\s+main\s*\(|\b(?:let\s+mut|println!)\b/],
+      ["PHP", /<\?php|\$[A-Za-z_][\w]*\s*=/],
+      ["Ruby", /^\s*def\s+\w+|\bputs\s+|^\s*end\s*$/m],
+      ["Kotlin", /\bfun\s+main\s*\(|\b(?:val|var)\s+\w+\s*=|\bprintln\s*\(/],
+      ["Swift", /\bfunc\s+\w+\s*\(|\b(?:let|var)\s+\w+\s*=|\bprint\s*\(/]
+    ];
+    return signatures.find(([, pattern]) => pattern.test(code))?.[0] || "";
+  }
+  function sourceLanguageMismatch(code, selectedLanguage) {
+    const detectedLanguage = detectCodeLanguage(code);
+    if (!detectedLanguage || detectedLanguage === selectedLanguage) return "";
+    if (selectedLanguage === "C++" && detectedLanguage === "C") return "";
+    if (selectedLanguage === "C" && detectedLanguage === "C++") return detectedLanguage;
+    return detectedLanguage;
+  }
   function refreshButtons() {
     const loading = Boolean(activeController);
     const sourceReady = Boolean(sourceLanguage.value);
@@ -367,6 +386,12 @@ language.addEventListener("change", () => languageChanged(true));
     if (activeController) { activeController.abort(); return; }
     if (!sourceLanguage.value) { setStatus("Select the source code language first.", true); sourceLanguage.focus(); return; }
     if (!source.value.trim()) { setStatus("Paste or upload some code first.", true); source.focus(); return; }
+    const detectedLanguage = sourceLanguageMismatch(source.value, sourceLanguage.value);
+    if (detectedLanguage) {
+      setStatus(`This looks like ${detectedLanguage} code, but ${sourceLanguage.value} is selected. Check the source language and try again.`, true);
+      sourceLanguage.focus();
+      return;
+    }
     const target = targetLanguage();
     if (!target) { setStatus("Enter a target programming language.", true); customLanguage.focus(); return; }
 
