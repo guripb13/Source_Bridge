@@ -191,6 +191,9 @@ body.drag-mode .code-surface { border-style: dashed; border-color: var(--green);
 .delete-saved:hover { color: var(--error); }
 .app-dialog { width: min(480px, calc(100vw - 32px)); max-height: calc(100dvh - 40px); overflow: auto; color: var(--ink); background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 27px; box-shadow: 0 22px 90px rgb(0 0 0 / 18%); }
 .app-dialog::backdrop { background: rgb(14 26 18 / 32%); backdrop-filter: blur(3px); }
+.validation-dialog { width: min(440px, calc(100vw - 32px)); }
+.validation-dialog .dialog-heading { margin-bottom: 10px; }
+.validation-alert-message { color: var(--muted); font-size: 15px; line-height: 1.65; margin: 0; }
 .dialog-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
 .dialog-heading h2 { font-size: 22px; letter-spacing: -.5px; margin: 0; }
 .dialog-description { color: var(--muted); font-size: 15px; line-height: 1.75; margin: 0 0 24px; }

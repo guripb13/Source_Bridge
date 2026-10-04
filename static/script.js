@@ -59,6 +59,7 @@
   let completedTranslation = null;
   let sourceFileName = "";
   let toastTimer;
+  let validationAlertTimer;
   let fileReadVersion = 0;
 
   function notify(message) {
@@ -67,6 +68,19 @@
     $("toast").hidden = false;
     toastTimer = setTimeout(() => { $("toast").hidden = true; }, 3400);
   }
+
+  function showValidationAlert(message) {
+    const dialog = $("validationAlert");
+    $("validationAlertMessage").textContent = message;
+    clearTimeout(validationAlertTimer);
+    if (!dialog.open) dialog.showModal();
+    validationAlertTimer = setTimeout(() => {
+      if (dialog.open) dialog.close();
+    }, 7000);
+  }
+
+  $("closeValidationAlert").addEventListener("click", () => $("validationAlert").close());
+  $("validationAlert").addEventListener("close", () => clearTimeout(validationAlertTimer));
 
   function setStatus(message, isError = false) {
     $("statusMessage").textContent = message;
@@ -384,18 +398,39 @@ language.addEventListener("change", () => languageChanged(true));
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
     if (activeController) { activeController.abort(); return; }
-    if (!sourceLanguage.value) { setStatus("Select the source code language first.", true); sourceLanguage.focus(); return; }
-    if (!source.value.trim()) { setStatus("Paste or upload some code first.", true); source.focus(); return; }
+    if (!sourceLanguage.value) {
+      const message = "Select the source code language first.";
+      setStatus(message, true);
+      showValidationAlert(message);
+      return;
+    }
+    if (!source.value.trim()) {
+      const message = "Paste or upload some code first.";
+      setStatus(message, true);
+      showValidationAlert(message);
+      return;
+    }
     const detectedLanguage = sourceLanguageMismatch(source.value, sourceLanguage.value);
     if (detectedLanguage) {
-      setStatus(`This looks like ${detectedLanguage} code, but ${sourceLanguage.value} is selected. Check the source language and try again.`, true);
-      sourceLanguage.focus();
+      const message = `This looks like ${detectedLanguage} code, but ${sourceLanguage.value} is selected. Check the source language and try again.`;
+      setStatus(message, true);
+      showValidationAlert(message);
       return;
     }
     const target = targetLanguage();
-    if (!target) { setStatus("Enter a target programming language.", true); customLanguage.focus(); return; }
+    if (!target) {
+      const message = "Enter a target programming language.";
+      setStatus(message, true);
+      showValidationAlert(message);
+      return;
+    }
 
-    if (sourceLanguage.value.toLowerCase() === target.toLowerCase()) { setStatus("Source and target languages are the same. Pick a different target.", true); return; }
+    if (sourceLanguage.value.toLowerCase() === target.toLowerCase()) {
+      const message = "Source and target languages are the same. Pick a different target.";
+      setStatus(message, true);
+      showValidationAlert(message);
+      return;
+    }
 
     // Keep the same form field names and the same streaming endpoint as server.py.
     const originalSource = source.value;
@@ -457,7 +492,7 @@ language.addEventListener("change", () => languageChanged(true));
   }
   async function loadFile(file) {
     if (!file || activeController) return;
-    if (!sourceLanguage.value) { showLimitAlert("Select the source code language first."); return; }
+    if (!sourceLanguage.value) { showValidationAlert("Select the source code language first."); return; }
     if (file.size > 1024 * 1024) { notify("Please choose a code file smaller than 1 MB."); return; }
     if (/^(image|audio|video)\//.test(file.type) || /\.(pdf|docx?|zip|exe|xlsx?|pptx?)$/i.test(file.name)) {
       notify("Choose a text-based code file, such as .py, .java, .cpp, or .txt."); return;
