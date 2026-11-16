@@ -3,7 +3,11 @@ from flask import Flask, request, render_template, Response
 from google import genai
 from google.genai import types
 
-app = Flask(__name__)
+app = Flask(
+    __name__,
+    template_folder="../frontend/templates",
+    static_folder="../frontend/static",
+)
 
 
 def build_task(language):
