@@ -1,6 +1,9 @@
-/* Source Bridge frontend. The Python backend is unchanged.
- * /send receives multipart form fields named message and language, then
- * streams plain text. Uploaded files are read locally into the source editor.
+/* Source Bridge frontend (with compiler support).
+ * POST /send    multipart fields: message, source_language, language. Streams NDJSON
+ *               events (chunk / error / complete) because the request sends
+ *               "Accept: application/x-ndjson". The server compiles + runs the source first.
+ * POST /execute JSON { code, language, inputs, eof } -> runs C, C++, Python or Java.
+ * Uploaded files are read locally into the source editor.
  */
 (() => {
   "use strict";
@@ -10,6 +13,7 @@
   const source = $("message");
   const output = $("translatedCode");
   const language = $("language");
+  const sourceLanguage = $("sourceLanguage");
   const translateButton = $("translateButton");
   const sidebar = $("sidebar");
   const sidebarToggle = $("sidebarToggle");
@@ -20,6 +24,9 @@
     saved: "sourceBridge.saved.v1",
     sidebar: "sourceBridge.sidebarCollapsed"
   };
+  const endpoints = { execute: document.body.dataset.executeUrl || "/execute" };
+  // Languages compiler.py can build and run -> the name /execute expects.
+  const executableLanguages = { python: "python", java: "java", c: "c", "c++": "cpp" };
   const extensionMap = {
     python: "py", java: "java", c: "c", "c++": "cpp", javascript: "js",
     typescript: "ts", "c#": "cs", go: "go", rust: "rs", php: "php",
@@ -410,6 +417,8 @@
     const loading = Boolean(activeController);
     translateButton.disabled = !loading && (!source.value.trim() || !targetLanguage());
     $("copySource").disabled = !source.value;
+    $("runSource").disabled = loading || !source.value.trim();
+    $("runOutput").disabled = loading || !output.value.trim();
     $("copyOutput").disabled = !output.value;
     $("downloadButton").disabled = !completedTranslation || loading;
     $("saveButton").disabled = !completedTranslation || loading;
@@ -425,14 +434,31 @@
     document.querySelector(".output-card").setAttribute("aria-busy", String(loading));
     source.readOnly = loading;
     language.disabled = loading;
+    sourceLanguage.disabled = loading;
     $("uploadButton").disabled = loading;
     $("attachment").disabled = loading;
     $("translateLabel").textContent = loading ? "Stop" : "Translate";
     translateButton.setAttribute("aria-label", loading ? "Stop translation" : "Translate code");
     refreshButtons();
   }
+  // The target list never offers the language the code is already written in.
+  function updateTargetLanguageOptions() {
+    const sourceValue = sourceLanguage.value.trim().toLowerCase();
+    const options = Array.from(language.options);
+    for (const option of options) {
+      const same = option.value.trim().toLowerCase() === sourceValue;
+      option.hidden = same;
+      option.disabled = same;
+    }
+    if (language.selectedOptions[0]?.disabled) {
+      const next = options.find((option) => !option.disabled);
+      if (next) language.value = next.value;
+    }
+  }
   function languageChanged() {
-    setLanguageIcon(language.value);
+    updateTargetLanguageOptions();
+    setLanguageIcon("sourceLanguageIcon", sourceLanguage.value);
+    setLanguageIcon("languageIcon", language.value);
     refreshButtons();
   }
   const LANGUAGE_ICON_SLUGS = {
@@ -446,8 +472,8 @@
   "matlab": "matlab", "objective-c": "objectivec", "objectivec": "objectivec"
 };
 
-function setLanguageIcon(langValue) {
-  const icon = $("languageIcon");
+function setLanguageIcon(iconId, langValue) {
+  const icon = $(iconId);
   const key = (langValue || "").trim().toLowerCase();
   const slug = LANGUAGE_ICON_SLUGS[key];
 
@@ -469,6 +495,7 @@ function setLanguageIcon(langValue) {
 
 // Triggered when the dropdown changes
 language.addEventListener("change", () => languageChanged());
+sourceLanguage.addEventListener("change", () => languageChanged());
   source.addEventListener("input", () => {
     fileReadVersion += 1;
     updateLines(source, $("sourceLines"));
@@ -505,6 +532,7 @@ language.addEventListener("change", () => languageChanged());
     const originalFileName = sourceFileName;
     const data = new FormData();
     data.append("message", originalSource);
+    data.append("source_language", sourceLanguage.value);
     data.append("language", target);
     const controller = new AbortController();
     activeController = controller;
@@ -516,9 +544,35 @@ language.addEventListener("change", () => languageChanged());
     setStatus(`Translating to ${target}…`);
 
     try {
-      const response = await fetch(form.action, { method: "POST", body: data, signal: controller.signal });
+      const response = await fetch(form.action, {
+        method: "POST", body: data, signal: controller.signal, credentials: "same-origin",
+        headers: { Accept: "application/x-ndjson" }
+      });
       if (!response.ok) throw new Error(`Translation failed (${response.status}). Please try again.`);
       if (response.headers.get("content-type")?.includes("text/html")) throw new Error("The server returned a page instead of code. Please try again.");
+      // NDJSON: one JSON event per line. Falls back to plain text if the server ignores Accept.
+      const events = response.headers.get("content-type")?.includes("application/x-ndjson");
+      let pendingText = "";
+      let completed = false;
+      function consumeLine(line) {
+        if (!line.trim()) return;
+        let item;
+        try { item = JSON.parse(line); }
+        catch (_) { throw new Error("The translation stream was interrupted. Please try again."); }
+        if (item.type === "chunk" && typeof item.text === "string") appendOutput(item.text);
+        else if (item.type === "error") throw new Error(item.message || "Translation failed. Please try again.");
+        else if (item.type === "complete") completed = true;
+      }
+      function consumeText(text) {
+        if (!events) { appendOutput(text); return; }
+        pendingText += text;
+        let end;
+        while ((end = pendingText.indexOf("\n")) !== -1) {
+          const line = pendingText.slice(0, end);
+          pendingText = pendingText.slice(end + 1);
+          consumeLine(line);
+        }
+      }
       if (response.body && typeof response.body.getReader === "function") {
         const reader = response.body.getReader();
         const decoder = new TextDecoder("utf-8");
@@ -526,17 +580,24 @@ language.addEventListener("change", () => languageChanged());
           while (true) {
             const { value, done } = await reader.read();
             if (done) break;
-            appendOutput(decoder.decode(value, { stream: true }));
+            consumeText(decoder.decode(value, { stream: true }));
           }
-          appendOutput(decoder.decode());
+          consumeText(decoder.decode());
+        } catch (error) {
+          try { await reader.cancel(); } catch (_) { /* already closed */ }
+          throw error;
         } finally { reader.releaseLock(); }
-      } else { appendOutput(await response.text()); }
+      } else { consumeText(await response.text()); }
+      if (events) {
+        if (pendingText.trim()) consumeLine(pendingText);
+        if (!completed && !output.value.trim()) throw new Error("The translation stopped before completion. Please try again.");
+      }
       if (controller.signal.aborted) throw new DOMException("Translation stopped", "AbortError");
       // Existing server.py returns upstream errors as plain text with HTTP 200.
       if (/^\s*Error:\s*/i.test(output.value)) throw new Error(output.value.trim());
       if (!output.value.trim()) throw new Error("No code was returned. Please try translating again.");
-      completedTranslation = { source: originalSource, output: output.value, language: target, fileName: originalFileName };
-      setStatus(`Translated to ${target}. Ready to copy, save, or download.`);
+      completedTranslation = { source: originalSource, output: output.value, language: target, sourceLanguage: sourceLanguage.value, fileName: originalFileName };
+      setStatus(`Translated to ${target}. Ready to run, copy, save, or download.`);
     } catch (error) {
       if (error.name === "AbortError") setStatus("Translation stopped. Any partial result is shown above.");
       else {
@@ -629,6 +690,242 @@ language.addEventListener("change", () => languageChanged());
   $("copySource").addEventListener("click", () => copyText(source.value, $("copySource")));
   $("copyOutput").addEventListener("click", () => copyText(output.value, $("copyOutput")));
 
+  // ---------- RUN WITH LABELLED INPUT (nothing stays running on the server) ----------
+  //  1. Run sends the WHOLE program to /execute with the answers typed so far (none at first).
+  //  2. If the program needs more input it stops itself and the server answers "needs_input"
+  //     with what was printed so far and which variable asks (e.g. "a, b").
+  //  3. The page shows an input box for that variable; on Send the answer is stored and step 1
+  //     repeats with the longer list of answers.
+  //  4. When no more input is needed the final output is shown.
+  // `at` = the exact spot inside the output where the answer was asked for, so the terminal can
+  // show every typed answer in the right place (the re-run output has no echo).
+  const liveStops = new WeakMap();   // panel -> function that stops its current run
+
+  function withAnswers(stdout, answers) {
+    let text = "";
+    let last = 0;
+    for (const answer of answers) {
+      const at = Math.min(Math.max(answer.at, last), stdout.length);
+      text += stdout.slice(last, at) + answer.value + "\n";
+      last = at;
+    }
+    return text + stdout.slice(last);
+  }
+
+  function freshPrompt(stdout, from) {
+    const fresh = stdout.slice(Math.min(from, stdout.length));
+    let tail = fresh.slice(fresh.lastIndexOf("\n") + 1).trim();
+    if (!tail) {
+      const lines = fresh.split("\n").map((line) => line.trim()).filter(Boolean);
+      tail = lines.length ? lines[lines.length - 1] : "";
+    }
+    return tail.slice(-120);
+  }
+
+  async function postExecute(payload, signal) {
+    const response = await fetch(endpoints.execute, {
+      method: "POST", credentials: "same-origin", cache: "no-store", signal,
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify(payload)
+    });
+    let data;
+    try { data = await response.json(); }
+    catch (_) {
+      const error = new Error(`The server returned an unexpected response (${response.status}). Please try again.`);
+      error.status = response.status;
+      throw error;
+    }
+    if (!response.ok) {
+      const error = new Error(data.error || `Request failed (${response.status}). Please try again.`);
+      error.status = response.status;
+      throw error;
+    }
+    return data;
+  }
+
+  function makeEl(tag, className, text) {
+    const node = document.createElement(tag);
+    if (className) node.className = className;
+    if (text !== undefined) node.textContent = text;
+    return node;
+  }
+
+  async function runCode(code, execLanguage, button, panel) {
+    if (!code.trim() || button.disabled) return;
+
+    const previousStop = liveStops.get(panel);
+    if (previousStop) previousStop();
+
+    button.disabled = true;
+    panel.hidden = false;
+    panel.classList.remove("has-error");
+    panel.classList.add("is-terminal");
+    panel.textContent = "";
+
+    const screen = makeEl("pre", "term-screen");
+    const row = makeEl("form", "term-row");
+    row.hidden = true;
+    const caret = makeEl("span", "term-caret", "›");
+    const label = makeEl("span", "term-label");          // names the variable being asked for
+    label.hidden = true;
+    const input = makeEl("input", "term-input");
+    input.type = "text";
+    input.placeholder = "Type the value, press Enter";
+    input.autocomplete = "off";
+    input.spellcheck = false;
+    input.setAttribute("aria-label", "Program input");
+    const sendButton = makeEl("button", "term-send", "Send");
+    sendButton.type = "submit";
+    // For programs that read until end of input (while (cin >> x), hasNext(), ...).
+    const endButton = makeEl("button", "term-stop", "End input");
+    endButton.type = "button";
+    endButton.title = "No more input (Ctrl+D)";
+    endButton.hidden = true;
+    const status = makeEl("span", "term-status");
+    status.setAttribute("aria-live", "polite");
+    const stopButton = makeEl("button", "term-stop", "Stop");
+    stopButton.type = "button";
+    row.append(caret, label, input, sendButton, endButton, status, stopButton);
+
+    function setBusy(text) {
+      row.classList.add("is-idle");
+      label.hidden = true;
+      endButton.hidden = true;
+      status.textContent = text || "Running…";
+    }
+    setBusy("Compiling…");
+    panel.append(screen, row);
+
+    function showText(text) {
+      screen.textContent = text;
+      screen.scrollTop = screen.scrollHeight;
+    }
+
+    if (!execLanguage) {
+      panel.classList.add("has-error");
+      showText("This language can't be compiled and run here. Only C, C++, Python and Java are supported.");
+      row.hidden = true;
+      button.disabled = false;
+      return;
+    }
+
+    const answers = [];        // [{label, value, line, at}] everything typed so far, in order
+    let pending = null;        // the question currently shown
+    let lastStdout = "";
+    let controller = null;     // request in flight, so Stop can cancel it
+    let finished = false;
+
+    function finish(text, isError) {
+      if (finished) return;
+      finished = true;
+      if (controller) controller.abort();
+      if (typeof text === "string") showText(text);
+      if (isError) panel.classList.add("has-error");
+      row.hidden = true;
+      button.disabled = false;
+      refreshButtons();
+      liveStops.delete(panel);
+    }
+    function stopRun() {
+      if (finished) return;
+      finish(withAnswers(lastStdout, answers) + "\n[stopped]", false);
+    }
+    liveStops.set(panel, stopRun);
+    stopButton.addEventListener("click", stopRun);
+
+    function askFor(data) {
+      const request = data.input_request;
+      const previousAt = answers.length ? answers[answers.length - 1].at : 0;
+      const question = freshPrompt(data.stdout || "", previousAt);
+      pending = {
+        label: request.var || question || `input ${answers.length + 1}`,
+        line: request.line || 0,
+        at: Number.isInteger(data.stdout_units) ? data.stdout_units : (data.stdout || "").length
+      };
+      lastStdout = data.stdout || "";
+      showText(withAnswers(lastStdout, answers));
+      label.textContent = pending.label;
+      label.title = request.line ? `${pending.label}  (line ${request.line})` : pending.label;
+      label.hidden = false;
+      endButton.hidden = false;
+      input.placeholder = request.var ? `Value for ${request.var}` : (question || "Type the value, press Enter");
+      input.setAttribute("aria-label", `Input for ${pending.label}`);
+      row.classList.remove("is-idle");
+      status.textContent = "";
+      input.focus();
+    }
+
+    function showFinal(data) {
+      let text = withAnswers(data.stdout || "", answers);
+      const stderr = data.stderr || "";
+      if (stderr) text += (text && !text.endsWith("\n") ? "\n" : "") + stderr;
+      if (data.phase === "run" && data.status === "success") {
+        text += `${text && !text.endsWith("\n") ? "\n" : ""}\n[process finished with exit code ${data.exit_code}]`;
+      }
+      finish(text, data.status !== "success");
+    }
+
+    // One run of the whole program with every answer so far. No state is kept on the server.
+    async function execute(eof) {
+      if (finished) return;
+      pending = null;
+      setBusy(answers.length ? "Running…" : "Compiling…");
+      const mine = new AbortController();
+      controller = mine;
+      try {
+        const data = await postExecute({
+          code, language: execLanguage,
+          inputs: answers.map(({ label: name, value }) => ({ label: name, value })),
+          eof: eof === true
+        }, mine.signal);
+        if (finished || controller !== mine) return;
+        if (data.needs_input && data.input_request) askFor(data);
+        else showFinal(data);
+      } catch (error) {
+        if (error.name === "AbortError" || finished) return;
+        let message;
+        if (error.status === 401) message = "The server asked for a sign-in before running code. Sign-in isn't available in this version, so the /execute route must not require a login.";
+        else if (error.status === 429) message = "Too many runs in a short time. Wait a few seconds and try again.";
+        else if (error instanceof TypeError) message = "Could not reach the server. Check your connection and try again.";
+        else message = error.message || "The compiler failed. Please try again.";
+        finish((answers.length ? withAnswers(lastStdout, answers) + "\n" : "") + message, true);
+      }
+    }
+
+    function sendAnswer(event) {
+      event.preventDefault();
+      if (finished || !pending) return;
+      const value = input.value.replace(/[\r\n]+/g, " ");
+      input.value = "";
+      answers.push({ label: pending.label, value, line: pending.line, at: pending.at });
+      showText(withAnswers(lastStdout, answers));   // the typed value appears at once
+      execute(false);
+    }
+    function endInput() {
+      if (finished || !pending) return;
+      showText(withAnswers(lastStdout, answers) + "^D\n");
+      execute(true);                                // the program now sees end-of-input
+    }
+    row.addEventListener("submit", sendAnswer);
+    endButton.addEventListener("click", endInput);
+    input.addEventListener("keydown", (event) => {
+      if (event.ctrlKey && event.key.toLowerCase() === "d") { event.preventDefault(); endInput(); }
+    });
+
+    showText("");
+    row.hidden = false;
+    execute(false);
+  }
+
+  $("runSource").addEventListener("click", () => {
+    runCode(source.value, executableLanguages[sourceLanguage.value.trim().toLowerCase()] || null, $("runSource"), $("sourceRunOutput"));
+  });
+  $("runOutput").addEventListener("click", () => {
+    // Run the language the translation was made in, even if the dropdown changed since.
+    const lang = completedTranslation ? completedTranslation.language : targetLanguage();
+    runCode(output.value, executableLanguages[lang.trim().toLowerCase()] || null, $("runOutput"), $("outputRunOutput"));
+  });
+
   function downloadName(translation) {
     const extension = extensionMap[translation.language.toLowerCase()] || "txt";
     let stem = translation.fileName ? translation.fileName.replace(/\.[^.]+$/, "") : "translated_code";
@@ -708,8 +1005,10 @@ language.addEventListener("change", () => languageChanged());
     source.value = entry.source;
     output.value = entry.output;
     sourceFileName = typeof entry.fileName === "string" ? entry.fileName : "";
-    const known = Array.from(language.options).some((option) => option.value === entry.language);
-    language.value = known ? entry.language : "Python";
+    const hasOption = (select, value) => Array.from(select.options).some((option) => option.value === value);
+    if (typeof entry.sourceLanguage === "string" && hasOption(sourceLanguage, entry.sourceLanguage)) sourceLanguage.value = entry.sourceLanguage;
+    updateTargetLanguageOptions();
+    language.value = hasOption(language, entry.language) ? entry.language : "Python";
     completedTranslation = { ...entry, fileName: sourceFileName };
     source.scrollTop = 0; output.scrollTop = 0;
     languageChanged(); updateFileLabel();

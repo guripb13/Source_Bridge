@@ -31,6 +31,7 @@
     <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol>
     <symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7m4-7v7"/></symbol>
     <symbol id="i-code" viewBox="0 0 24 24"><path d="m7 6-6 6 6 6m10-12 6 6-6 6m-4-15-2 18"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24"><path d="M6 4.5v15a1 1 0 0 0 1.53.85l12-7.5a1 1 0 0 0 0-1.7l-12-7.5A1 1 0 0 0 6 4.5Z"/></symbol>
     <symbol id="i-stop" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2"/></symbol>
     <symbol id="i-python" viewBox="0 0 32 32">
       <path fill="#3776AB" stroke="none" d="M16 2C8 2 8 5 8 5v6h9v2H5s-5 0-5 7 5 7 5 7h3v-5s0-5 5-5h9s5 0 5-5V7s0-5-11-5Z" transform="translate(2 0) scale(.9)"/>
@@ -106,22 +107,40 @@
     <section id="translateView" aria-labelledby="pageTitle">
       <div class="page-intro">
         <h1 id="pageTitle">Translate, Learn &amp; Explore Code</h1>
-        <p>Convert your code between programming languages using AI.</p>
+        <p>Convert your code between programming languages using AI, then compile and run it.</p>
       </div>
-      <!-- The backend contract stays the same: POST message + language to /send. -->
+      <!-- POST message + source_language + language to /send (NDJSON stream). Run buttons call POST /execute. -->
       <form class="workspace-grid" id="form" method="POST" action="{{ url_for('send') }}" enctype="multipart/form-data">
         <section class="editor-card source-card" aria-labelledby="sourceTitle">
           <div class="editor-heading">
             <h2 id="sourceTitle"><svg class="icon" aria-hidden="true"><use href="#i-file"/></svg><span>Source Code</span></h2>
-            <button type="button" class="text-button copy-button" id="copySource" aria-label="Copy source code" disabled><svg class="icon" aria-hidden="true"><use href="#i-copy"/></svg><span>Copy</span></button>
+            <div class="editor-actions">
+              <button type="button" class="text-button run-button" id="runSource" aria-label="Run source code" disabled><svg class="icon" aria-hidden="true"><use href="#i-play"/></svg><span>Run</span></button>
+              <button type="button" class="text-button copy-button" id="copySource" aria-label="Copy source code" disabled><svg class="icon" aria-hidden="true"><use href="#i-copy"/></svg><span>Copy</span></button>
+            </div>
           </div>
           <div class="code-surface" id="sourceSurface">
             <div class="line-gutter" aria-hidden="true"><div class="line-numbers" id="sourceLines">1&#10;2&#10;3&#10;4&#10;5</div></div>
             <textarea class="code-editor" id="message" name="message" aria-label="Source code" placeholder="Paste your code here..." spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off" wrap="off" aria-describedby="keyboardHint"></textarea>
           </div>
+          <div class="run-output" id="sourceRunOutput" hidden aria-live="polite"></div>
         </section>
 
         <div class="conversion-controls">
+          <div class="language-pair">
+          <div class="language-control">
+            <label for="sourceLanguage">Translate from</label>
+            <div class="language-select">
+              <img class="language-icon" id="sourceLanguageIcon" src="" alt="" aria-hidden="true">
+              <select id="sourceLanguage" name="source_language" aria-label="Source programming language">
+                <option value="Python" selected>Python</option>
+                <option value="C">C</option>
+                <option value="C++">C++</option>
+                <option value="Java">Java</option>
+              </select>
+              <svg class="select-chevron icon" aria-hidden="true"><use href="#i-chevron"/></svg>
+            </div>
+          </div>
           <div class="language-control">
             <label for="language">Translate to</label>
             <div class="language-select">
@@ -135,6 +154,7 @@
               <svg class="select-chevron icon" aria-hidden="true"><use href="#i-chevron"/></svg>
             </div>
           </div>
+          </div>
           <button type="submit" class="translate-button" id="translateButton" disabled aria-label="Translate code">
             <span class="translate-circle"><svg class="icon translate-arrow" aria-hidden="true"><use href="#i-arrow"/></svg><svg class="icon stop-icon" aria-hidden="true"><use href="#i-stop"/></svg></span>
             <span id="translateLabel">Translate</span>
@@ -145,6 +165,7 @@
           <div class="editor-heading">
             <h2 id="outputTitle"><svg class="icon" aria-hidden="true"><use href="#i-file"/></svg><span>Translated Code</span></h2>
             <div class="editor-actions">
+              <button type="button" class="text-button run-button" id="runOutput" aria-label="Run translated code" disabled><svg class="icon" aria-hidden="true"><use href="#i-play"/></svg><span>Run</span></button>
               <button type="button" class="icon-button save-button" id="saveButton" title="Save translation in this browser" aria-label="Save translation in this browser" aria-pressed="false" disabled><svg class="icon" aria-hidden="true"><use href="#i-bookmark"/></svg></button>
               <button type="button" class="text-button copy-button" id="copyOutput" aria-label="Copy translated code" disabled><svg class="icon" aria-hidden="true"><use href="#i-copy"/></svg><span>Copy</span></button>
             </div>
@@ -153,6 +174,7 @@
             <div class="line-gutter" aria-hidden="true"><div class="line-numbers" id="outputLines">1&#10;2&#10;3&#10;4&#10;5</div></div>
             <textarea class="code-editor" id="translatedCode" aria-label="Translated code" placeholder="Your translated code will appear here..." spellcheck="false" wrap="off" readonly></textarea>
           </div>
+          <div class="run-output" id="outputRunOutput" hidden aria-live="polite"></div>
         </section>
 
         <div class="upload-actions">
