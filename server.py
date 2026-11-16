@@ -1,8 +1,11 @@
+import os
 from flask import Flask, request, render_template, Response
 from google import genai
 from google.genai import types
 
 app = Flask(__name__)
+
+
 def build_task(language):
     return f"""You are a code translation engine. Your target language is {language}.
 
@@ -21,7 +24,15 @@ Step 3 - Translation:
 Convert the given code to {language}.
 Return only the translated code (with syntax-error comments where applicable). No explanations, no markdown, no extra messages of any kind.
 Format it like a normal {language} file: one statement per line, and proper indentation for each nested level."""
-client = genai.Client(api_key="AQ.Ab8RN6LeU1KUeg3S3BOYlMb-kIGzcw5tdJJzqa14q1nCo2wsDQ")  # Replace with your actual API key
+
+
+# The API key is read from the environment, never stored in the code.
+# Set GEMINI_API_KEY in your local shell or in Vercel's Environment Variables.
+api_key = os.environ.get("GEMINI_API_KEY")
+if not api_key:
+    raise RuntimeError("GEMINI_API_KEY environment variable is not set.")
+
+client = genai.Client(api_key=api_key)
 
 
 @app.route("/")
@@ -33,6 +44,7 @@ def home():
 def send():
     text = request.form.get("message", "").strip()
     language = request.form.get("language", "Java").strip() or "Java"
+
     def generate():
         if not text:
             return
@@ -44,12 +56,14 @@ def send():
                 config=types.GenerateContentConfig(system_instruction=build_task(language)),
             ):
                 if chunk.text:
-                    yield chunk.text      # send each chunk to the browser immediately
-        except Exception as e:
-            yield f"Error: {e}"
+                    yield chunk.text  # send each chunk to the browser immediately
+        except Exception:
+            # Log the real error on the server, but don't expose details to the user
+            app.logger.exception("Gemini request failed")
+            yield "Error: The translation service is currently unavailable. Please try again."
 
     return Response(generate(), mimetype="text/plain")
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=False)
