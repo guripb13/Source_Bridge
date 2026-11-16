@@ -171,21 +171,225 @@
     });
   });
 
-  function showView(view) {
-    $("translateView").hidden = view !== "translate";
-    $("savedView").hidden = view !== "saved";
-    [$("translateNav"), $("savedNav")].forEach((button) => {
-      const current = button.dataset.view === view;
-      button.classList.toggle("active", current);
-      if (current) button.setAttribute("aria-current", "page");
-      else button.removeAttribute("aria-current");
-    });
-    if (view === "saved") renderSaved();
-    if (mobileOpen) closeSidebar();
-    $("mainContent").focus({ preventScroll: true });
+  /* =========================================
+     NAVIGATION AND PAGE TRANSITIONS
+  ========================================= */
+
+  let currentView = "translate";
+
+  const viewOrder = {
+    translate: 0,
+    saved: 1
+  };
+
+
+  /* RESTART CSS ANIMATION ON EVERY CLICK */
+
+  function restartAnimation(item, className) {
+    item.classList.remove(className);
+
+    // Force browser to recalculate animation
+    void item.offsetWidth;
+
+    item.classList.add(className);
   }
-  document.querySelectorAll("[data-view]").forEach((button) => {
-    button.addEventListener("click", () => showView(button.dataset.view));
+
+
+  /* ACTIVE AND INACTIVE NAVIGATION ICONS */
+
+  function selectNavigationItem(item) {
+
+    const previous = document.querySelector(".nav-item.active");
+
+    // Animate previous active icon
+    if (previous && previous !== item) {
+
+      previous.classList.remove("active", "animate");
+
+      previous.removeAttribute("aria-current");
+
+      restartAnimation(previous, "leave");
+    }
+
+    // Activate new navigation icon
+    item.classList.remove("leave");
+
+    item.classList.add("active");
+
+    item.setAttribute("aria-current", "page");
+
+    restartAnimation(item, "animate");
+  }
+
+
+  /* PAGE SWITCHING WITH EXIT AND ENTRY ANIMATIONS */
+
+  function showView(view) {
+
+    if (!Object.prototype.hasOwnProperty.call(viewOrder, view)) {
+      return;
+    }
+
+    if (view === currentView) {
+      return;
+    }
+
+    const goingDown =
+      viewOrder[view] > viewOrder[currentView];
+
+    const main = $("mainContent");
+
+    currentView = view;
+
+
+    /* COMPLETE PAGE SWITCH */
+
+    function finishSwitch() {
+
+      $("translateView").hidden = view !== "translate";
+
+      $("savedView").hidden = view !== "saved";
+
+      [$("translateNav"), $("savedNav")].forEach(button => {
+
+        const current = button.dataset.view === view;
+
+        button.classList.toggle("active", current);
+
+        if (current) {
+          button.setAttribute("aria-current", "page");
+        } else {
+          button.removeAttribute("aria-current");
+        }
+      });
+
+      // Refresh saved translations
+      if (view === "saved") {
+        renderSaved();
+      }
+
+      // Close mobile sidebar
+      if (mobileOpen) {
+        closeSidebar();
+      }
+    }
+
+
+    /* ACCESSIBILITY CHECK */
+
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+
+      finishSwitch();
+
+      main.focus({ preventScroll: true });
+
+      return;
+    }
+
+
+    /* DETERMINE TRANSITION DIRECTION */
+
+    const exitClass = goingDown
+      ? "view-exit-up"
+      : "view-exit-down";
+
+    const enterClass = goingDown
+      ? "view-enter-from-bottom"
+      : "view-enter-from-top";
+
+
+    /* REMOVE PREVIOUS TRANSITION CLASSES */
+
+    main.classList.remove(
+      "view-exit-up",
+      "view-exit-down",
+      "view-enter-from-bottom",
+      "view-enter-from-top"
+    );
+
+
+    /* START EXIT ANIMATION */
+
+    main.classList.add(exitClass);
+
+
+    /* WAIT FOR EXIT ANIMATION TO FINISH */
+
+    main.addEventListener("animationend", function onExit(event) {
+
+      if (event.target !== main) return;
+
+      main.removeEventListener("animationend", onExit);
+
+      main.classList.remove(exitClass);
+
+
+      /* CHANGE THE ACTUAL PAGE */
+
+      finishSwitch();
+
+
+      /* START NEW PAGE ENTRANCE ANIMATION */
+
+      main.classList.add(enterClass);
+
+
+      main.addEventListener("animationend", function onEnter(event) {
+
+        if (event.target !== main) return;
+
+        main.removeEventListener("animationend", onEnter);
+
+        main.classList.remove(enterClass);
+
+        main.focus({ preventScroll: true });
+
+      });
+
+    });
+
+  }
+
+
+  /* =========================================
+     NAVIGATION CLICK EVENTS
+  ========================================= */
+
+  document.querySelectorAll("[data-view]").forEach(button => {
+
+    button.addEventListener("click", () => {
+
+      const navItem = button.classList.contains("nav-item")
+        ? button
+        : document.querySelector(
+            `.nav-item[data-view="${button.dataset.view}"]`
+          );
+
+      if (navItem) {
+        selectNavigationItem(navItem);
+      }
+
+      showView(button.dataset.view);
+
+    });
+
+  });
+
+
+  /* CLEAN UP ICON ANIMATION CLASSES */
+
+  document.querySelectorAll(".nav-item[data-view]").forEach(item => {
+
+    item.addEventListener("animationend", event => {
+
+      if (event.target === item.querySelector(".icon")) {
+
+        item.classList.remove("animate", "leave");
+
+      }
+
+    });
+
   });
 
   function syncScroll(editor, gutter) { gutter.style.transform = `translateY(${-editor.scrollTop}px)`; }
