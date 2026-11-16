@@ -32,7 +32,7 @@ Format it like a normal {language} file: one statement per line, and proper inde
 
 # The API key is read from the environment, never stored in the code.
 # Set GEMINI_API_KEY in your local shell or in Vercel's Environment Variables.
-api_key = os.environ.get("GEMINI_API_KEY")
+api_key = "API"
 if not api_key:
     raise RuntimeError("GEMINI_API_KEY environment variable is not set.")
 
