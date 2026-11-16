@@ -10,7 +10,6 @@
   const source = $("message");
   const output = $("translatedCode");
   const language = $("language");
-  const customLanguage = $("customLanguage");
   const translateButton = $("translateButton");
   const sidebar = $("sidebar");
   const sidebarToggle = $("sidebarToggle");
@@ -406,7 +405,7 @@
     updateLines(editor, gutter);
   });
 
-  function targetLanguage() { return language.value === "other" ? customLanguage.value.trim() : language.value; }
+  function targetLanguage() { return language.value.trim(); }
   function refreshButtons() {
     const loading = Boolean(activeController);
     translateButton.disabled = !loading && (!source.value.trim() || !targetLanguage());
@@ -426,18 +425,14 @@
     document.querySelector(".output-card").setAttribute("aria-busy", String(loading));
     source.readOnly = loading;
     language.disabled = loading;
-    customLanguage.disabled = loading;
     $("uploadButton").disabled = loading;
     $("attachment").disabled = loading;
     $("translateLabel").textContent = loading ? "Stop" : "Translate";
     translateButton.setAttribute("aria-label", loading ? "Stop translation" : "Translate code");
     refreshButtons();
   }
-  function languageChanged(focusCustom = false) {
-    const other = language.value === "other";
-    $("customLanguageRow").hidden = !other;
-    $("languageIcon").setAttribute("href", language.value === "Python" ? "#i-python" : "#i-code");
-    if (other && focusCustom) customLanguage.focus();
+  function languageChanged() {
+    setLanguageIcon(language.value);
     refreshButtons();
   }
   const LANGUAGE_ICON_SLUGS = {
@@ -473,12 +468,7 @@ function setLanguageIcon(langValue) {
 }
 
 // Triggered when the dropdown changes
-language.addEventListener("change", () => languageChanged(true));
-  language.addEventListener("change", () => languageChanged(true));
-  customLanguage.addEventListener("input", refreshButtons);
-  customLanguage.addEventListener("keydown", (event) => {
-    if (event.key === "Enter" && !event.ctrlKey && !event.metaKey) { event.preventDefault(); source.focus(); }
-  });
+language.addEventListener("change", () => languageChanged());
   source.addEventListener("input", () => {
     fileReadVersion += 1;
     updateLines(source, $("sourceLines"));
@@ -508,7 +498,7 @@ language.addEventListener("change", () => languageChanged(true));
     if (activeController) { activeController.abort(); return; }
     if (!source.value.trim()) { setStatus("Paste or upload some code first.", true); source.focus(); return; }
     const target = targetLanguage();
-    if (!target) { setStatus("Enter a target programming language.", true); customLanguage.focus(); return; }
+    if (!target) { setStatus("Choose a target language.", true); language.focus(); return; }
 
     // Keep the same form field names and the same streaming endpoint as server.py.
     const originalSource = source.value;
@@ -718,9 +708,8 @@ language.addEventListener("change", () => languageChanged(true));
     source.value = entry.source;
     output.value = entry.output;
     sourceFileName = typeof entry.fileName === "string" ? entry.fileName : "";
-    const known = Array.from(language.options).some((option) => option.value === entry.language && option.value !== "other");
-    language.value = known ? entry.language : "other";
-    customLanguage.value = known ? "" : entry.language;
+    const known = Array.from(language.options).some((option) => option.value === entry.language);
+    language.value = known ? entry.language : "Python";
     completedTranslation = { ...entry, fileName: sourceFileName };
     source.scrollTop = 0; output.scrollTop = 0;
     languageChanged(); updateFileLabel();

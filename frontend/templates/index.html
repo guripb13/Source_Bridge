@@ -127,11 +127,13 @@
             <div class="language-select">
               <img class="language-icon" id="languageIcon" src="" alt="" aria-hidden="true">
               <select id="language" name="language" aria-label="Target programming language">
-                <option value="Python" selected>Python</option><option value="Java">Java</option><option value="C">C</option><option value="C++">C++</option><option value="JavaScript">JavaScript</option><option value="TypeScript">TypeScript</option><option value="C#">C#</option><option value="Go">Go</option><option value="Rust">Rust</option><option value="PHP">PHP</option><option value="Swift">Swift</option><option value="Kotlin">Kotlin</option><option value="Ruby">Ruby</option><option value="SQL">SQL</option><option value="other">Other...</option>
+                <option value="Python" selected>Python</option>
+                <option value="C">C</option>
+                <option value="C++">C++</option>
+                <option value="Java">Java</option>
               </select>
               <svg class="select-chevron icon" aria-hidden="true"><use href="#i-chevron"/></svg>
             </div>
-            <div class="custom-language" id="customLanguageRow" hidden><label class="sr-only" for="customLanguage">Custom target language</label><input id="customLanguage" type="text" placeholder="Language name" maxlength="60" autocomplete="off"></div>
           </div>
           <button type="submit" class="translate-button" id="translateButton" disabled aria-label="Translate code">
             <span class="translate-circle"><svg class="icon translate-arrow" aria-hidden="true"><use href="#i-arrow"/></svg><svg class="icon stop-icon" aria-hidden="true"><use href="#i-stop"/></svg></span>
@@ -173,7 +175,7 @@
 
   <dialog class="app-dialog" id="tipsDialog" aria-labelledby="tipsTitle">
     <div class="dialog-heading"><h2 id="tipsTitle">A few helpful tips</h2><button type="button" class="icon-button" data-close-dialog aria-label="Close tips"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></button></div>
-    <ul class="tips-list"><li><strong>Start with your code.</strong> Paste it into the source editor or upload a text-based code file.</li><li><strong>Choose a language.</strong> Pick your target, or select Other to enter a different language.</li><li><strong>Keep writing.</strong> Enter creates a new line. Ctrl + Enter (⌘ + Enter on Mac) starts a translation.</li><li><strong>Take it with you.</strong> Copy, download, or bookmark a finished translation. Hold Alt and drag code into another app.</li><li><strong>Review the result.</strong> Check and test translated code before using it in your project.</li></ul>
+    <ul class="tips-list"><li><strong>Start with your code.</strong> Paste it into the source editor or upload a text-based code file.</li><li><strong>Choose a language.</strong> Pick one of the built-in targets for your translation.</li><li><strong>Keep writing.</strong> Enter creates a new line. Ctrl + Enter (⌘ + Enter on Mac) starts a translation.</li><li><strong>Take it with you.</strong> Copy, download, or bookmark a finished translation. Hold Alt and drag code into another app.</li><li><strong>Review the result.</strong> Check and test translated code before using it in your project.</li></ul>
   </dialog>
 
   <dialog class="app-dialog" id="settingsDialog" aria-labelledby="settingsTitle">
