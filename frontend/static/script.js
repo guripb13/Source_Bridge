@@ -934,6 +934,32 @@
     panel.classList.add("is-terminal");
     panel.textContent = "";
 
+    // Control bar: always visible at the top of the terminal, so Rerun / Close never need a scroll up.
+    const bar = makeEl("div", "term-bar");
+    const barTitle = makeEl("span", "term-title");
+    barTitle.append(makeEl("span", "term-title-text", `Terminal${execLanguage ? " · " + execLanguage : ""}`));
+    const barState = makeEl("span", "term-state", "Running");
+    barState.setAttribute("role", "status");
+    const barActions = makeEl("div", "term-bar-actions");
+    function barButton(className, label, iconId, text) {
+      const b = makeEl("button", `term-btn ${className}`);
+      b.type = "button";
+      b.title = label;
+      b.setAttribute("aria-label", label);
+      const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+      svg.setAttribute("class", "icon");
+      svg.setAttribute("aria-hidden", "true");
+      const use = document.createElementNS("http://www.w3.org/2000/svg", "use");
+      use.setAttribute("href", iconId);
+      svg.append(use);
+      b.append(svg, makeEl("span", "term-btn-text", text));
+      return b;
+    }
+    const rerunButton = barButton("term-rerun", "Run again", "#i-play", "Rerun");
+    const closeButton = barButton("term-close", "Close terminal", "#i-close", "Close");
+    barActions.append(rerunButton, closeButton);
+    bar.append(barTitle, barState, barActions);
+
     const screen = makeEl("pre", "term-screen");
     const row = makeEl("form", "term-row");
     row.hidden = true;
@@ -964,9 +990,27 @@
       label.hidden = true;
       endButton.hidden = true;
       status.textContent = text || "Running…";
+      if (typeof setState === "function") setState((text || "Running").replace("…", ""), "busy");
     }
     setBusy("Compiling…");
-    panel.append(screen, row);
+    panel.append(bar, screen, row);
+
+    function setState(text, kind) {
+      barState.textContent = text;
+      barState.className = `term-state${kind ? " is-" + kind : ""}`;
+    }
+    setState("Compiling", "busy");
+    closeButton.addEventListener("click", () => {
+      const stop = liveStops.get(panel);
+      if (stop) stop();
+      panel.hidden = true;
+      panel.textContent = "";
+      panel.classList.remove("has-error", "is-terminal");
+      button.disabled = false;
+      refreshButtons();
+      button.focus();
+    });
+    rerunButton.addEventListener("click", () => runCode(code, execLanguage, button, panel));
 
     function showText(text) {
       screen.textContent = text;
@@ -976,6 +1020,8 @@
     if (!execLanguage) {
       panel.classList.add("has-error");
       showText("This language can't be compiled and run here. Only C, C++, Python and Java are supported.");
+      setState("Unsupported", "error");
+      rerunButton.hidden = true;
       row.hidden = true;
       button.disabled = false;
       return;
@@ -987,12 +1033,13 @@
     let controller = null;     // request in flight, so Stop can cancel it
     let finished = false;
 
-    function finish(text, isError) {
+    function finish(text, isError, stopped) {
       if (finished) return;
       finished = true;
       if (controller) controller.abort();
       if (typeof text === "string") showText(text);
       if (isError) panel.classList.add("has-error");
+      setState(stopped ? "Stopped" : isError ? "Failed" : "Finished", stopped ? "stopped" : isError ? "error" : "done");
       row.hidden = true;
       button.disabled = false;
       refreshButtons();
@@ -1000,7 +1047,7 @@
     }
     function stopRun() {
       if (finished) return;
-      finish(withAnswers(lastStdout, answers) + "\n[stopped]", false);
+      finish(withAnswers(lastStdout, answers) + "\n[stopped]", false, true);
     }
     liveStops.set(panel, stopRun);
     stopButton.addEventListener("click", stopRun);
@@ -1024,6 +1071,7 @@
       input.setAttribute("aria-label", `Input for ${pending.label}`);
       row.classList.remove("is-idle");
       status.textContent = "";
+      setState("Waiting for input", "input");
       input.focus();
     }
 
