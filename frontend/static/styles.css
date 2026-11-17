@@ -1,4 +1,54 @@
 /* Source Bridge | no external fonts, libraries or build step required. */
+/* scrollbar added */
+:root {
+  --sb-size: 14px;                 /* total scrollbar lane width */
+  --sb-gap: 4px;                   /* transparent edge around the pill: thumb is 14 - 2*4 = 6px */
+  --sb-gap-hover: 3px;             /* smaller edge on hover: pill grows to 8px */
+  --sb-thumb: color-mix(in srgb, var(--green) 42%, transparent);
+  --sb-thumb-hover: var(--green);
+  --sb-thumb-active: var(--green-hover);
+  --sb-min-length: 64px;           /* keeps the pill long, even on very tall pages */
+}
+
+/* Chrome, Edge, Safari, Opera: full pill styling */
+::-webkit-scrollbar {
+  width: var(--sb-size);
+  height: var(--sb-size);
+  background: transparent;
+}
+::-webkit-scrollbar-track,
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+::-webkit-scrollbar-button {
+  display: none;
+  width: 0;
+  height: 0;
+}
+::-webkit-scrollbar-thumb {
+  background-color: var(--sb-thumb);
+  border: var(--sb-gap) solid transparent;   /* transparent edge makes the thumb look slim */
+  background-clip: padding-box;
+  border-radius: 999px;                      /* pill shape */
+  transition: background-color .25s var(--ease-soft, ease), border-width .25s var(--ease-soft, ease);
+}
+::-webkit-scrollbar-thumb:vertical   { min-height: var(--sb-min-length); }
+::-webkit-scrollbar-thumb:horizontal { min-width: var(--sb-min-length); }
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--sb-thumb-hover);
+  border-width: var(--sb-gap-hover);
+}
+::-webkit-scrollbar-thumb:active {
+  background-color: var(--sb-thumb-active);
+}
+
+/* Firefox: it can't shape the pill, so it gets a thin themed bar instead */
+@supports not selector(::-webkit-scrollbar) {
+  html {
+    scrollbar-width: thin;
+    scrollbar-color: var(--sb-thumb) transparent;
+  }
+}
 :root {
   color-scheme: light;
   --page: #f8faf7;
@@ -710,3 +760,44 @@ body.drag-mode .code-surface { border-style: dashed; border-color: var(--green);
 @media (prefers-reduced-motion: reduce) {
   :root { --dur-soft: .01s; }
 }
+/* =========================================
+   ANIMATED PAGE SCROLLBAR (slides in / out from the right)
+   The class on <html> is added by script.js, so without JS the native bar stays.
+========================================= */
+html.has-custom-scrollbar { scrollbar-width: none; }
+html.has-custom-scrollbar::-webkit-scrollbar { display: none; }
+
+.page-scrollbar {
+  position: fixed; top: 6px; right: 0; bottom: 6px;
+  width: var(--sb-size, 14px);
+  z-index: 60;
+  /* hidden state = parked off-screen to the right */
+  opacity: 0; visibility: hidden; pointer-events: none;
+  transform: translateX(calc(100% + 8px));
+  transition:
+    transform .5s var(--ease-soft, ease),
+    opacity .35s var(--ease-soft, ease),
+    visibility 0s linear .5s;               /* hide only after the slide-out finishes */
+}
+.page-scrollbar.is-visible {
+  opacity: 1; visibility: visible; pointer-events: auto;
+  transform: none;
+  transition:
+    transform .5s var(--ease-soft, ease),
+    opacity .35s var(--ease-soft, ease),
+    visibility 0s;
+}
+.page-scrollbar-thumb {
+  position: absolute; top: 0;
+  left: var(--sb-gap, 4px); right: var(--sb-gap, 4px);
+  border-radius: 999px;
+  background: var(--sb-thumb);
+  will-change: transform;
+  transition: left .22s var(--ease-soft, ease), right .22s var(--ease-soft, ease), background-color .22s;
+}
+.page-scrollbar:hover .page-scrollbar-thumb,
+.page-scrollbar.is-dragging .page-scrollbar-thumb {
+  left: var(--sb-gap-hover, 3px); right: var(--sb-gap-hover, 3px);
+  background: var(--sb-thumb-hover);
+}
+.page-scrollbar.is-dragging .page-scrollbar-thumb { background: var(--sb-thumb-active); }
