@@ -21,6 +21,13 @@
   --sidebar-rail: 78px;
   --code-size: 15px;
   --code-line: 26px;
+  /* Soft blur system */
+  --scrim: 14 26 18;
+  --scrim-alpha: .26;
+  --blur-dialog: 7px;
+  --blur-drawer: 5px;
+  --ease-soft: cubic-bezier(.22, .61, .36, 1);
+  --dur-soft: .42s;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
 }
 
@@ -29,6 +36,8 @@
   --page: #131b17;
   --surface: #1a251f;
   --sidebar: #162019;
+  --scrim: 4 9 6;
+  --scrim-alpha: .46;
   --ink: #edf3ec;
   --muted: #a2b0a5;
   --border: #344439;
@@ -188,8 +197,42 @@ body.drag-mode .code-surface { border-style: dashed; border-color: var(--green);
 .saved-open { color: var(--green); font-size: 14px; font-weight: 600; padding-left: 0; }
 .delete-saved { color: var(--muted); }
 .delete-saved:hover { color: var(--error); }
-.app-dialog { width: min(480px, calc(100vw - 32px)); max-height: calc(100dvh - 40px); overflow: auto; color: var(--ink); background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 27px; box-shadow: 0 22px 90px rgb(0 0 0 / 18%); }
-.app-dialog::backdrop { background: rgb(14 26 18 / 32%); backdrop-filter: blur(3px); }
+.app-dialog {
+  width: min(480px, calc(100vw - 32px)); max-height: calc(100dvh - 40px); overflow: auto;
+  color: var(--ink); background: var(--surface); border: 1px solid var(--border);
+  border-radius: 20px; padding: 27px; box-shadow: 0 22px 90px rgb(0 0 0 / 18%);
+  opacity: 0; transform: translateY(14px) scale(.975);
+  transition:
+    opacity var(--dur-soft) var(--ease-soft),
+    transform var(--dur-soft) var(--ease-soft),
+    overlay var(--dur-soft) allow-discrete,
+    display var(--dur-soft) allow-discrete;
+}
+.app-dialog[open] { opacity: 1; transform: none; }
+@starting-style { .app-dialog[open] { opacity: 0; transform: translateY(14px) scale(.975); } }
+.app-dialog::backdrop {
+  background: rgb(var(--scrim) / 0);
+  -webkit-backdrop-filter: blur(0px) saturate(1);
+  backdrop-filter: blur(0px) saturate(1);
+  transition:
+    background-color var(--dur-soft) var(--ease-soft),
+    -webkit-backdrop-filter var(--dur-soft) var(--ease-soft),
+    backdrop-filter var(--dur-soft) var(--ease-soft),
+    overlay var(--dur-soft) allow-discrete,
+    display var(--dur-soft) allow-discrete;
+}
+.app-dialog[open]::backdrop {
+  background: rgb(var(--scrim) / var(--scrim-alpha));
+  -webkit-backdrop-filter: blur(var(--blur-dialog)) saturate(1.08);
+  backdrop-filter: blur(var(--blur-dialog)) saturate(1.08);
+}
+@starting-style {
+  .app-dialog[open]::backdrop {
+    background: rgb(var(--scrim) / 0);
+    -webkit-backdrop-filter: blur(0px) saturate(1);
+    backdrop-filter: blur(0px) saturate(1);
+  }
+}
 .dialog-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
 .dialog-heading h2 { font-size: 22px; letter-spacing: -.5px; margin: 0; }
 .dialog-description { color: var(--muted); font-size: 15px; line-height: 1.75; margin: 0 0 24px; }
@@ -233,10 +276,32 @@ body.drag-mode .code-surface { border-style: dashed; border-color: var(--green);
   .tips-button { font-size: 16px; }
   .desktop-menu { display: none; }
   .mobile-menu { display: block; }
-  .sidebar, body.sidebar-collapsed .sidebar { width: 260px; transform: translateX(-100%); visibility: hidden; transition: transform .25s ease, visibility .25s; z-index: 50; }
+  .sidebar, body.sidebar-collapsed .sidebar { width: 260px; transform: translateX(-100%); visibility: hidden; transition: transform var(--dur-soft) var(--ease-soft), visibility 0s linear var(--dur-soft); z-index: 50; box-shadow: none; }
   body.sidebar-open { overflow: hidden; }
-  body.sidebar-open .sidebar { transform: translateX(0); visibility: visible; }
-  .sidebar-backdrop { display: block; position: fixed; z-index: 40; inset: var(--header-height) 0 0; border: 0; background: rgb(15 26 19 / 32%); backdrop-filter: blur(2px); }
+  body.sidebar-open .sidebar { transform: translateX(0); visibility: visible; transition: transform var(--dur-soft) var(--ease-soft), visibility 0s; box-shadow: 8px 0 40px rgb(var(--scrim) / .18); }
+  .sidebar-backdrop {
+    display: block; position: fixed; z-index: 40; inset: var(--header-height) 0 0; border: 0; padding: 0;
+    background: linear-gradient(90deg, rgb(var(--scrim) / calc(var(--scrim-alpha) + .08)), rgb(var(--scrim) / var(--scrim-alpha)));
+    opacity: 0; visibility: hidden; pointer-events: none;
+    -webkit-backdrop-filter: blur(0px) saturate(1);
+    backdrop-filter: blur(0px) saturate(1);
+    will-change: opacity, backdrop-filter;
+    transition:
+      opacity var(--dur-soft) var(--ease-soft),
+      -webkit-backdrop-filter var(--dur-soft) var(--ease-soft),
+      backdrop-filter var(--dur-soft) var(--ease-soft),
+      visibility 0s linear var(--dur-soft);
+  }
+  body.sidebar-open .sidebar-backdrop {
+    opacity: 1; visibility: visible; pointer-events: auto;
+    -webkit-backdrop-filter: blur(var(--blur-drawer)) saturate(1.06);
+    backdrop-filter: blur(var(--blur-drawer)) saturate(1.06);
+    transition:
+      opacity var(--dur-soft) var(--ease-soft),
+      -webkit-backdrop-filter var(--dur-soft) var(--ease-soft),
+      backdrop-filter var(--dur-soft) var(--ease-soft),
+      visibility 0s;
+  }
   .mobile-sidebar-heading { display: flex; align-items: center; justify-content: space-between; padding: 19px 16px 0 24px; font-size: 14px; color: var(--muted); }
   .nav-list, body.sidebar-collapsed .nav-list { padding: 16px 16px 0; }
   .nav-item, body.sidebar-collapsed .nav-item { gap: 22px; padding: 18px 23px; }
@@ -641,3 +706,7 @@ body.drag-mode .code-surface { border-style: dashed; border-color: var(--green);
 @media (max-width: 560px) { .term-send { min-width: 64px; padding: 0 12px; } .term-stop { padding: 0 12px; } }
 @media (max-width: 380px) { .language-pair { max-width: 158px; } .run-button span { display: none; } }
 @media (prefers-reduced-motion: reduce) { .term-status::before { animation: none; } }
+
+@media (prefers-reduced-motion: reduce) {
+  :root { --dur-soft: .01s; }
+}

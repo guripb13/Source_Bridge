@@ -81,7 +81,7 @@
     const mobile = mobileQuery.matches;
     document.body.classList.toggle("sidebar-collapsed", !mobile && desktopCollapsed);
     document.body.classList.toggle("sidebar-open", mobile && mobileOpen);
-    $("sidebarBackdrop").hidden = !(mobile && mobileOpen);
+   
     sidebar.inert = mobile && !mobileOpen;
     if (mobile && !mobileOpen) sidebar.setAttribute("aria-hidden", "true");
     else sidebar.removeAttribute("aria-hidden");
