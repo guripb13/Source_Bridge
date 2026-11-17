@@ -615,7 +615,8 @@
     setupView = "languages";
     pendingSource = languagesConfirmed ? sourceLanguage.value : "";
     pendingTarget = languagesConfirmed && language.value !== pendingSource ? language.value : "";
-    $("languageBackLabel").textContent = languagesConfirmed ? "Back to workspace" : "Back";
+        // Back is only offered on the first visit (it returns to the welcome screen)
+    $("languageBack").hidden = languagesConfirmed;
     renderLanguageChoices();
   }
   document.querySelectorAll('input[name="sourceChoice"]').forEach((input) => {
