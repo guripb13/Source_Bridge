@@ -775,7 +775,6 @@ html.theme-vt .theme-button .icon, html.theme-switching .theme-button .icon { tr
 }
 .term-title { display: inline-flex; align-items: center; gap: 8px; min-width: 0; font-size: 13.5px; font-weight: 600; color: var(--term-text); }
 .term-title-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-
 .term-state {
   flex: 0 0 auto; padding: 3px 10px; border: 1px solid var(--term-line); border-radius: 99px;
   font-size: 12px; font-weight: 600; color: var(--term-dim); background: transparent; white-space: nowrap;
@@ -863,6 +862,34 @@ html.theme-vt .theme-button .icon, html.theme-switching .theme-button .icon { tr
 .term-row.is-idle .term-caret, .term-row.is-idle .term-input, .term-row.is-idle .term-send { display: none; }
 .term-row.is-idle .term-status { display: flex; }
 
+/* ---- Open / close motion and button polish ---- */
+.run-output { transform-origin: top center; }
+.run-output.is-entering, .run-output.is-leaving { overflow: hidden; }
+.run-output.is-leaving { pointer-events: none; }
+
+/* Bar controls and body fade/slide in one after another while the panel opens */
+@keyframes term-item-in { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+.run-output.is-entering .term-bar > * { animation: term-item-in .36s var(--ease-soft) both; }
+.run-output.is-entering .term-bar > :nth-child(1) { animation-delay: .06s; }
+.run-output.is-entering .term-bar > :nth-child(2) { animation-delay: .11s; }
+.run-output.is-entering .term-bar-actions { animation-delay: .16s; }
+.run-output.is-entering .term-screen, .run-output.is-entering .term-row { animation: term-item-in .4s var(--ease-soft) .14s both; }
+
+/* Button motion: soft lift on hover, press on click, icons that react */
+.term-btn, .term-send, .term-stop { will-change: transform; }
+.term-btn:hover:not(:disabled), .term-send:hover:not(:disabled), .term-stop:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 3px 10px rgb(0 0 0 / 10%); }
+.term-btn:active:not(:disabled), .term-send:active:not(:disabled), .term-stop:active:not(:disabled) { transform: translateY(0) scale(.97); box-shadow: none; }
+.term-btn:disabled { opacity: .5; cursor: default; }
+.term-btn .icon { transition: transform .22s var(--ease-soft); }
+.term-rerun:hover:not(:disabled) .icon { transform: translateX(2px) scale(1.1); }
+.term-close:hover:not(:disabled) .icon { transform: rotate(90deg); }
+.term-state { transition: color .25s, background-color .25s, border-color .25s; }
+.run-button { transition: background .18s, transform .18s var(--ease-soft); }
+.run-button:hover:not(:disabled) { transform: translateY(-1px); }
+.run-button:active:not(:disabled) { transform: translateY(0) scale(.96); }
+.run-button .icon { transition: transform .2s var(--ease-soft); }
+.run-button:hover:not(:disabled) .icon { transform: scale(1.12); }
+
 @media (max-width: 1250px) and (min-width: 901px) { .run-button span { display: none; } .run-button { padding: 6px; } }
 @media (max-width: 900px) { .run-button span { display: none; } .run-button { padding: 7px; } }
 @media (max-width: 760px) {
@@ -872,7 +899,12 @@ html.theme-vt .theme-button .icon, html.theme-switching .theme-button .icon { tr
 }
 @media (max-width: 560px) { .term-send { min-width: 64px; padding: 0 12px; } .term-stop { padding: 0 12px; } .term-btn-text { display: none; } .term-btn { width: 34px; padding: 0; } .term-bar { gap: 8px; } .term-row { padding: 10px; gap: 6px; } }
 @media (max-width: 380px) { .language-pair { max-width: 158px; } .run-button span { display: none; } }
-@media (prefers-reduced-motion: reduce) { .term-status::before { animation: none; } .term-btn, .term-send, .term-stop { transition: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .term-status::before { animation: none; }
+  .term-btn, .term-send, .term-stop, .term-btn .icon, .run-button, .run-button .icon { transition: none; }
+  .run-output.is-entering .term-bar > *, .run-output.is-entering .term-screen, .run-output.is-entering .term-row { animation: none; }
+  .term-btn:hover:not(:disabled), .term-send:hover:not(:disabled), .term-stop:hover:not(:disabled), .run-button:hover:not(:disabled) { transform: none; }
+}
 
 @media (prefers-reduced-motion: reduce) {
   :root { --dur-soft: .01s; }

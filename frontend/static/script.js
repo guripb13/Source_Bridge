@@ -657,6 +657,7 @@
       const panel = $("outputRunOutput");
       const stopRun = liveStops.get(panel);
       if (stopRun) stopRun();
+      cancelPanelAnim(panel);
       panel.hidden = true;
       panel.textContent = "";
       output.value = "";
@@ -922,6 +923,63 @@
     return node;
   }
 
+  // ---------- PANEL OPEN / CLOSE ANIMATION (height 0 <-> real height) ----------
+  // The panel is measured at its real size, then the Web Animations API moves its height, top margin
+  // and opacity between 0 and that size. Nothing is left behind: when the animation ends the panel
+  // goes back to normal auto height, so growing output never gets clipped.
+  const panelAnims = new WeakMap();   // panel -> running animation (so a new run/close can replace it)
+  const OPEN_MS = 380, CLOSE_MS = 300;
+  const EASE_OPEN = "cubic-bezier(.22, .61, .36, 1)", EASE_CLOSE = "cubic-bezier(.4, 0, .2, 1)";
+  function motionAllowed() {
+    return typeof Element.prototype.animate === "function" && !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  }
+  function cancelPanelAnim(panel) {
+    const running = panelAnims.get(panel);
+    panelAnims.delete(panel);
+    panel.classList.remove("is-entering", "is-leaving");
+    if (running) running.cancel();
+  }
+  function openPanel(panel) {
+    cancelPanelAnim(panel);
+    if (!motionAllowed()) return;
+    const height = panel.getBoundingClientRect().height;
+    const margin = parseFloat(getComputedStyle(panel).marginTop) || 0;
+    panel.classList.add("is-entering");
+    const anim = panel.animate(
+      [{ height: "0px", marginTop: "0px", opacity: 0 }, { height: `${height}px`, marginTop: `${margin}px`, opacity: 1 }],
+      { duration: OPEN_MS, easing: EASE_OPEN }
+    );
+    panelAnims.set(panel, anim);
+    anim.onfinish = () => {
+      if (panelAnims.get(panel) !== anim) return;
+      panelAnims.delete(panel);
+      panel.classList.remove("is-entering");
+      // Make sure the whole terminal is on screen once it has finished opening.
+      panel.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    };
+  }
+  function closePanel(panel, done) {
+    cancelPanelAnim(panel);
+    const finishClose = () => { panel.hidden = true; if (done) done(); };
+    if (panel.hidden) { if (done) done(); return; }
+    if (!motionAllowed()) { finishClose(); return; }
+    const height = panel.getBoundingClientRect().height;
+    const margin = parseFloat(getComputedStyle(panel).marginTop) || 0;
+    panel.classList.add("is-leaving");
+    const anim = panel.animate(
+      [{ height: `${height}px`, marginTop: `${margin}px`, opacity: 1 }, { height: "0px", marginTop: "0px", opacity: 0 }],
+      { duration: CLOSE_MS, easing: EASE_CLOSE, fill: "forwards" }
+    );
+    panelAnims.set(panel, anim);
+    anim.onfinish = () => {
+      if (panelAnims.get(panel) !== anim) return;
+      panelAnims.delete(panel);
+      finishClose();
+      anim.cancel();
+      panel.classList.remove("is-leaving");
+    };
+  }
+
   async function runCode(code, execLanguage, button, panel) {
     if (!code.trim() || button.disabled) return;
 
@@ -929,6 +987,8 @@
     if (previousStop) previousStop();
 
     button.disabled = true;
+    const wasHidden = panel.hidden;          // only a panel that was closed animates open
+    cancelPanelAnim(panel);
     panel.hidden = false;
     panel.classList.remove("has-error");
     panel.classList.add("is-terminal");
@@ -1003,12 +1063,15 @@
     closeButton.addEventListener("click", () => {
       const stop = liveStops.get(panel);
       if (stop) stop();
-      panel.hidden = true;
-      panel.textContent = "";
-      panel.classList.remove("has-error", "is-terminal");
+      closeButton.disabled = true;           // no double clicks while it collapses
+      rerunButton.disabled = true;
       button.disabled = false;
       refreshButtons();
-      button.focus();
+      button.focus({ preventScroll: true });
+      closePanel(panel, () => {
+        panel.textContent = "";
+        panel.classList.remove("has-error", "is-terminal");
+      });
     });
     rerunButton.addEventListener("click", () => runCode(code, execLanguage, button, panel));
 
@@ -1024,6 +1087,7 @@
       rerunButton.hidden = true;
       row.hidden = true;
       button.disabled = false;
+      if (wasHidden) openPanel(panel);
       return;
     }
 
@@ -1134,6 +1198,7 @@
 
     showText("");
     row.hidden = false;
+    if (wasHidden) openPanel(panel);         // measured here, after the panel's content is built
     execute(false);
   }
 
