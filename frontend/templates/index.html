@@ -22,6 +22,8 @@
     <symbol id="i-moon" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z"/></symbol>
     <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><path d="M12 1.75V4M12 20V22.25M1.75 12H4M20 12H22.25M6.343 6.343L4.752 4.752M17.657 6.343L19.248 4.752M6.343 17.657L4.752 19.248M17.657 17.657L19.248 19.248"/></symbol>
     <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="7" r="4"/><path d="M3 22v-2a9 9 0 0 1 18 0v2Z"/></symbol>
+    <symbol id="i-history" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8m0-5v5h5m4-1v5l3 2"/></symbol>
+    <symbol id="i-logout" viewBox="0 0 24 24"><path d="M9 21H5a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h4m7 5 4 4-4 4m4-4H9"/></symbol>
     <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 2H5a1 1 0 0 0-1 1v18a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V8Zm0 0v6h6"/></symbol>
     <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="7" width="12" height="15" rx="2"/><path d="M5 17H4a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1h11a1 1 0 0 1 1 1v1"/></symbol>
     <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
@@ -60,8 +62,8 @@
       <button type="button" class="icon-button theme-button" id="themeToggle" aria-label="Switch to dark mode" title="Switch to dark mode">
         <svg class="icon" aria-hidden="true"><use id="themeIcon" href="#i-moon"/></svg>
       </button>
-      <button type="button" class="sign-in-button" data-dialog="signInDialog" aria-label="Sign in information">
-        <svg class="icon" aria-hidden="true"><use href="#i-user"/></svg><span>Sign In</span>
+      <button type="button" class="sign-in-button" id="accountButton" aria-haspopup="dialog" aria-label="Sign in or create an account">
+        <svg class="icon" aria-hidden="true"><use href="#i-user"/></svg><span id="accountLabel">Sign In</span>
       </button>
     </div>
   </header>
@@ -95,6 +97,17 @@
         </svg>
         <span class="nav-label">Saved</span>
         <span class="saved-count" id="savedCount" hidden>0</span>
+      </button>
+      <button type="button"
+              class="nav-item history"
+              id="historyNav"
+              data-view="history"
+              title="Translation history">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path class="history-arc" d="M3 12a9 9 0 1 0 3-6.7L3 8m0-5v5h5"/>
+          <path class="history-hands" d="M12 7v5l3 2"/>
+        </svg>
+        <span class="nav-label">History</span>
       </button><div class="sidebar-divider"></div>
       <button type="button" class="nav-item" data-dialog="settingsDialog" title="Settings">
         <svg class="icon" aria-hidden="true"><use href="#i-settings"/></svg><span class="nav-label">Settings</span>
@@ -203,7 +216,7 @@
             <h2 id="outputTitle"><svg class="icon" aria-hidden="true"><use href="#i-file"/></svg><span class="editor-title">Translated<span class="title-extra"> Code</span></span><span class="language-badge" id="targetLanguageBadge" hidden></span></h2>
             <div class="editor-actions">
               <button type="button" class="text-button run-button" id="runOutput" aria-label="Run translated code" disabled><svg class="icon" aria-hidden="true"><use href="#i-play"/></svg><span>Run</span></button>
-              <button type="button" class="icon-button save-button" id="saveButton" title="Save translation in this browser" aria-label="Save translation in this browser" aria-pressed="false" disabled><svg class="icon" aria-hidden="true"><use href="#i-bookmark"/></svg></button>
+              <button type="button" class="icon-button save-button" id="saveButton" title="Save translation" aria-label="Save translation" aria-pressed="false" disabled><svg class="icon" aria-hidden="true"><use href="#i-bookmark"/></svg></button>
               <button type="button" class="text-button copy-button" id="copyOutput" aria-label="Copy translated code" disabled><svg class="icon" aria-hidden="true"><use href="#i-copy"/></svg><span>Copy</span></button>
             </div>
           </div>
@@ -226,15 +239,38 @@
     </section>
 
     <section id="savedView" aria-labelledby="savedTitle" hidden>
-      <div class="page-intro"><h1 id="savedTitle">Your saved translations</h1><p>Code you choose to keep, saved in this browser.</p></div>
+      <div class="page-intro"><h1 id="savedTitle">Your saved translations</h1><p id="savedIntro">Code you choose to keep, saved in this browser. Sign in to keep it with your account instead.</p></div>
       <div class="saved-empty" id="savedEmpty"><svg class="icon" aria-hidden="true"><use href="#i-bookmark"/></svg><h2>A place for your code</h2><p>Use the bookmark beside a translation to save it here.</p><button type="button" class="pill-button" data-view="translate">Start translating<svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></button></div>
       <div class="saved-list" id="savedList"></div>
+    </section>
+
+    <section id="historyView" aria-labelledby="historyTitle" hidden>
+      <div class="page-intro"><h1 id="historyTitle">Your translation history</h1><p id="historyIntro">Every translation you run while signed in is recorded here.</p></div>
+
+      <!-- Shown to visitors who are not signed in -->
+      <div class="saved-empty" id="historySignedOut" hidden><svg class="icon" aria-hidden="true"><use href="#i-history"/></svg><h2>Sign in to see your history</h2><p>Your translations, whether they finished or failed, are kept with your account.</p><button type="button" class="pill-button" id="historySignInButton">Sign in<svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></button></div>
+
+      <div id="historySignedIn" hidden>
+        <div class="history-toolbar">
+          <div class="filter-chips" role="group" aria-label="Filter history">
+            <button type="button" class="filter-chip is-active" data-history-filter="all" aria-pressed="true">All</button>
+            <button type="button" class="filter-chip" data-history-filter="completed" aria-pressed="false">Completed</button>
+            <button type="button" class="filter-chip" data-history-filter="failed" aria-pressed="false">Failed</button>
+            <button type="button" class="filter-chip" data-history-filter="saved" aria-pressed="false">Saved</button>
+          </div>
+          <span class="history-count" id="historyCount" role="status" aria-live="polite"></span>
+        </div>
+        <div class="saved-empty" id="historyEmpty" hidden><svg class="icon" aria-hidden="true"><use href="#i-history"/></svg><h2 id="historyEmptyTitle">Nothing here yet</h2><p id="historyEmptyText">Translate some code and it will show up here.</p><button type="button" class="pill-button" data-view="translate">Start translating<svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></button></div>
+        <p class="history-error" id="historyError" role="alert" hidden></p>
+        <div class="saved-list history-list" id="historyList"></div>
+        <div class="history-more"><button type="button" class="pill-button" id="historyMore" hidden>Load more</button></div>
+      </div>
     </section>
   </main>
 
   <dialog class="app-dialog" id="tipsDialog" aria-labelledby="tipsTitle">
     <div class="dialog-heading"><h2 id="tipsTitle">A few helpful tips</h2><button type="button" class="icon-button" data-close-dialog aria-label="Close tips"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></button></div>
-    <ul class="tips-list"><li><strong>Start with your code.</strong> Paste it into the source editor or upload a text-based code file.</li><li><strong>Choose your languages.</strong> Pick a source and a target from Python, Java, C and C++. Use Change languages in the workspace to switch at any time.</li><li><strong>Keep writing.</strong> Enter creates a new line. Ctrl + Enter (⌘ + Enter on Mac) starts a translation.</li><li><strong>Take it with you.</strong> Copy, download, or bookmark a finished translation. Hold Alt and drag code into another app.</li><li><strong>Review the result.</strong> Check and test translated code before using it in your project.</li></ul>
+    <ul class="tips-list"><li><strong>Start with your code.</strong> Paste it into the source editor or upload a text-based code file.</li><li><strong>Choose your languages.</strong> Pick a source and a target from Python, Java, C and C++. Use Change languages in the workspace to switch at any time.</li><li><strong>Keep writing.</strong> Enter creates a new line. Ctrl + Enter (⌘ + Enter on Mac) starts a translation.</li><li><strong>Take it with you.</strong> Copy, download, or bookmark a finished translation. Hold Alt and drag code into another app.</li><li><strong>Keep a history.</strong> Create an account or sign in and every translation, finished or not, is recorded under History. Bookmarked ones also live in Saved.</li><li><strong>Review the result.</strong> Check and test translated code before using it in your project.</li></ul>
   </dialog>
 
   <dialog class="app-dialog" id="settingsDialog" aria-labelledby="settingsTitle">
@@ -245,9 +281,65 @@
     <label class="setting-row" for="lineNumbersSetting"><span>Show line numbers</span><input type="checkbox" id="lineNumbersSetting" checked></label>
   </dialog>
 
-  <dialog class="app-dialog" id="signInDialog" aria-labelledby="signInTitle">
-    <div class="dialog-heading"><h2 id="signInTitle">You're welcome here</h2><button type="button" class="icon-button" data-close-dialog aria-label="Close sign in information"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></button></div>
-    <p class="dialog-description">Sign-in isn't available yet. You can translate, download, and save code in this browser without an account.</p><button type="button" class="pill-button dialog-primary" data-close-dialog>Continue translating<svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></button>
+  <!-- Sign in / create account. One form, two modes (switched by the tabs). -->
+  <dialog class="app-dialog auth-dialog" id="authDialog" aria-labelledby="authTitle">
+    <div class="dialog-heading"><h2 id="authTitle">Welcome back</h2><button type="button" class="icon-button" data-close-dialog aria-label="Close sign in"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></button></div>
+    <div class="auth-tabs" role="tablist" aria-label="Account">
+      <button type="button" role="tab" class="auth-tab is-active" id="tabLogin" data-auth-mode="login" aria-selected="true" aria-controls="authForm">Sign in</button>
+      <button type="button" role="tab" class="auth-tab" id="tabSignup" data-auth-mode="signup" aria-selected="false" aria-controls="authForm" tabindex="-1">Create account</button>
+    </div>
+    <p class="dialog-description auth-lead" id="authLead">Sign in to keep a history of your translations and save the ones you like.</p>
+    <form class="auth-form" id="authForm" novalidate>
+      <label class="auth-field" id="fieldUsername" for="authUsername" hidden>
+        <span>Username</span>
+        <input type="text" id="authUsername" name="username" autocomplete="username" autocapitalize="off" spellcheck="false" maxlength="30" placeholder="3-30 letters, numbers, . _ -">
+        <small class="field-error" id="errorUsername" role="alert" hidden></small>
+      </label>
+      <label class="auth-field" id="fieldIdentifier" for="authIdentifier">
+        <span>Username or email</span>
+        <input type="text" id="authIdentifier" name="identifier" autocomplete="username" autocapitalize="off" spellcheck="false" maxlength="254" placeholder="you@example.com">
+        <small class="field-error" id="errorIdentifier" role="alert" hidden></small>
+      </label>
+      <label class="auth-field" id="fieldEmail" for="authEmail" hidden>
+        <span>Email</span>
+        <input type="email" id="authEmail" name="email" autocomplete="email" autocapitalize="off" spellcheck="false" maxlength="254" placeholder="you@example.com">
+        <small class="field-error" id="errorEmail" role="alert" hidden></small>
+      </label>
+      <label class="auth-field" for="authPassword">
+        <span>Password</span>
+        <input type="password" id="authPassword" name="password" autocomplete="current-password" maxlength="128" placeholder="At least 8 characters">
+        <small class="field-error" id="errorPassword" role="alert" hidden></small>
+      </label>
+      <label class="auth-show"><input type="checkbox" id="authShowPassword"><span>Show password</span></label>
+      <p class="auth-message" id="authMessage" role="alert" hidden></p>
+      <button type="submit" class="pill-button dialog-primary auth-submit" id="authSubmit"><span id="authSubmitLabel">Sign in</span><svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></button>
+    </form>
+    <p class="auth-switch"><span id="authSwitchText">New here?</span> <button type="button" class="link-button" id="authSwitch">Create an account</button></p>
+    <p class="auth-note">You can keep translating without an account. Nothing is stored for visitors who are not signed in.</p>
+  </dialog>
+
+  <!-- Shown instead of the sign-in form when someone is signed in. -->
+  <dialog class="app-dialog" id="accountDialog" aria-labelledby="accountTitle">
+    <div class="dialog-heading"><h2 id="accountTitle">Your account</h2><button type="button" class="icon-button" data-close-dialog aria-label="Close account"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></button></div>
+    <div class="account-card">
+      <span class="account-avatar" id="accountAvatar" aria-hidden="true">?</span>
+      <div class="account-who"><strong id="accountName">username</strong><span id="accountEmail">email</span><small id="accountSince"></small></div>
+    </div>
+    <div class="account-actions">
+      <button type="button" class="pill-button" id="accountHistory"><svg class="icon" aria-hidden="true"><use href="#i-history"/></svg><span>View history</span></button>
+      <button type="button" class="pill-button" id="accountSignOut"><svg class="icon" aria-hidden="true"><use href="#i-logout"/></svg><span>Sign out</span></button>
+    </div>
+    <div class="danger-zone">
+      <button type="button" class="link-button danger-link" id="deleteToggle" aria-expanded="false" aria-controls="deleteForm">Delete my account</button>
+      <form id="deleteForm" class="delete-form" hidden novalidate>
+        <p>This permanently deletes your account and your whole translation history. It can't be undone.</p>
+        <label class="auth-field" for="deletePassword"><span>Confirm with your password</span>
+          <input type="password" id="deletePassword" autocomplete="current-password" maxlength="128">
+        </label>
+        <p class="auth-message" id="deleteMessage" role="alert" hidden></p>
+        <button type="submit" class="pill-button danger-button" id="deleteSubmit">Delete account</button>
+      </form>
+    </div>
   </dialog>
   <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 </body>

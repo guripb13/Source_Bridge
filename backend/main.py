@@ -1,10 +1,26 @@
 """
-main.py - Source Bridge backend (stateless).
+main.py - Source Bridge backend.
 
-Files that must sit next to this one:  compiler.py, convertibility.py
+Files that must sit next to this one:  compiler.py, convertibility.py, database.py
 
-WORKFLOW OF /send  (every request is independent, nothing is kept between requests)
+ACCOUNTS (database.py -> users.db)
+    POST /signup   create an account and sign in        {username, email, password}
+    POST /login    sign in with username OR email       {identifier, password}
+    POST /logout   sign out
+    GET  /me       who is signed in?                    -> {authenticated, user}
+    DELETE /account  delete the account + its history   {password}
+    Signing in puts the user id in a signed, HttpOnly cookie (no server-side session storage,
+    so it also works on serverless hosting). Visitors who are NOT signed in use the app exactly
+    as before and nothing about them is stored.
 
+HISTORY (database.py -> translations.db)  - signed-in users only
+    GET    /translations              list (add ?saved=1 for bookmarked only, ?before_id= to page)
+    GET    /translations/<id>         one translation with the full source + translated code
+    POST   /translations/<id>/save    bookmark it   (body {"saved": false} un-bookmarks)
+    DELETE /translations/<id>         remove it
+
+WORKFLOW OF /send
+    0. A row is recorded as 'pending' for signed-in users (language pair + source code).
     1. COMPILER GATE      compiler.py   - the source code is compiled AND run once, hidden
                                           from the user. Compile error, crash (non-zero exit)
                                           or timeout  ->  stop here, the AI is NOT called.
@@ -13,9 +29,11 @@ WORKFLOW OF /send  (every request is independent, nothing is kept between reques
                                           No -> stop here, the AI is NOT called.
     3. TRANSLATION API    Gemini        - called ONLY if steps 1 and 2 both passed. The answer
                                           is streamed back chunk by chunk.
+    The row ends as 'completed' (with the translated code) or 'failed' (with the step that
+    failed and why). If the browser closes the stream early the row is marked 'failed' too.
+    Any database problem is only logged: the translation itself still works.
 
 WORKFLOW OF /execute (Run button) - STATELESS "interactive" input
-
     The page sends the whole program + every answer typed so far. compiler.run_code starts the
     program from the beginning with those answers on stdin. If the program wants MORE input it
     stops itself and we answer  needs_input: true  (+ which variable asked and what was
@@ -24,16 +42,20 @@ WORKFLOW OF /execute (Run button) - STATELESS "interactive" input
     (This replaces interactive.py's live sessions, which keep processes in server memory and
     therefore are not stateless - so interactive.py is deliberately not registered here.)
 """
+import functools
 import json
 import os
 import re
+import sqlite3
 from concurrent.futures import TimeoutError as FutureTimeoutError
+from datetime import timedelta
 
-from flask import Flask, Response, jsonify, render_template, request
+from flask import Flask, Response, g, jsonify, render_template, request, session
 from google import genai
 from google.genai import types
 
 import compiler                                   # step 1: compile + run
+import database as db                             # users.db + translations.db
 from convertibility import check_convertible      # step 2: source -> target allowed?
 
 # --------------------------------------------------------------------------
@@ -63,8 +85,20 @@ app = Flask(
     ),
 )
 
-# Rate limiting protects /execute (it runs user code) and the paid AI call.
-# Optional: if flask-limiter is not installed the app still runs, just unlimited.
+# Create users.db / translations.db on first start (does nothing if they already exist).
+db.init_db()
+
+app.config.update(
+    SECRET_KEY=db.get_secret_key(),               # SECRET_KEY env var, else generated + kept in users.db
+    SESSION_COOKIE_HTTPONLY=True,                 # JavaScript can't read the login cookie
+    SESSION_COOKIE_SAMESITE="Lax",                # not sent on cross-site POSTs (CSRF protection)
+    SESSION_COOKIE_SECURE=bool(os.environ.get("VERCEL")) or os.environ.get("COOKIE_SECURE") == "1",
+    PERMANENT_SESSION_LIFETIME=timedelta(days=30),
+)
+
+# Rate limiting protects /execute (it runs user code), the paid AI call and the login forms.
+# Optional: if flask-limiter is not installed the app still runs, just unlimited
+# (accounts are still protected by the temporary lock after repeated wrong passwords).
 try:
     from flask_limiter import Limiter
     from flask_limiter.util import get_remote_address
@@ -85,6 +119,90 @@ client = genai.Client(api_key=API_KEY)
 
 MAX_SOURCE_CHARS = compiler.MAX_CODE_CHARS
 GATE_TIMEOUT = compiler.COMPILE_TIMEOUT + compiler.RUN_TIMEOUT + 10
+
+
+# --------------------------------------------------------------------------
+# Small helpers: JSON replies, who is signed in, safe database calls
+# --------------------------------------------------------------------------
+def reply(payload, status=200):
+    """JSON answer that browsers must never cache (it can contain account data)."""
+    response = jsonify(payload)
+    response.status_code = status
+    response.headers["Cache-Control"] = "no-store"
+    return response
+
+
+def json_body():
+    data = request.get_json(silent=True) if request.is_json else None
+    return data if isinstance(data, dict) else None
+
+
+def current_user():
+    """The signed-in user (dict) or None. Looked up once per request."""
+    if "user" not in g:
+        g.user = None
+        user_id = session.get("uid")
+        if user_id is not None:
+            try:
+                g.user = db.get_user(user_id)
+                if g.user is None:                 # account deleted / disabled -> drop the cookie
+                    session.pop("uid", None)
+            except Exception:
+                app.logger.exception("Could not look up the signed-in user.")
+    return g.user
+
+
+def start_session(user):
+    session.clear()                                # fresh cookie on every sign-in
+    session["uid"] = user["id"]
+    session.permanent = True
+    g.user = user
+
+
+def login_required(view):
+    @functools.wraps(view)
+    def wrapper(*args, **kwargs):
+        if current_user() is None:
+            return reply({"error": "Please sign in first."}, 401)
+        return view(*args, **kwargs)
+    return wrapper
+
+
+def _safe(function, *args):
+    """Database trouble must never break a translation: log it and carry on."""
+    try:
+        return function(*args)
+    except Exception:
+        app.logger.exception("Database call %s failed.", getattr(function, "__name__", "?"))
+        return None
+
+
+class Attempt:
+    """
+    One translation attempt in translations.db. For visitors who are not signed in (or when the
+    database is unavailable) every method quietly does nothing, so /send works either way.
+    """
+
+    def __init__(self, user_id, source_language, target_language, source_code):
+        self.user_id = user_id
+        self.row = None                            # {"id", "created_at"} once recorded
+        self.closed = False                        # row already completed or failed
+        self.stored = False                        # completed row really written
+        if user_id is not None:
+            self.row = _safe(db.start_translation, user_id, source_language,
+                             target_language, source_code)
+
+    def fail(self, stage, message):
+        if self.row and not self.closed:
+            self.closed = True
+            _safe(db.fail_translation, self.row["id"], self.user_id, stage, message)
+
+    def complete(self, target_code):
+        if self.row and not self.closed:
+            self.closed = True
+            self.stored = bool(_safe(db.complete_translation, self.row["id"],
+                                     self.user_id, target_code))
+        return self.stored
 
 
 # --------------------------------------------------------------------------
@@ -185,16 +303,102 @@ def home():
     return render_template("index.html")
 
 
+# --------------------------------------------------------------------------
+# Accounts: sign up / sign in / sign out / who am I / delete account
+# --------------------------------------------------------------------------
 @app.route("/me", methods=["GET"])
-def current_user():
-    """The app is stateless (no accounts here), so nobody is ever 'signed in'."""
-    response = jsonify(authenticated=False, user=None)
-    response.headers["Cache-Control"] = "no-store"
-    return response
+def me():
+    user = current_user()
+    return reply({"authenticated": user is not None, "user": user})
+
+
+@app.route("/signup", methods=["POST"])
+@limit("10 per minute")
+def signup():
+    data = json_body()
+    if data is None:
+        return reply({"error": "Send the request as JSON."}, 415)
+    user = db.register_user(data.get("username"), data.get("email"), data.get("password"))
+    start_session(user)                            # a new account is signed in straight away
+    return reply({"authenticated": True, "user": user}, 201)
+
+
+@app.route("/login", methods=["POST"])
+@limit("10 per minute")
+def login():
+    data = json_body()
+    if data is None:
+        return reply({"error": "Send the request as JSON."}, 415)
+    identifier = data.get("identifier") or data.get("username") or data.get("email")
+    user = db.authenticate(identifier, data.get("password"))
+    start_session(user)
+    return reply({"authenticated": True, "user": user})
+
+
+@app.route("/logout", methods=["POST"])
+def logout():
+    session.clear()
+    g.user = None
+    return reply({"authenticated": False, "user": None})
+
+
+@app.route("/account", methods=["DELETE"])
+@limit("5 per minute")
+@login_required
+def delete_account():
+    data = json_body()
+    if data is None:
+        return reply({"error": "Send the request as JSON."}, 415)
+    db.delete_user(current_user()["id"], data.get("password"))
+    session.clear()
+    g.user = None
+    return reply({"authenticated": False, "user": None, "deleted": True})
 
 
 # --------------------------------------------------------------------------
-# /send  -  compiler -> convertibility -> translation API
+# History: the signed-in user's translations
+# --------------------------------------------------------------------------
+@app.route("/translations", methods=["GET"])
+@login_required
+def list_translations():
+    items, next_before_id = db.list_translations(
+        current_user()["id"],
+        saved_only=request.args.get("saved") in ("1", "true"),
+        limit=request.args.get("limit", 20, type=int),
+        before_id=request.args.get("before_id", type=int),
+    )
+    return reply({"translations": items, "next_before_id": next_before_id})
+
+
+@app.route("/translations/<int:translation_id>", methods=["GET"])
+@login_required
+def get_translation(translation_id):
+    item = db.get_translation(translation_id, current_user()["id"])
+    if item is None:
+        return reply({"error": "Translation not found."}, 404)
+    return reply({"translation": item})
+
+
+@app.route("/translations/<int:translation_id>/save", methods=["POST"])
+@login_required
+def save_translation(translation_id):
+    data = json_body() or {}
+    wanted = data.get("saved", True) is not False
+    if not db.set_saved(translation_id, current_user()["id"], wanted):
+        return reply({"error": "Translation not found, or it did not finish."}, 404)
+    return reply({"id": translation_id, "is_saved": wanted})
+
+
+@app.route("/translations/<int:translation_id>", methods=["DELETE"])
+@login_required
+def delete_translation(translation_id):
+    if not db.delete_translation(translation_id, current_user()["id"]):
+        return reply({"error": "Translation not found."}, 404)
+    return reply({"id": translation_id, "deleted": True})
+
+
+# --------------------------------------------------------------------------
+# /send  -  compiler -> convertibility -> translation API  (+ history for signed-in users)
 # --------------------------------------------------------------------------
 @app.route("/send", methods=["POST"])
 @limit("20 per minute")
@@ -206,6 +410,9 @@ def send():
     )
     # The page opts in to JSON-lines events; other callers get plain text.
     use_events = request.headers.get("Accept", "").strip().lower() == "application/x-ndjson"
+    # Read now: the response is streamed after Flask has finished with this request.
+    user = current_user()
+    user_id = user["id"] if user else None
 
     def event(kind, **data):
         return json.dumps({"type": kind, **data}, ensure_ascii=True) + "\n"
@@ -214,7 +421,7 @@ def send():
         return event("error", message=message) if use_events else message
 
     def generate():
-        # ---- input checks ------------------------------------------------
+        # ---- input checks (nothing is recorded for these) ----------------
         if not text:
             yield fail("Please provide some source code.")
             return
@@ -225,46 +432,62 @@ def send():
             yield fail("Invalid language name.")
             return
 
-        # ---- STEP 1: compiler gate  (AI is NOT called on failure) --------
-        problem = check_source_code(text, source_language)
-        if problem:
-            yield fail(problem)
-            return
-
-        # ---- STEP 2: can source -> target be converted? ------------------
-        problem = check_convertible(source_language, language) if source_language else None
-        if problem:
-            yield fail(problem)
-            return
-
-        # ---- STEP 3: translation API (only reached when 1 and 2 passed) --
-        chunks = []
+        attempt = Attempt(user_id, source_language, language, text)   # row: 'pending'
         try:
-            for chunk in client.models.generate_content_stream(
-                model=MODEL,
-                contents=text,
-                config=types.GenerateContentConfig(system_instruction=build_task(language)),
-            ):
-                if chunk.text:
-                    chunks.append(chunk.text)
-                    yield event("chunk", text=chunk.text) if use_events else chunk.text
-        except Exception:
-            # Real error goes to the server log; the user gets a safe message.
-            app.logger.exception("Gemini request failed")
-            yield fail("Error: The translation service is currently unavailable. Please try again.")
-            return
+            # ---- STEP 1: compiler gate  (AI is NOT called on failure) ----
+            problem = check_source_code(text, source_language)
+            if problem:
+                attempt.fail("compiler", problem)
+                yield fail(problem)
+                return
 
-        translated = "".join(chunks)
-        if not translated.strip() or translated.lstrip().lower().startswith("error:"):
-            if use_events:                            # the AI refused / returned nothing
-                yield event("error",
-                            message=translated.strip() or "No code was returned. Please try again.")
-            return
+            # ---- STEP 2: can source -> target be converted? --------------
+            problem = check_convertible(source_language, language) if source_language else None
+            if problem:
+                attempt.fail("convertibility", problem)
+                yield fail(problem)
+                return
 
-        if use_events:
-            # Nothing is stored server-side, so there is no id to report.
-            yield event("complete", translation_id=None, user_id=None,
-                        is_saved=False, created_at=None, persisted=False)
+            # ---- STEP 3: translation API (only reached when 1 and 2 passed)
+            chunks = []
+            try:
+                for chunk in client.models.generate_content_stream(
+                    model=MODEL,
+                    contents=text,
+                    config=types.GenerateContentConfig(system_instruction=build_task(language)),
+                ):
+                    if chunk.text:
+                        chunks.append(chunk.text)
+                        yield event("chunk", text=chunk.text) if use_events else chunk.text
+            except Exception:
+                # Real error goes to the server log; the user gets a safe message.
+                app.logger.exception("Gemini request failed")
+                message = "Error: The translation service is currently unavailable. Please try again."
+                attempt.fail("translation", message)
+                yield fail(message)
+                return
+
+            translated = "".join(chunks)
+            if not translated.strip() or translated.lstrip().lower().startswith("error:"):
+                message = translated.strip() or "No code was returned. Please try again."
+                attempt.fail("translation", message)      # the AI refused / returned nothing
+                if use_events:
+                    yield event("error", message=message)
+                return
+
+            attempt.complete(translated)                  # row: 'completed'
+            if use_events:
+                yield event(
+                    "complete",
+                    translation_id=attempt.row["id"] if attempt.stored else None,
+                    user_id=user_id if attempt.stored else None,
+                    is_saved=False,
+                    created_at=attempt.row["created_at"] if attempt.stored else None,
+                    persisted=attempt.stored,
+                )
+        finally:
+            # Browser closed the stream / unexpected crash: don't leave the row 'pending'.
+            attempt.fail("interrupted", "The translation was stopped before it finished.")
 
     response = Response(generate(), mimetype="application/x-ndjson" if use_events else "text/plain")
     if use_events:
@@ -384,6 +607,30 @@ def execute_code():
     )
     response.headers["Cache-Control"] = "no-store"
     return response
+
+
+# --------------------------------------------------------------------------
+# Error handlers: database.py errors become clean JSON answers
+# --------------------------------------------------------------------------
+@app.errorhandler(db.DuplicateError)
+def duplicate_error(error):
+    return reply({"error": str(error), "field": error.field}, 409)
+
+
+@app.errorhandler(db.ValidationError)
+def validation_error(error):
+    return reply({"error": str(error), "field": error.field}, 400)
+
+
+@app.errorhandler(db.AuthError)
+def auth_error(error):
+    return reply({"error": str(error)}, 401)
+
+
+@app.errorhandler(sqlite3.Error)
+def database_failure(_error):
+    app.logger.exception("Database error.")
+    return reply({"error": "The database is unavailable right now. Please try again."}, 503)
 
 
 @app.errorhandler(429)

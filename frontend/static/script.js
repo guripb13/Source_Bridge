@@ -1,4 +1,8 @@
-/* Source Bridge frontend (with compiler support).
+/* Source Bridge frontend (with compiler support, accounts and history).
+ * Accounts:     GET /me, POST /signup, POST /login, POST /logout, DELETE /account (JSON, cookie session).
+ * History:      GET /translations[?saved=1&before_id=], GET /translations/<id>,
+ *               POST /translations/<id>/save {saved}, DELETE /translations/<id>   (signed-in users only).
+ *               Visitors who are not signed in keep the old behaviour: Saved lives in this browser.
  * POST /send    multipart fields: message, source_language, language. Streams NDJSON
  *               events (chunk / error / complete) because the request sends
  *               "Accept: application/x-ndjson". The server compiles + runs the source first.
@@ -24,7 +28,11 @@
     saved: "sourceBridge.saved.v1",
     sidebar: "sourceBridge.sidebarCollapsed"
   };
-  const endpoints = { execute: document.body.dataset.executeUrl || "/execute" };
+  const endpoints = {
+    execute: document.body.dataset.executeUrl || "/execute",
+    me: "/me", signup: "/signup", login: "/login", logout: "/logout", account: "/account",
+    translations: "/translations"
+  };
   // Languages compiler.py can build and run -> the name /execute expects.
   const executableLanguages = { python: "python", java: "java", c: "c", "c++": "cpp" };
   const extensionMap = {
@@ -69,6 +77,12 @@
   let pendingSource = "";
   let pendingTarget = "";
   let setupView = "welcome";
+  // Accounts (cookie session on the server) and the signed-in user's saved list + history page.
+  let user = null;                 // {id, username, email, created_at} while signed in, else null
+  let serverSaved = [];            // the signed-in user's bookmarked translations (list shape: previews only)
+  let serverSavedLoaded = false;
+  let authMode = "login";          // "login" | "signup"
+  const historyState = { items: [], next: null, filter: "all", loading: false, loaded: false, dirty: true, error: "", fills: 0 };
 
   function notify(message) {
     clearTimeout(toastTimer);
@@ -267,7 +281,8 @@
     welcome: 0,
     languages: 1,
     translate: 2,
-    saved: 3
+    saved: 3,
+    history: 4
   };
 
 
@@ -334,7 +349,8 @@
     const goingDown =
       viewOrder[view] > viewOrder[currentView];
           // Welcome, language selection and workspace are steps, so they slide sideways
-    const sideways = view !== "saved" && currentView !== "saved";
+    const listViews = ["saved", "history"];
+    const sideways = !listViews.includes(view) && !listViews.includes(currentView);
     const main = $("mainContent");
 
     currentView = view;
@@ -352,10 +368,12 @@
 
       $("savedView").hidden = view !== "saved";
 
-      // Welcome, language selection and the workspace all sit under the Translate tab.
-      const tab = view === "saved" ? "saved" : "translate";
+      $("historyView").hidden = view !== "history";
 
-      [$("translateNav"), $("savedNav")].forEach(button => {
+      // Welcome, language selection and the workspace all sit under the Translate tab.
+      const tab = view === "saved" || view === "history" ? view : "translate";
+
+      [$("translateNav"), $("savedNav"), $("historyNav")].forEach(button => {
 
         const current = button.dataset.view === tab;
 
@@ -368,9 +386,15 @@
         }
       });
 
-      // Refresh saved translations
+      // Refresh saved translations (signed-in users: ask the server again)
       if (view === "saved") {
         renderSaved();
+        if (user) loadServerSaved();
+      }
+
+      // History is loaded from the server whenever something may have changed
+      if (view === "history") {
+        openHistoryView();
       }
 
       // Line gutters cannot be measured while the workspace is hidden
@@ -533,11 +557,17 @@
     $("copyOutput").disabled = !output.value;
     $("downloadButton").disabled = !completedTranslation || loading;
     $("saveButton").disabled = !completedTranslation || loading;
-    const alreadySaved = completedTranslation && saved.some((entry) => entry.source === completedTranslation.source &&
-      entry.output === completedTranslation.output && entry.language === completedTranslation.language);
+    // Signed in and recorded on the server -> the bookmark is kept with the account, otherwise in this browser.
+    const onAccount = Boolean(user && completedTranslation && completedTranslation.serverId);
+    const alreadySaved = completedTranslation && (onAccount
+      ? serverSaved.some((entry) => entry.id === completedTranslation.serverId)
+      : saved.some((entry) => entry.source === completedTranslation.source &&
+          entry.output === completedTranslation.output && entry.language === completedTranslation.language));
     $("saveButton").classList.toggle("is-saved", Boolean(alreadySaved));
     $("saveButton").setAttribute("aria-pressed", String(Boolean(alreadySaved)));
-    $("saveButton").title = alreadySaved ? "Translation saved in this browser" : "Save translation in this browser";
+    $("saveButton").title = onAccount
+      ? (alreadySaved ? "Saved to your account. Click to remove." : "Save translation to your account")
+      : (alreadySaved ? "Translation saved in this browser" : "Save translation in this browser");
     $("saveButton").setAttribute("aria-label", $("saveButton").title);
   }
   function setLoading(loading) {
@@ -728,6 +758,7 @@
       const events = response.headers.get("content-type")?.includes("application/x-ndjson");
       let pendingText = "";
       let completed = false;
+      let completionInfo = null;     // the "complete" event: {translation_id, persisted, created_at, ...}
       function consumeLine(line) {
         if (!line.trim()) return;
         let item;
@@ -735,7 +766,7 @@
         catch (_) { throw new Error("The translation stream was interrupted. Please try again."); }
         if (item.type === "chunk" && typeof item.text === "string") appendOutput(item.text);
         else if (item.type === "error") throw new Error(item.message || "Translation failed. Please try again.");
-        else if (item.type === "complete") completed = true;
+        else if (item.type === "complete") { completed = true; completionInfo = item; }
       }
       function consumeText(text) {
         if (!events) { appendOutput(text); return; }
@@ -770,8 +801,17 @@
       // Existing server.py returns upstream errors as plain text with HTTP 200.
       if (/^\s*Error:\s*/i.test(output.value)) throw new Error(output.value.trim());
       if (!output.value.trim()) throw new Error("No code was returned. Please try translating again.");
-      completedTranslation = { source: originalSource, output: output.value, language: target, sourceLanguage: sourceLanguage.value, fileName: originalFileName };
+      const recorded = Boolean(completionInfo && completionInfo.persisted && completionInfo.translation_id);
+      completedTranslation = {
+        source: originalSource, output: output.value, language: target, sourceLanguage: sourceLanguage.value,
+        fileName: originalFileName, serverId: recorded ? completionInfo.translation_id : null
+      };
       setStatus(`Translated to ${target}. Ready to run, copy, save, or download.`);
+      if (user && !recorded) {
+        // Signed in on this page but the server did not record it: the session probably ended.
+        notify("Translated, but it wasn't added to your history. Your session may have ended.");
+        syncAccount();
+      }
     } catch (error) {
       if (error.name === "AbortError") setStatus("Translation stopped. Any partial result is shown above.");
       else {
@@ -781,6 +821,8 @@
       }
     } finally {
       activeController = null;
+      // Every attempt by a signed-in user (finished or failed) is a new history row.
+      if (user) historyState.dirty = true;
       updateLines(output, $("outputLines"));
       setLoading(false);
     }
@@ -1274,7 +1316,7 @@
       } catch (error) {
         if (error.name === "AbortError" || finished) return;
         let message;
-        if (error.status === 401) message = "The server asked for a sign-in before running code. Sign-in isn't available in this version, so the /execute route must not require a login.";
+        if (error.status === 401) message = "The server refused to run the code (401). Reload the page and try again.";
         else if (error.status === 429) message = "Too many runs in a short time. Wait a few seconds and try again.";
         else if (error instanceof TypeError) message = "Could not reach the server. Check your connection and try again.";
         else message = error.message || "The compiler failed. Please try again.";
@@ -1357,8 +1399,10 @@
     return node;
   }
   function renderSaved() {
-    $("savedCount").textContent = String(saved.length);
-    $("savedCount").hidden = saved.length === 0;
+    const count = user ? serverSaved.length : saved.length;
+    $("savedCount").textContent = String(count);
+    $("savedCount").hidden = count === 0;
+    if (user) { renderServerSaved(); return; }
     $("savedEmpty").hidden = saved.length !== 0;
     const fragment = document.createDocumentFragment();
     saved.forEach((entry) => {
@@ -1410,6 +1454,11 @@
   }
   $("saveButton").addEventListener("click", () => {
     if (!completedTranslation || activeController) return;
+    if (user && completedTranslation.serverId) {          // account bookmark: toggles on the server
+      const id = completedTranslation.serverId;
+      setServerSaved(id, !serverSaved.some((entry) => entry.id === id));
+      return;
+    }
     const duplicate = saved.some((entry) => entry.source === completedTranslation.source &&
       entry.output === completedTranslation.output && entry.language === completedTranslation.language);
     if (duplicate) { notify("This translation is already in Saved."); return; }
@@ -1419,6 +1468,600 @@
     renderSaved(); refreshButtons();
     notify(persisted ? "Translation saved in this browser." : "Saved for this session. Browser storage is unavailable or full.");
   });
+
+  /* =========================================
+     ACCOUNTS: sign up, sign in, sign out, delete account
+     The server keeps the login in a signed HttpOnly cookie, so the page only ever asks "who am I?".
+  ========================================= */
+
+  // JSON helper for every account / history call. `session: true` marks calls that need a login: a 401
+  // on those means the session ended, so the page drops back to the signed-out state.
+  async function api(path, { method = "GET", body, session = false, signal } = {}) {
+    const options = { method, credentials: "same-origin", cache: "no-store", signal, headers: { Accept: "application/json" } };
+    if (body !== undefined) {
+      options.headers["Content-Type"] = "application/json";
+      options.body = JSON.stringify(body);
+    }
+    const response = await fetch(path, options);
+    let data = null;
+    try { data = await response.json(); } catch (_) { /* not JSON: handled below */ }
+    if (!response.ok) {
+      const error = new Error((data && data.error) || `Request failed (${response.status}). Please try again.`);
+      error.status = response.status;
+      error.field = data && data.field;
+      if (session && response.status === 401 && user) {
+        setUser(null);
+        notify("Your session ended. Please sign in again.");
+      }
+      throw error;
+    }
+    if (data === null) throw new Error(`The server returned an unexpected response (${response.status}). Please try again.`);
+    return data;
+  }
+  function describeError(error) {
+    return error instanceof TypeError ? "Could not reach the server. Check your connection and try again." :
+      (error && error.message) || "Something went wrong. Please try again.";
+  }
+
+  function formatWhen(value, withTime = true) {
+    const date = new Date(value);
+    if (!value || Number.isNaN(date.getTime())) return "";
+    const options = { day: "numeric", month: "short", year: "numeric" };
+    if (withTime) Object.assign(options, { hour: "2-digit", minute: "2-digit" });
+    return date.toLocaleString(undefined, options);
+  }
+
+  function updateAccountUi() {
+    const button = $("accountButton");
+    button.classList.toggle("is-signed-in", Boolean(user));
+    $("accountLabel").textContent = user ? user.username : "Sign In";
+    button.setAttribute("aria-label", user ? `Account: ${user.username}` : "Sign in or create an account");
+    button.title = user ? "Your account" : "";
+    $("savedIntro").textContent = user
+      ? "Translations you've bookmarked, kept with your account."
+      : "Code you choose to keep, saved in this browser. Sign in to keep it with your account instead.";
+  }
+
+  // Called whenever the answer to "who is signed in?" may have changed.
+  function setUser(next) {
+    const previousId = user ? user.id : null;
+    user = next || null;
+    updateAccountUi();
+    if (previousId === (user ? user.id : null)) return;
+    // Somebody else (or nobody) is signed in now: nothing from the last account may stay on screen.
+    serverSaved = [];
+    serverSavedLoaded = false;
+    Object.assign(historyState, { items: [], next: null, loaded: false, dirty: true, error: "", fills: 0, filter: "all" });
+    syncFilterChips();
+    if (completedTranslation) completedTranslation.serverId = null;
+    if (user) loadServerSaved();
+    renderSaved();
+    renderHistory();
+    refreshButtons();
+    if (currentView === "history") openHistoryView();
+  }
+
+  async function syncAccount() {
+    try {
+      const data = await api(endpoints.me);
+      setUser(data.authenticated ? data.user : null);
+    } catch (_) { /* offline or server down: keep what is on screen */ }
+  }
+
+  const authFields = ["username", "identifier", "email", "password"];
+  const fieldId = (name) => `auth${name.charAt(0).toUpperCase()}${name.slice(1)}`;
+  const errorId = (name) => `error${name.charAt(0).toUpperCase()}${name.slice(1)}`;
+
+  function clearAuthErrors() {
+    authFields.forEach((name) => {
+      const message = $(errorId(name));
+      message.hidden = true;
+      message.textContent = "";
+      message.closest(".auth-field").classList.remove("has-error");
+      $(fieldId(name)).removeAttribute("aria-invalid");
+      $(fieldId(name)).removeAttribute("aria-describedby");
+    });
+    $("authMessage").hidden = true;
+    $("authMessage").textContent = "";
+  }
+  function showFieldError(name, text) {
+    const message = $(errorId(name));
+    message.textContent = text;
+    message.hidden = false;
+    message.closest(".auth-field").classList.add("has-error");
+    $(fieldId(name)).setAttribute("aria-invalid", "true");
+    $(fieldId(name)).setAttribute("aria-describedby", message.id);
+  }
+
+  function setAuthMode(mode) {
+    const previous = authMode;
+    authMode = mode === "signup" ? "signup" : "login";
+    const signup = authMode === "signup";
+    // Carry what was typed across the tabs: "a@b.c" becomes the email, anything else the username.
+    if (previous !== authMode) {
+      const typed = (previous === "login" ? $("authIdentifier").value : "").trim();
+      if (signup && typed) {
+        if (typed.includes("@")) { if (!$("authEmail").value) $("authEmail").value = typed; }
+        else if (!$("authUsername").value) $("authUsername").value = typed;
+      } else if (!signup) {
+        const keep = $("authUsername").value.trim() || $("authEmail").value.trim();
+        if (keep && !$("authIdentifier").value) $("authIdentifier").value = keep;
+      }
+    }
+    document.querySelectorAll("[data-auth-mode]").forEach((tab) => {
+      const active = tab.dataset.authMode === authMode;
+      tab.classList.toggle("is-active", active);
+      tab.setAttribute("aria-selected", String(active));
+      tab.tabIndex = active ? 0 : -1;
+    });
+    $("fieldIdentifier").hidden = signup;
+    $("fieldUsername").hidden = !signup;
+    $("fieldEmail").hidden = !signup;
+    $("authPassword").autocomplete = signup ? "new-password" : "current-password";
+    $("authTitle").textContent = signup ? "Create your account" : "Welcome back";
+    $("authLead").textContent = signup
+      ? "Create an account to keep a history of your translations and save the ones you like."
+      : "Sign in to keep a history of your translations and save the ones you like.";
+    $("authSubmitLabel").textContent = signup ? "Create account" : "Sign in";
+    $("authSwitchText").textContent = signup ? "Already have an account?" : "New here?";
+    $("authSwitch").textContent = signup ? "Sign in" : "Create an account";
+    clearAuthErrors();
+  }
+
+  function openAuth(mode = "login") {
+    if (mobileOpen) closeSidebar();
+    setAuthMode(mode);
+    const dialog = $("authDialog");
+    if (!dialog.open) dialog.showModal();
+    $(authMode === "signup" ? "authUsername" : "authIdentifier").focus();
+  }
+
+  function openAccount() {
+    if (!user) { openAuth("login"); return; }
+    if (mobileOpen) closeSidebar();
+    $("accountAvatar").textContent = user.username.charAt(0);
+    $("accountName").textContent = user.username;
+    $("accountEmail").textContent = user.email;
+    const since = formatWhen(user.created_at, false);
+    $("accountSince").textContent = since ? `Member since ${since}` : "";
+    $("accountDialog").showModal();
+  }
+
+  $("accountButton").addEventListener("click", () => (user ? openAccount() : openAuth("login")));
+  $("historySignInButton").addEventListener("click", () => openAuth("login"));
+  document.querySelectorAll("[data-auth-mode]").forEach((tab) => {
+    tab.addEventListener("click", () => { setAuthMode(tab.dataset.authMode); $(authMode === "signup" ? "authUsername" : "authIdentifier").focus(); });
+    tab.addEventListener("keydown", (event) => {
+      if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+      event.preventDefault();
+      setAuthMode(authMode === "login" ? "signup" : "login");
+      $(authMode === "signup" ? "tabSignup" : "tabLogin").focus();
+    });
+  });
+  $("authSwitch").addEventListener("click", () => { setAuthMode(authMode === "login" ? "signup" : "login"); $(authMode === "signup" ? "authUsername" : "authIdentifier").focus(); });
+  $("authShowPassword").addEventListener("change", (event) => { $("authPassword").type = event.target.checked ? "text" : "password"; });
+  $("authDialog").addEventListener("close", () => {
+    $("authPassword").value = "";
+    $("authPassword").type = "password";
+    $("authShowPassword").checked = false;
+    clearAuthErrors();
+  });
+
+  // The same rules database.py enforces, so most mistakes are caught before a request is sent.
+  function validateAuth(values) {
+    const problems = {};
+    if (authMode === "login") {
+      if (!values.identifier) problems.identifier = "Enter your username or email.";
+      if (!values.password) problems.password = "Enter your password.";
+      return problems;
+    }
+    if (!/^[A-Za-z0-9_.\-]{3,30}$/.test(values.username)) problems.username = "Username must be 3-30 characters: letters, numbers, . _ -";
+    if (values.email.length > 254 || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(values.email)) problems.email = "Please enter a valid email address.";
+    if (values.password.length < 8 || values.password.length > 128) problems.password = "Password must be 8-128 characters long.";
+    return problems;
+  }
+
+  $("authForm").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if ($("authSubmit").disabled) return;
+    clearAuthErrors();
+    const values = {
+      username: $("authUsername").value.trim(),
+      identifier: $("authIdentifier").value.trim(),
+      email: $("authEmail").value.trim(),
+      password: $("authPassword").value
+    };
+    const problems = validateAuth(values);
+    const firstProblem = authFields.find((name) => problems[name]);
+    if (firstProblem) {
+      Object.keys(problems).forEach((name) => showFieldError(name, problems[name]));
+      $(fieldId(firstProblem)).focus();
+      return;
+    }
+    const signup = authMode === "signup";
+    $("authSubmit").disabled = true;
+    $("authSubmitLabel").textContent = signup ? "Creating account…" : "Signing in…";
+    try {
+      const data = await api(signup ? endpoints.signup : endpoints.login, {
+        method: "POST",
+        body: signup
+          ? { username: values.username, email: values.email, password: values.password }
+          : { identifier: values.identifier, password: values.password }
+      });
+      $("authDialog").close();
+      ["authUsername", "authIdentifier", "authEmail"].forEach((id) => { $(id).value = ""; });
+      setUser(data.user);
+      notify(signup ? `Account created. Welcome, ${data.user.username}!` : `Signed in as ${data.user.username}.`);
+    } catch (error) {
+      // A "field" from the server points at the input to blame; anything else is a general message.
+      let name = error.field;
+      if (!signup && (name === "username" || name === "email")) name = "identifier";
+      if (name && authFields.includes(name) && !$(fieldId(name)).closest(".auth-field").hidden) {
+        showFieldError(name, error.message);
+        $(fieldId(name)).focus();
+      } else {
+        $("authMessage").textContent = describeError(error);
+        $("authMessage").hidden = false;
+      }
+    } finally {
+      $("authSubmit").disabled = false;
+      $("authSubmitLabel").textContent = authMode === "signup" ? "Create account" : "Sign in";
+    }
+  });
+
+  $("accountHistory").addEventListener("click", () => { $("accountDialog").close(); navigate("history"); });
+  $("accountSignOut").addEventListener("click", async () => {
+    const button = $("accountSignOut");
+    button.disabled = true;
+    try {
+      await api(endpoints.logout, { method: "POST" });
+      $("accountDialog").close();
+      setUser(null);
+      notify("Signed out.");
+    } catch (error) {
+      notify(describeError(error));
+    } finally { button.disabled = false; }
+  });
+
+  $("deleteToggle").addEventListener("click", () => {
+    const open = $("deleteForm").hidden;
+    $("deleteForm").hidden = !open;
+    $("deleteToggle").setAttribute("aria-expanded", String(open));
+    if (open) $("deletePassword").focus();
+  });
+  $("accountDialog").addEventListener("close", () => {
+    $("deleteForm").hidden = true;
+    $("deleteToggle").setAttribute("aria-expanded", "false");
+    $("deletePassword").value = "";
+    $("deleteMessage").hidden = true;
+  });
+  $("deleteForm").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const password = $("deletePassword").value;
+    $("deleteMessage").hidden = true;
+    if (!password) {
+      $("deleteMessage").textContent = "Enter your password to confirm.";
+      $("deleteMessage").hidden = false;
+      $("deletePassword").focus();
+      return;
+    }
+    $("deleteSubmit").disabled = true;
+    try {
+      await api(endpoints.account, { method: "DELETE", body: { password } });
+      $("accountDialog").close();
+      setUser(null);
+      notify("Your account and its history were deleted.");
+    } catch (error) {
+      $("deleteMessage").textContent = describeError(error);
+      $("deleteMessage").hidden = false;
+    } finally { $("deleteSubmit").disabled = false; }
+  });
+
+  /* =========================================
+     SAVED (account) AND HISTORY
+  ========================================= */
+
+  // Same route as clicking the sidebar item.
+  function navigate(view) {
+    const item = document.querySelector(`.nav-item[data-view="${view}"]`);
+    if (item) selectNavigationItem(item);
+    showView(view);
+  }
+
+  const STAGE_LABELS = {
+    compiler: "Source code check failed",
+    convertibility: "Those languages can't be converted",
+    translation: "Translation failed",
+    interrupted: "Stopped before it finished"
+  };
+  const pairLabel = (item) => `${item.source_language || "?"} → ${item.target_language}`;
+  function firstLine(text) {
+    const line = String(text || "").split("\n").find((part) => part.trim());
+    return line ? line.trim().slice(0, 70) : "";
+  }
+
+  async function loadServerSaved() {
+    if (!user) return;
+    const forUser = user.id;
+    try {
+      const data = await api(`${endpoints.translations}?saved=1&limit=100`, { session: true });
+      if (!user || user.id !== forUser) return;
+      serverSaved = data.translations;
+      serverSavedLoaded = true;
+      const ids = new Set(serverSaved.map((item) => item.id));
+      historyState.items.forEach((item) => { item.is_saved = ids.has(item.id); });
+    } catch (error) {
+      if (user && user.id === forUser) { serverSavedLoaded = true; notify("Couldn't load your saved translations."); }
+    }
+    renderSaved();
+    if (currentView === "history") renderHistory();
+    refreshButtons();
+  }
+
+  async function setServerSaved(id, wanted) {
+    try {
+      const data = await api(`${endpoints.translations}/${id}/save`, { method: "POST", body: { saved: wanted }, session: true });
+      historyState.items.forEach((item) => { if (item.id === id) item.is_saved = data.is_saved; });
+      await loadServerSaved();                       // refreshes the Saved list, its counter and every bookmark button
+      notify(data.is_saved ? "Saved to your account." : "Removed from Saved.");
+    } catch (error) {
+      if (user) notify(describeError(error));
+    }
+  }
+
+  async function deleteServerTranslation(id) {
+    try {
+      await api(`${endpoints.translations}/${id}`, { method: "DELETE", session: true });
+      historyState.items = historyState.items.filter((item) => item.id !== id);
+      serverSaved = serverSaved.filter((item) => item.id !== id);
+      if (completedTranslation && completedTranslation.serverId === id) completedTranslation.serverId = null;
+      renderSaved(); renderHistory(); refreshButtons();
+      notify("Translation deleted.");
+    } catch (error) {
+      if (user) notify(describeError(error));
+    }
+  }
+
+  // Loads the full record (history lists only carry short previews) into the workspace.
+  async function openRecord(id, button) {
+    if (activeController) { notify("Stop the current translation before opening another one."); return; }
+    if (button) button.disabled = true;
+    try {
+      const data = await api(`${endpoints.translations}/${id}`, { session: true });
+      applyRecord(data.translation);
+    } catch (error) {
+      if (error.status === 404) { historyState.dirty = true; notify("That translation no longer exists."); }
+      else if (user) notify(describeError(error));
+    } finally { if (button) button.disabled = false; }
+  }
+  function applyRecord(record) {
+    fileReadVersion += 1;
+    ["sourceRunOutput", "outputRunOutput"].forEach((id) => {       // an old terminal belongs to the old code
+      const panel = $(id);
+      const stopRun = liveStops.get(panel);
+      if (stopRun) stopRun();
+      cancelPanelAnim(panel);
+      panel.hidden = true;
+      panel.textContent = "";
+    });
+    source.value = record.source_code || "";
+    output.value = record.is_completed ? (record.target_code || "") : "";
+    sourceFileName = "";
+    const hasOption = (select, value) => Array.from(select.options).some((option) => option.value === value);
+    if (record.source_language && hasOption(sourceLanguage, record.source_language)) sourceLanguage.value = record.source_language;
+    updateTargetLanguageOptions();
+    if (hasOption(language, record.target_language) && record.target_language !== sourceLanguage.value) language.value = record.target_language;
+    completedTranslation = record.is_completed ? {
+      source: source.value, output: output.value, language: record.target_language,
+      sourceLanguage: record.source_language || sourceLanguage.value, fileName: "", serverId: record.id
+    } : null;
+    languagesConfirmed = true;
+    source.scrollTop = 0; output.scrollTop = 0;
+    languageChanged(); updateFileLabel();
+    updateLines(source, $("sourceLines")); updateLines(output, $("outputLines"));
+    showView("translate");
+    if (record.is_completed) setStatus(`${record.source_language || "Source"} to ${record.target_language} translation opened from your history.`);
+    else {
+      const reason = (record.error_message || "").replace(/\s+/g, " ").trim().slice(0, 300);
+      setStatus(`This attempt didn't finish (${STAGE_LABELS[record.error_stage] || "failed"}). ${reason}`, true);
+    }
+  }
+
+  // Delete asks twice: the first click turns the icon into "Delete?" for a few seconds.
+  function twoStepDelete(button, title, action) {
+    let timer = 0;
+    const reset = () => {
+      clearTimeout(timer);
+      if (!button.classList.contains("is-confirming")) return;
+      button.classList.remove("is-confirming");
+      button.replaceChildren(makeIcon("trash"));
+      button.setAttribute("aria-label", `Delete translation: ${title}`);
+    };
+    button.addEventListener("click", () => {
+      if (button.classList.contains("is-confirming")) { clearTimeout(timer); action(); return; }
+      button.classList.add("is-confirming");
+      button.replaceChildren(makeIcon("trash"), element("span", "", "Delete?"));
+      button.setAttribute("aria-label", `Confirm: delete translation ${title}`);
+      timer = setTimeout(reset, 3500);
+    });
+    button.addEventListener("blur", reset);
+  }
+
+  // One card for both pages. mode "history": every attempt with its status. mode "saved": bookmarked ones only.
+  function translationCard(item, mode) {
+    const card = element("article", "saved-card history-card");
+    const top = element("div", "saved-card-top");
+    const tags = element("div", "history-card-tags");
+    tags.append(element("span", "saved-language", pairLabel(item)));
+    if (mode === "history") {
+      const kind = item.status === "completed" ? "completed" : item.status === "failed" ? "failed" : "pending";
+      tags.append(element("span", `status-badge is-${kind}`, { completed: "Completed", failed: "Failed", pending: "In progress" }[kind]));
+    }
+    top.append(tags, element("span", "saved-date", formatWhen(mode === "saved" ? item.saved_at || item.created_at : item.created_at)));
+    const title = firstLine(item.source_preview) || "Untitled translation";
+    card.append(top, element("h2", "", title));
+    if (item.status === "completed") {
+      card.append(element("pre", "saved-preview", item.target_preview || ""));
+    } else if (item.status === "failed") {
+      const fail = element("p", "history-fail");
+      fail.append(element("strong", "", STAGE_LABELS[item.error_stage] || "Failed"), document.createTextNode(item.error_message || ""));
+      card.append(fail);
+    } else {
+      card.append(element("pre", "saved-preview", "This translation is still running, or the page was closed before it finished."));
+    }
+
+    const actions = element("div", "saved-card-actions");
+    const openButton = element("button", "text-button saved-open", item.status === "completed" ? "Open translation" : "Open source code");
+    openButton.type = "button";
+    openButton.appendChild(makeIcon("arrow"));
+    openButton.addEventListener("click", () => openRecord(item.id, openButton));
+    const icons = element("div", "card-icons");
+
+    if (mode === "history" && item.status === "completed") {
+      const bookmark = element("button", `icon-button card-save${item.is_saved ? " is-saved" : ""}`);
+      bookmark.type = "button";
+      bookmark.title = item.is_saved ? "Saved. Click to remove from Saved." : "Save this translation";
+      bookmark.setAttribute("aria-label", `${item.is_saved ? "Remove from saved" : "Save"} translation: ${title}`);
+      bookmark.setAttribute("aria-pressed", String(Boolean(item.is_saved)));
+      bookmark.appendChild(makeIcon("bookmark"));
+      bookmark.addEventListener("click", () => { bookmark.disabled = true; setServerSaved(item.id, !item.is_saved); });
+      icons.append(bookmark);
+    }
+    const remove = element("button", "icon-button delete-saved");
+    remove.type = "button";
+    remove.appendChild(makeIcon("trash"));
+    if (mode === "saved") {
+      remove.title = "Remove from Saved (it stays in your history)";
+      remove.setAttribute("aria-label", `Remove from saved: ${title}`);
+      remove.addEventListener("click", () => { remove.disabled = true; setServerSaved(item.id, false); });
+    } else {
+      remove.title = "Delete from history";
+      remove.setAttribute("aria-label", `Delete translation: ${title}`);
+      twoStepDelete(remove, title, () => { remove.disabled = true; deleteServerTranslation(item.id); });
+    }
+    icons.append(remove);
+    actions.append(openButton, icons);
+    card.append(actions);
+    return card;
+  }
+
+  function renderServerSaved() {
+    $("savedEmpty").hidden = !serverSavedLoaded || serverSaved.length !== 0;
+    const fragment = document.createDocumentFragment();
+    serverSaved.forEach((item) => fragment.appendChild(translationCard(item, "saved")));
+    $("savedList").replaceChildren(fragment);
+  }
+
+  /* ---------- History page ---------- */
+  function visibleHistory() {
+    if (historyState.filter === "saved") return serverSaved;
+    return historyState.items.filter((item) => historyState.filter === "all" ||
+      (historyState.filter === "completed" ? item.status === "completed" : item.status === "failed"));
+  }
+  function syncFilterChips() {
+    document.querySelectorAll("[data-history-filter]").forEach((chip) => {
+      const active = chip.dataset.historyFilter === historyState.filter;
+      chip.classList.toggle("is-active", active);
+      chip.setAttribute("aria-pressed", String(active));
+    });
+  }
+  const EMPTY_TEXT = {
+    all: ["Nothing here yet", "Translate some code and it will show up here."],
+    completed: ["No completed translations yet", "Finished translations will show up here."],
+    failed: ["No failed attempts", "Nothing has gone wrong. Attempts that stop at the compiler check or the translation show up here."],
+    saved: ["Nothing saved yet", "Use the bookmark on a translation to keep it here."]
+  };
+
+  function renderHistory() {
+    $("historySignedOut").hidden = Boolean(user);
+    $("historySignedIn").hidden = !user;
+    $("historyIntro").textContent = user
+      ? `Every translation you run as ${user.username} is recorded here, finished or not.`
+      : "Every translation you run while signed in is recorded here.";
+    if (!user) { $("historyList").replaceChildren(); return; }
+
+    const items = visibleHistory();
+    const fragment = document.createDocumentFragment();
+    items.forEach((item) => fragment.appendChild(translationCard(item, "history")));
+    $("historyList").replaceChildren(fragment);
+
+    const waiting = historyState.loading || (historyState.filter === "saved" && !serverSavedLoaded);
+    const more = historyState.filter !== "saved" && Boolean(historyState.next);
+    $("historyCount").textContent = waiting && !items.length ? "Loading…"
+      : `${items.length} ${items.length === 1 ? "translation" : "translations"}${more ? " loaded" : ""}`;
+    $("historyEmpty").hidden = waiting || Boolean(historyState.error) || items.length > 0 || more;
+    const [emptyTitle, emptyText] = EMPTY_TEXT[historyState.filter];
+    $("historyEmptyTitle").textContent = emptyTitle;
+    $("historyEmptyText").textContent = emptyText;
+    $("historyError").hidden = !historyState.error;
+    $("historyError").textContent = historyState.error;
+    const button = $("historyMore");
+    button.hidden = !(more || historyState.error);
+    button.disabled = historyState.loading;
+    button.textContent = historyState.loading ? "Loading…" : historyState.error ? "Try again" : "Load more";
+  }
+
+  async function loadHistory(reset) {
+    if (!user || historyState.loading) return;
+    const forUser = user.id;
+    if (reset) Object.assign(historyState, { items: [], next: null, loaded: false, dirty: false, fills: 0 });
+    historyState.error = "";
+    historyState.loading = true;
+    renderHistory();
+    try {
+      const params = new URLSearchParams({ limit: "30" });
+      if (!reset && historyState.next) params.set("before_id", String(historyState.next));
+      const data = await api(`${endpoints.translations}?${params}`, { session: true });
+      if (!user || user.id !== forUser) return;
+      const known = new Set(historyState.items.map((item) => item.id));
+      historyState.items.push(...data.translations.filter((item) => !known.has(item.id)));
+      historyState.next = data.next_before_id;
+      historyState.loaded = true;
+    } catch (error) {
+      if (user && user.id === forUser) historyState.error = describeError(error);
+    } finally {
+      historyState.loading = false;
+      renderHistory();
+      fillFilteredHistory();
+    }
+  }
+  // Completed / Failed are filtered here, so keep fetching pages until the list is not nearly empty.
+  function fillFilteredHistory() {
+    if (!user || historyState.error || historyState.loading || !historyState.next) return;
+    if (!["completed", "failed"].includes(historyState.filter)) return;
+    if (visibleHistory().length >= 6 || historyState.fills >= 10) return;
+    historyState.fills += 1;
+    loadHistory(false);
+  }
+
+  function openHistoryView() {
+    renderHistory();
+    if (!user) return;
+    if (historyState.dirty || !historyState.loaded) loadHistory(true);
+    if (!serverSavedLoaded) loadServerSaved();
+  }
+
+  document.querySelectorAll("[data-history-filter]").forEach((chip) => {
+    chip.addEventListener("click", () => {
+      historyState.filter = chip.dataset.historyFilter;
+      historyState.fills = 0;
+      syncFilterChips();
+      renderHistory();
+      fillFilteredHistory();
+    });
+  });
+  $("historyMore").addEventListener("click", () => loadHistory(!historyState.loaded));
+
+  function initAccounts() {
+    updateAccountUi();
+    syncFilterChips();
+    syncAccount();                                   // who is signed in? (cookie set by an earlier visit)
+    let lastSync = Date.now();
+    // Signed out in another tab, or the 30-day session ran out: notice when this tab is looked at again.
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden && Date.now() - lastSync > 30000) { lastSync = Date.now(); syncAccount(); }
+    });
+  }
 
   // Retain the original Alt-drag convenience without rendering code as HTML.
   function setDragMode(on) {
@@ -1443,6 +2086,7 @@
   renderLanguageChoices();
   renderSaved();
   refreshButtons();
+  initAccounts();
 })();
 
 /* Animated page scrollbar: slides in from the right when the page becomes
