@@ -1200,6 +1200,26 @@
     liveStops.set(panel, stopRun);
     stopButton.addEventListener("click", stopRun);
 
+    // The program is waiting for the user: glide the page to the input row and pulse it, so it is
+    // obvious that this is where to type. It waits until the panel has finished growing, otherwise
+    // the scroll would aim at a spot that is still moving.
+    function bringInputIntoView() {
+      row.classList.remove("is-attention");
+      void row.offsetWidth;                                  // restart the pulse if it is already running
+      row.classList.add("is-attention");
+      setTimeout(() => row.classList.remove("is-attention"), 1500);
+      const started = performance.now();
+      (function settle() {
+        if (finished || !pending) return;
+        if (panelAnims.get(panel) && performance.now() - started < 900) { requestAnimationFrame(settle); return; }
+        const header = document.querySelector(".topbar");
+        const top = (header ? header.getBoundingClientRect().bottom : 0) + 24;
+        const rect = row.getBoundingClientRect();
+        const comfortable = rect.top >= top && rect.bottom <= window.innerHeight - 24;
+        if (!comfortable) row.scrollIntoView({ block: "center", behavior: motionAllowed() ? "smooth" : "auto" });
+      })();
+    }
+
     function askFor(data) {
       const request = data.input_request;
       const previousAt = answers.length ? answers[answers.length - 1].at : 0;
@@ -1220,7 +1240,8 @@
       row.classList.remove("is-idle");
       status.textContent = "";
       setState("Waiting for input", "input");
-      input.focus();
+      input.focus({ preventScroll: true });                 // focus without an abrupt jump; we scroll smoothly below
+      bringInputIntoView();
     }
 
     function showFinal(data) {
