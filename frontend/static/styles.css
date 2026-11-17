@@ -875,6 +875,15 @@ html.theme-vt .theme-button .icon, html.theme-switching .theme-button .icon { tr
 .run-output.is-entering .term-bar-actions { animation-delay: .16s; }
 .run-output.is-entering .term-screen, .run-output.is-entering .term-row { animation: term-item-in .4s var(--ease-soft) .14s both; }
 
+/* Controls that appear (input box, label, Send, End input, status) fade and rise in, so a height change
+   never shows a bare jump. `backwards` keeps the hover/press transforms working afterwards. */
+@keyframes term-pop-in { from { opacity: 0; transform: translateY(5px) scale(.96); } to { opacity: 1; transform: none; } }
+.term-row > .term-caret, .term-row > .term-label, .term-row > .term-input, .term-row > .term-send,
+.term-row > .term-stop, .term-row > .term-status { animation: term-pop-in .28s var(--ease-soft) backwards; }
+.term-row > .term-input { animation-delay: .04s; }
+.term-row > .term-send, .term-row > .term-stop { animation-delay: .08s; }
+.term-screen { transition: color .2s; }
+
 /* Button motion: soft lift on hover, press on click, icons that react */
 .term-btn, .term-send, .term-stop { will-change: transform; }
 .term-btn:hover:not(:disabled), .term-send:hover:not(:disabled), .term-stop:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 3px 10px rgb(0 0 0 / 10%); }
@@ -903,6 +912,7 @@ html.theme-vt .theme-button .icon, html.theme-switching .theme-button .icon { tr
   .term-status::before { animation: none; }
   .term-btn, .term-send, .term-stop, .term-btn .icon, .run-button, .run-button .icon { transition: none; }
   .run-output.is-entering .term-bar > *, .run-output.is-entering .term-screen, .run-output.is-entering .term-row { animation: none; }
+  .term-row > .term-caret, .term-row > .term-label, .term-row > .term-input, .term-row > .term-send, .term-row > .term-stop, .term-row > .term-status { animation: none; }
   .term-btn:hover:not(:disabled), .term-send:hover:not(:disabled), .term-stop:hover:not(:disabled), .run-button:hover:not(:disabled) { transform: none; }
 }
 
