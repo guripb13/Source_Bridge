@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="color-scheme" content="light dark">
+  <meta name="theme-color" content="#f8faf7">
   <meta name="description" content="Source Bridge — translate, learn and explore code.">
   <title>Source Bridge — Code Translator</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
@@ -18,8 +19,8 @@
     <symbol id="i-bookmark" viewBox="0 0 24 24"><path d="M6 3h12a1 1 0 0 1 1 1v18l-7-5-7 5V4a1 1 0 0 1 1-1Z"/></symbol>
     <symbol id="i-settings" viewBox="0 0 24 24"><path d="m9 3 .7-1h4.6l.7 3 2 .9 2.8-.9 2.2 3.8-2.1 2.1v2.2l2.1 2.1-2.2 3.8-2.8-.9-2 .9-.7 3H9.7l-.7-3-2-.9-2.8.9L2 15.2l2.1-2.1v-2.2L2 8.8 2.2 8.4 4.2 5 7 5.9l2-.9V3Z"/><circle cx="12" cy="12" r="3"/></symbol>
     <symbol id="i-bulb" viewBox="0 0 24 24"><path d="M9 18h6m-5 4h4M8 14a7 7 0 1 1 8 0c-1 .8-1 2-1 4H9c0-2 0-3.2-1-4Z"/></symbol>
-    <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20.9 13.1A9 9 0 0 1 10.9 3 9 9 0 1 0 20.9 13.1Z"/></symbol>
-    <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z"/></symbol>
+    <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><path d="M12 1.75V4M12 20V22.25M1.75 12H4M20 12H22.25M6.343 6.343L4.752 4.752M17.657 6.343L19.248 4.752M6.343 17.657L4.752 19.248M17.657 17.657L19.248 19.248"/></symbol>
     <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="7" r="4"/><path d="M3 22v-2a9 9 0 0 1 18 0v2Z"/></symbol>
     <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 2H5a1 1 0 0 0-1 1v18a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V8Zm0 0v6h6"/></symbol>
     <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="7" width="12" height="15" rx="2"/><path d="M5 17H4a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1h11a1 1 0 0 1 1 1v1"/></symbol>
@@ -31,6 +32,7 @@
     <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol>
     <symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7m4-7v7"/></symbol>
     <symbol id="i-code" viewBox="0 0 24 24"><path d="m7 6-6 6 6 6m10-12 6 6-6 6m-4-15-2 18"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24"><path d="M6 4.5v15a1 1 0 0 0 1.53.85l12-7.5a1 1 0 0 0 0-1.7l-12-7.5A1 1 0 0 0 6 4.5Z"/></symbol>
     <symbol id="i-stop" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2"/></symbol>
     <symbol id="i-history" viewBox="0 0 24 24"><path d="M3 11a9 9 0 1 1 2.6 7M3 4v7h7m2-5v6l4 2"/></symbol>
     <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 7a9 9 0 0 0-15-2L2 8m0-6v6h6m-4 9a9 9 0 0 0 15 2l3-3m0 6v-6h-6"/></symbol>
@@ -49,7 +51,10 @@
         <svg class="icon mobile-menu" aria-hidden="true"><use href="#i-menu"/></svg>
       </button>
       <a class="brand" href="{{ url_for('home') }}" aria-label="Source Bridge home">
-        <span class="brand-mark" aria-hidden="true">SB</span>
+        <span class="brand-mark">
+  <img class="logo-light" src="{{ url_for('static', filename='Icon.svg') }}" alt="Source Bridge logo">
+  <img class="logo-dark" src="{{ url_for('static', filename='IconDark.svg') }}" alt="" aria-hidden="true">
+</span>
         <span>Source Bridge</span>
       </a>
     </div>
@@ -66,57 +71,125 @@
     </div>
   </header>
 
-  <button type="button" class="sidebar-backdrop" id="sidebarBackdrop" aria-label="Close navigation" tabindex="-1" hidden></button>
+  <button type="button" class="sidebar-backdrop" id="sidebarBackdrop" aria-label="Close navigation" tabindex="-1" ></button>
   <aside class="sidebar" id="sidebar" aria-label="Main navigation">
     <div class="mobile-sidebar-heading"><span>Your workspace</span><button type="button" class="icon-button" id="sidebarClose" aria-label="Close navigation"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></button></div>
     <nav class="nav-list" aria-label="Workspace">
-      <button type="button" class="nav-item active" id="translateNav" data-view="translate" aria-current="page" title="Translate">
-        <svg class="icon" aria-hidden="true"><use href="#i-home"/></svg><span class="nav-label">Translate</span>
+      <button type="button"
+              class="nav-item home active"
+              id="translateNav"
+              data-view="translate"
+              aria-current="page"
+              title="Translate">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path class="home-body"
+                d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+          <path class="home-door"
+                d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/>
+        </svg>
+        <span class="nav-label">Translate</span>
       </button>
       <button type="button" class="nav-item" id="savedNav" data-view="saved" title="Saved translations">
         <svg class="icon" aria-hidden="true"><use href="#i-bookmark"/></svg><span class="nav-label">Saved</span><span class="saved-count" id="savedCount" hidden>0</span>
-      </button>
-      <button type="button" class="nav-item" id="historyNav" data-view="history" title="Translation history">
-        <svg class="icon" aria-hidden="true"><use href="#i-history"/></svg><span class="nav-label">History</span>
       </button>
       <button type="button" class="nav-item" data-dialog="settingsDialog" title="Settings">
         <svg class="icon" aria-hidden="true"><use href="#i-settings"/></svg><span class="nav-label">Settings</span>
       </button>
     </nav>
-    <div class="sidebar-footer" aria-hidden="true"><div class="sidebar-divider"></div><p>Code<br>Without<br><span>Borders</span></p></div>
+    <div class="sidebar-footer" aria-hidden="true"><p>Code<br>Without<br><span>Borders</span></p></div>
     <svg class="sidebar-landscape" viewBox="0 0 260 190" preserveAspectRatio="none" aria-hidden="true"><path d="M0 97Q36 37 73 94T147 82T219 71T260 87V190H0Z"/><path d="M0 126Q48 52 89 110T169 139T260 173V190H0Z"/><path d="M0 85Q34 49 72 107T142 150T260 188V190H0Z"/></svg>
   </aside>
 
   <main class="main-content" id="mainContent" tabindex="-1">
-    <section id="translateView" aria-labelledby="pageTitle">
+    <section id="welcomeView" class="welcome-view" aria-labelledby="welcomeTitle">
+      <div class="welcome-panel">
+        <span class="brand-mark welcome-mark">
+  <img class="logo-light" src="{{ url_for('static', filename='Icon.svg') }}" alt="Source Bridge logo">
+  <img class="logo-dark" src="{{ url_for('static', filename='IconDark.svg') }}" alt="" aria-hidden="true">
+</span>
+        <div class="page-intro">
+          <h1 id="welcomeTitle">Welcome to Source Bridge</h1>
+          <p>Translate your code between Python, Java, C and C++, then compile and run it.</p>
+        </div>
+        <button type="button" class="pill-button" id="getStartedButton">Get Started<svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></button>
+      </div>
+    </section>
+
+    <section id="languageView" aria-labelledby="languageTitle" hidden>
+      <div class="page-intro"><h1 id="languageTitle">Choose your languages</h1><p id="languagePrompt" role="status" aria-live="polite">Start by selecting the language your code is written in.</p></div>
+      <div class="language-steps">
+        <div class="language-step" id="sourceStep">
+          <h2 id="sourceStepTitle"><span class="step-number" aria-hidden="true">1</span><span>Source language</span></h2>
+          <p>The language your code is written in.</p>
+          <div class="language-options" role="radiogroup" aria-labelledby="sourceStepTitle">
+            <label class="language-option"><input class="sr-only" type="radio" name="sourceChoice" value="Python"><span>Python</span><small>.py</small></label>
+            <label class="language-option"><input class="sr-only" type="radio" name="sourceChoice" value="C"><span>C</span><small>.c</small></label>
+            <label class="language-option"><input class="sr-only" type="radio" name="sourceChoice" value="C++"><span>C++</span><small>.cpp</small></label>
+            <label class="language-option"><input class="sr-only" type="radio" name="sourceChoice" value="Java"><span>Java</span><small>.java</small></label>
+          </div>
+        </div>
+        <div class="language-step is-locked" id="targetStep">
+          <h2 id="targetStepTitle"><span class="step-number" aria-hidden="true">2</span><span>Target language</span></h2>
+          <p id="targetStepHelp">Select a source language first.</p>
+          <div class="language-options" role="radiogroup" aria-labelledby="targetStepTitle" aria-describedby="targetStepHelp">
+            <label class="language-option"><input class="sr-only" type="radio" name="targetChoice" value="Python"><span>Python</span><small>.py</small></label>
+            <label class="language-option"><input class="sr-only" type="radio" name="targetChoice" value="C"><span>C</span><small>.c</small></label>
+            <label class="language-option"><input class="sr-only" type="radio" name="targetChoice" value="C++"><span>C++</span><small>.cpp</small></label>
+            <label class="language-option"><input class="sr-only" type="radio" name="targetChoice" value="Java"><span>Java</span><small>.java</small></label>
+          </div>
+        </div>
+      </div>
+      <div class="language-actions">
+        <button type="button" class="text-button" id="languageBack"><svg class="icon back-icon" aria-hidden="true"><use href="#i-arrow"/></svg><span id="languageBackLabel">Back</span></button>
+        <button type="button" class="pill-button" id="continueButton" disabled>Continue to Workspace<svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></button>
+      </div>
+    </section>
+
+    <section id="translateView" aria-labelledby="pageTitle" hidden>
       <div class="page-intro">
         <h1 id="pageTitle">Translate, Learn &amp; Explore Code</h1>
-        <p>Convert your code between programming languages using AI.</p>
+        <p>Convert your code between programming languages using AI, then compile and run it.</p>
       </div>
-      <!-- POST message + language to /send; JavaScript opts into completion events. -->
+      <!-- The backend contract stays the same: POST message + language to /send. -->
       <form class="workspace-grid" id="form" method="POST" action="{{ url_for('send') }}" enctype="multipart/form-data">
         <section class="editor-card source-card" aria-labelledby="sourceTitle">
           <div class="editor-heading">
-            <h2 id="sourceTitle"><svg class="icon" aria-hidden="true"><use href="#i-file"/></svg><span>Source Code</span></h2>
-            <button type="button" class="text-button copy-button" id="copySource" aria-label="Copy source code" disabled><svg class="icon" aria-hidden="true"><use href="#i-copy"/></svg><span>Copy</span></button>
+            <h2 id="sourceTitle"><svg class="icon" aria-hidden="true"><use href="#i-file"/></svg><span class="editor-title">Source<span class="title-extra"> Code</span></span><span class="language-badge" id="sourceLanguageBadge" hidden></span></h2>
+            <div class="editor-actions">
+              <button type="button" class="text-button run-button" id="runSource" aria-label="Run source code" disabled><svg class="icon" aria-hidden="true"><use href="#i-play"/></svg><span>Run</span></button>
+              <button type="button" class="text-button copy-button" id="copySource" aria-label="Copy source code" disabled><svg class="icon" aria-hidden="true"><use href="#i-copy"/></svg><span>Copy</span></button>
+            </div>
           </div>
           <div class="code-surface" id="sourceSurface">
             <div class="line-gutter" aria-hidden="true"><div class="line-numbers" id="sourceLines">1&#10;2&#10;3&#10;4&#10;5</div></div>
             <textarea class="code-editor" id="message" name="message" aria-label="Source code" placeholder="Paste your code here..." spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off" wrap="off" aria-describedby="keyboardHint"></textarea>
           </div>
+          <div class="run-output" id="sourceRunOutput" hidden aria-live="polite"></div>
         </section>
 
         <div class="conversion-controls">
           <div class="language-control">
-            <label for="language">Translate to</label>
-            <div class="language-select">
-              <svg class="language-icon" aria-hidden="true"><use id="languageIcon" href="#i-python"/></svg>
-              <select id="language" name="language" aria-label="Target programming language">
-                <option value="Python" selected>Python</option><option value="Java">Java</option><option value="C">C</option><option value="C++">C++</option><option value="JavaScript">JavaScript</option><option value="TypeScript">TypeScript</option><option value="C#">C#</option><option value="Go">Go</option><option value="Rust">Rust</option><option value="PHP">PHP</option><option value="Swift">Swift</option><option value="Kotlin">Kotlin</option><option value="Ruby">Ruby</option><option value="SQL">SQL</option><option value="other">Other...</option>
-              </select>
-              <svg class="select-chevron icon" aria-hidden="true"><use href="#i-chevron"/></svg>
+            <span class="language-label" id="languagePairLabel">Translating</span>
+            <div class="language-summary" role="group" aria-labelledby="languagePairLabel">
+              <span id="sourceLanguageLabel">Source</span><svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg><span class="sr-only">to</span><span id="targetLanguageLabel">Target</span>
             </div>
-            <div class="custom-language" id="customLanguageRow" hidden><label class="sr-only" for="customLanguage">Custom target language</label><input id="customLanguage" type="text" placeholder="Language name" maxlength="60" autocomplete="off"></div>
+            <button type="button" class="text-button change-languages" id="changeLanguages">Change languages</button>
+            <!-- The languages picked on the selection screen are kept in these selects, so /send
+                 still receives source_language and language exactly as before. -->
+            <div hidden>
+              <select id="sourceLanguage" name="source_language" aria-label="Source programming language" tabindex="-1">
+                <option value="Python" selected>Python</option>
+                <option value="C">C</option>
+                <option value="C++">C++</option>
+                <option value="Java">Java</option>
+              </select>
+              <select id="language" name="language" aria-label="Target programming language" tabindex="-1">
+                <option value="Python" selected>Python</option>
+                <option value="C">C</option>
+                <option value="C++">C++</option>
+                <option value="Java">Java</option>
+              </select>
+            </div>
           </div>
           <button type="submit" class="translate-button" id="translateButton" disabled aria-label="Translate code">
             <span class="translate-circle"><svg class="icon translate-arrow" aria-hidden="true"><use href="#i-arrow"/></svg><svg class="icon stop-icon" aria-hidden="true"><use href="#i-stop"/></svg></span>
@@ -126,8 +199,9 @@
 
         <section class="editor-card output-card" aria-labelledby="outputTitle" aria-busy="false">
           <div class="editor-heading">
-            <h2 id="outputTitle"><svg class="icon" aria-hidden="true"><use href="#i-file"/></svg><span>Translated Code</span></h2>
+            <h2 id="outputTitle"><svg class="icon" aria-hidden="true"><use href="#i-file"/></svg><span class="editor-title">Translated<span class="title-extra"> Code</span></span><span class="language-badge" id="targetLanguageBadge" hidden></span></h2>
             <div class="editor-actions">
+              <button type="button" class="text-button run-button" id="runOutput" aria-label="Run translated code" disabled><svg class="icon" aria-hidden="true"><use href="#i-play"/></svg><span>Run</span></button>
               <button type="button" class="icon-button save-button" id="saveButton" title="Save translation in this browser" aria-label="Save translation in this browser" aria-pressed="false" disabled><svg class="icon" aria-hidden="true"><use href="#i-bookmark"/></svg></button>
               <button type="button" class="text-button copy-button" id="copyOutput" aria-label="Copy translated code" disabled><svg class="icon" aria-hidden="true"><use href="#i-copy"/></svg><span>Copy</span></button>
             </div>
@@ -136,6 +210,7 @@
             <div class="line-gutter" aria-hidden="true"><div class="line-numbers" id="outputLines">1&#10;2&#10;3&#10;4&#10;5</div></div>
             <textarea class="code-editor" id="translatedCode" aria-label="Translated code" placeholder="Your translated code will appear here..." spellcheck="false" wrap="off" readonly></textarea>
           </div>
+          <div class="run-output" id="outputRunOutput" hidden aria-live="polite"></div>
         </section>
 
         <div class="upload-actions">
@@ -175,7 +250,7 @@
 
   <dialog class="app-dialog" id="tipsDialog" aria-labelledby="tipsTitle">
     <div class="dialog-heading"><h2 id="tipsTitle">A few helpful tips</h2><button type="button" class="icon-button" data-close-dialog aria-label="Close tips"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></button></div>
-    <ul class="tips-list"><li><strong>Start with your code.</strong> Paste it into the source editor or upload a text-based code file.</li><li><strong>Choose a language.</strong> Pick your target, or select Other to enter a different language.</li><li><strong>Keep writing.</strong> Enter creates a new line. Ctrl + Enter (⌘ + Enter on Mac) starts a translation.</li><li><strong>Take it with you.</strong> Copy, download, or bookmark a finished translation. Hold Alt and drag code into another app.</li><li><strong>Review the result.</strong> Check and test translated code before using it in your project.</li></ul>
+    <ul class="tips-list"><li><strong>Start with your code.</strong> Paste it into the source editor or upload a text-based code file.</li><li><strong>Choose your languages.</strong> Pick a source and a target from Python, Java, C and C++. Use Change languages in the workspace to switch at any time.</li><li><strong>Keep writing.</strong> Enter creates a new line. Ctrl + Enter (⌘ + Enter on Mac) starts a translation.</li><li><strong>Take it with you.</strong> Copy, download, or bookmark a finished translation. Hold Alt and drag code into another app.</li><li><strong>Review the result.</strong> Check and test translated code before using it in your project.</li></ul>
   </dialog>
 
   <dialog class="app-dialog" id="settingsDialog" aria-labelledby="settingsTitle">
