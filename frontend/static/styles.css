@@ -1127,3 +1127,9 @@ html.has-custom-scrollbar::-webkit-scrollbar { display: none; }
 .brand-mark .logo-dark { display: none; }
 [data-theme="dark"] .brand-mark .logo-light { display: none; }
 [data-theme="dark"] .brand-mark .logo-dark { display: block; }
+/* Settings dialog: its text can't be selected or highlighted */
+#settingsDialog,
+#settingsDialog * {
+  -webkit-user-select: none;
+  user-select: none;
+}
