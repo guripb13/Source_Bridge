@@ -259,7 +259,8 @@
 
     const goingDown =
       viewOrder[view] > viewOrder[currentView];
-
+          // Welcome, language selection and workspace are steps, so they slide sideways
+    const sideways = view !== "saved" && currentView !== "saved";
     const main = $("mainContent");
 
     currentView = view;
@@ -327,13 +328,13 @@
 
     /* DETERMINE TRANSITION DIRECTION */
 
-    const exitClass = goingDown
-      ? "view-exit-up"
-      : "view-exit-down";
+        const exitClass = sideways
+      ? (goingDown ? "view-exit-left" : "view-exit-right")
+      : (goingDown ? "view-exit-up" : "view-exit-down");
 
-    const enterClass = goingDown
-      ? "view-enter-from-bottom"
-      : "view-enter-from-top";
+    const enterClass = sideways
+      ? (goingDown ? "view-enter-from-right" : "view-enter-from-left")
+      : (goingDown ? "view-enter-from-bottom" : "view-enter-from-top");
 
 
     /* REMOVE PREVIOUS TRANSITION CLASSES */
@@ -342,7 +343,11 @@
       "view-exit-up",
       "view-exit-down",
       "view-enter-from-bottom",
-      "view-enter-from-top"
+      "view-enter-from-top",
+      "view-exit-left",
+      "view-exit-right",
+      "view-enter-from-right",
+      "view-enter-from-left"
     );
 
 

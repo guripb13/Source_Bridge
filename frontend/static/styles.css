@@ -646,20 +646,32 @@ body.drag-mode .code-surface { border-style: dashed; border-color: var(--green);
     animation: viewEnterFromTop .28s ease forwards;
 }
 
+@keyframes viewExitLeft { to { opacity: 0; transform: translateX(-24px); } }
+@keyframes viewExitRight { to { opacity: 0; transform: translateX(24px); } }
+@keyframes viewEnterFromRight { from { opacity: 0; transform: translateX(24px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes viewEnterFromLeft { from { opacity: 0; transform: translateX(-24px); } to { opacity: 1; transform: translateX(0); } }
 
+.view-exit-left { animation: viewExitLeft .22s ease forwards; }
+.view-exit-right { animation: viewExitRight .22s ease forwards; }
+.view-enter-from-right { animation: viewEnterFromRight .28s ease forwards; }
+.view-enter-from-left { animation: viewEnterFromLeft .28s ease forwards; }
 /* ACCESSIBILITY */
 
 @media (prefers-reduced-motion: reduce) {
-    .nav-item.home.animate .icon,
-    .nav-item.saved.animate .icon,
-    .nav-item.home.leave .icon,
-    .nav-item.saved.leave .icon,
-    .view-exit-up,
-    .view-exit-down,
-    .view-enter-from-bottom,
-    .view-enter-from-top {
-        animation: none !important;
-    }
+  .nav-item.home.animate .icon,
+  .nav-item.saved.animate .icon,
+  .nav-item.home.leave .icon,
+  .nav-item.saved.leave .icon,
+  .view-exit-up,
+  .view-exit-down,
+  .view-enter-from-bottom,
+  .view-enter-from-top,
+  .view-exit-left,
+  .view-exit-right,
+  .view-enter-from-right,
+  .view-enter-from-left {
+    animation: none !important;
+  }
 }
 
 /* =========================================
