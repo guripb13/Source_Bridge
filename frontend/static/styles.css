@@ -917,7 +917,8 @@ html.has-custom-scrollbar { scrollbar-width: none; }
 html.has-custom-scrollbar::-webkit-scrollbar { display: none; }
 
 .page-scrollbar {
-  position: fixed; top: 6px; right: 0; bottom: 6px;
+  /* starts exactly where the header ends, so the pill never runs beside the header */
+  position: fixed; top: calc(var(--header-height) + 6px); right: 0; bottom: 6px;
   width: var(--sb-size, 14px);
   z-index: 60;
   /* hidden state = parked off-screen to the right */
