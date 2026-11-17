@@ -1034,7 +1034,7 @@ html.has-custom-scrollbar::-webkit-scrollbar { display: none; }
 .welcome-view { display: grid; place-items: center; min-height: calc(100dvh - var(--header-height) - 120px); }
 .welcome-panel { max-width: 680px; text-align: center; }
 .welcome-panel .page-intro { margin-bottom: 34px; }
-.welcome-mark { width: 76px; height: 76px; margin: 0 auto 28px; font-size: 37px; }
+.welcome-mark { width: 96px; height: 96px; margin: 0 auto 20px; font-size: 37px; }
 
 .language-steps { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; max-width: 920px; margin: 0 auto; }
 .language-step { min-width: 0; padding: 22px; background: var(--surface); border: 1px solid var(--border); border-radius: 16px; box-shadow: var(--shadow); transition: opacity .18s; }
@@ -1084,7 +1084,7 @@ html.has-custom-scrollbar::-webkit-scrollbar { display: none; }
   .language-actions { margin-top: 18px; }
 }
 @media (max-width: 600px) {
-  .welcome-mark { width: 62px; height: 62px; margin-bottom: 22px; font-size: 30px; }
+  .welcome-mark { width: 72px; height: 72px; margin-bottom: 18px; font-size: 30px; }
   .language-actions { flex-direction: column-reverse; align-items: stretch; gap: 8px; }
 }
 
