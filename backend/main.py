@@ -77,8 +77,8 @@ except ImportError:                                # pragma: no cover
 
 # The API key comes from the environment, never from the code.
 # Set GEMINI_API_KEY in your shell or in Vercel -> Environment Variables.
-API_KEY = "API_KEY"
-MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.6-flash")
+API_KEY = "API_KEY"  # os.environ.get("GEMINI_API_KEY")
+MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.5-flash-lite")
 if not API_KEY:
     raise RuntimeError("GEMINI_API_KEY environment variable is not set.")
 client = genai.Client(api_key=API_KEY)
