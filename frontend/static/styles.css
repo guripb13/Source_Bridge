@@ -1123,3 +1123,7 @@ html.has-custom-scrollbar::-webkit-scrollbar { display: none; }
 @media (min-width: 601px) {
   .language-actions .pill-button { margin-left: auto; }
 }
+.brand-mark img { width: 100%; height: 100%; object-fit: contain; display: block; border-radius: 50%; }
+.brand-mark .logo-dark { display: none; }
+[data-theme="dark"] .brand-mark .logo-light { display: none; }
+[data-theme="dark"] .brand-mark .logo-dark { display: block; }
