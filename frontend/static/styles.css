@@ -858,3 +858,96 @@ html.has-custom-scrollbar::-webkit-scrollbar { display: none; }
 .lang-option[aria-selected="true"] .lang-check { opacity: 1; transform: none; }
 
 @media (max-width: 380px) { .lang-option { font-size: 15px; min-height: 44px; } }
+
+/* =========================================
+   WELCOME SCREEN, LANGUAGE SELECTION, WORKSPACE LANGUAGE SUMMARY
+========================================= */
+.welcome-view { display: grid; place-items: center; min-height: calc(100dvh - var(--header-height) - 120px); }
+.welcome-panel { max-width: 680px; text-align: center; }
+.welcome-panel .page-intro { margin-bottom: 34px; }
+.welcome-mark { width: 76px; height: 76px; margin: 0 auto 28px; font-size: 37px; }
+
+.language-steps { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; max-width: 920px; margin: 0 auto; }
+.language-step { min-width: 0; padding: 22px; background: var(--surface); border: 1px solid var(--border); border-radius: 16px; box-shadow: var(--shadow); transition: opacity .18s; }
+.language-step.is-locked { opacity: .6; }
+.language-step h2 { display: flex; align-items: center; gap: 12px; margin: 0 0 8px; font-size: 19px; font-weight: 600; letter-spacing: -.35px; }
+.language-step > p { margin: 0 0 18px; color: var(--muted); font-size: 14px; line-height: 1.5; }
+.step-number { display: grid; place-items: center; flex-shrink: 0; width: 28px; height: 28px; border-radius: 50%; background: var(--green-soft); font-size: 14px; font-weight: 650; letter-spacing: 0; }
+.language-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.language-option { position: relative; display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 12px 16px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; font-size: 17px; font-weight: 600; cursor: pointer; transition: background .18s, border-color .18s; }
+.language-option > span { flex: 1; min-width: 0; }
+.language-option-icon { width: 24px; height: 24px; flex-shrink: 0; }
+.language-option small { color: var(--muted); font: 400 12px/1 "SFMono-Regular", Consolas, "Liberation Mono", monospace; }
+.language-option:hover:not(.is-disabled) { background: var(--gutter); }
+.language-option.is-selected, .language-option.is-selected:hover { background: var(--green-soft); border-color: var(--green); }
+.language-option.is-disabled { opacity: .45; cursor: not-allowed; }
+.language-option:has(input:focus-visible) { outline: 2px solid var(--focus); outline-offset: 2px; }
+.language-actions { display: flex; align-items: center; justify-content: space-between; gap: 14px; max-width: 920px; margin: 26px auto 0; }
+.back-icon { width: 20px; height: 20px; transform: rotate(180deg); }
+
+/* Workspace: selected pair in the centre column, a badge on each panel heading */
+.language-label { display: block; font-size: 18px; text-align: center; font-weight: 500; margin-bottom: 15px; }
+.language-summary { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 4px 8px; width: 100%; min-height: 60px; padding: 8px 10px; background: var(--surface); border: 1px solid var(--border); border-radius: 15px; font-size: 16px; font-weight: 600; text-align: center; }
+.language-summary .icon { width: 16px; height: 16px; color: var(--muted); }
+.change-languages { width: 100%; margin-top: 6px; padding: 7px 4px; font-size: 14px; font-weight: 600; color: var(--green); }
+.change-languages:disabled { opacity: .5; }
+.editor-heading h2 { position: relative; min-width: 0; }
+.editor-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.language-badge { flex-shrink: 0; padding: 5px 9px; font-size: 12px; font-weight: 650; letter-spacing: 0; background: var(--green-soft); border-radius: 6px; }
+
+@media (max-width: 1250px) and (min-width: 901px) {
+  .language-summary { font-size: 14px; gap: 4px 6px; padding: 8px 6px; }
+  .change-languages { font-size: 13px; }
+  .language-badge { font-size: 11px; padding: 4px 7px; }
+}
+@media (max-width: 900px) {
+  .language-summary { font-size: 14px; gap: 4px 6px; padding: 8px 6px; }
+  .change-languages { font-size: 13px; }
+}
+@media (max-width: 760px) {
+  .language-label { font-size: 15px; text-align: left; margin-bottom: 9px; }
+  .language-summary { min-height: 49px; border-radius: 12px; font-size: 16px; }
+  .change-languages { width: auto; padding-left: 0; padding-right: 8px; }
+  .language-steps { grid-template-columns: minmax(0, 1fr); gap: 14px; }
+  .language-step { padding: 16px; }
+  .language-step > p { margin-bottom: 12px; }
+  .language-option { min-height: 50px; padding: 10px 14px; font-size: 16px; }
+  .language-actions { margin-top: 18px; }
+}
+@media (max-width: 600px) {
+  .welcome-mark { width: 62px; height: 62px; margin-bottom: 22px; font-size: 30px; }
+  .language-actions { flex-direction: column-reverse; align-items: stretch; gap: 8px; }
+}
+
+/* Panel headings: as a panel gets narrower, drop button labels (icons keep their
+   aria-labels) and then the decorative file icon, so the title and badge stay readable. */
+.editor-card { container-type: inline-size; }
+@container (max-width: 470px) { .copy-button span { display: none; } .copy-button { padding: 7px; } }
+@container (max-width: 420px) { .run-button span { display: none; } .run-button { padding: 7px; } }
+@container (max-width: 350px) { .editor-heading h2 > .icon { display: none; } }
+@container (max-width: 310px) {
+  /* "Source Code" / "Translated Code" shorten to one word; the full title stays available to screen readers */
+  .title-extra { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .language-badge { font-size: 11px; padding: 4px 6px; }
+}
+/* Too narrow for a badge: the full title returns and the centre column still shows the pair */
+@container (max-width: 295px) {
+  .language-badge { display: none; }
+  .title-extra { position: static; width: auto; height: auto; overflow: visible; clip-path: none; }
+}
+
+/* Short desktop screens: let the editors and the centre column shrink a little
+   so the workspace fits without scrolling. */
+@media (min-width: 901px) {
+  .code-surface { height: max(240px, min(clamp(300px, 36vh, 440px), calc(100dvh - var(--header-height) - 432px))); }
+}
+@media (max-height: 825px) and (min-width: 901px) {
+  .conversion-controls { padding-top: 40px; gap: 20px; }
+}
+@media (max-height: 740px) and (min-width: 901px) {
+  .code-surface { height: clamp(220px, calc(100dvh - 446px), 280px); }
+}
+@media (max-height: 825px) and (min-height: 741px) and (min-width: 1800px) {
+  .main-content { padding-top: 58px; }
+  .page-intro { margin-bottom: 42px; }
+}

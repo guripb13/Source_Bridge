@@ -63,6 +63,12 @@
   let sourceFileName = "";
   let toastTimer;
   let fileReadVersion = 0;
+  // Welcome -> language selection -> workspace. The confirmed pair lives in the
+  // (hidden) sourceLanguage / language selects, which is what /send receives.
+  let languagesConfirmed = false;
+  let pendingSource = "";
+  let pendingTarget = "";
+  let setupView = "welcome";
 
   function notify(message) {
     clearTimeout(toastTimer);
@@ -181,11 +187,13 @@
      NAVIGATION AND PAGE TRANSITIONS
   ========================================= */
 
-  let currentView = "translate";
+  let currentView = "welcome";
 
   const viewOrder = {
-    translate: 0,
-    saved: 1
+    welcome: 0,
+    languages: 1,
+    translate: 2,
+    saved: 3
   };
 
 
@@ -232,12 +240,21 @@
 
   function showView(view) {
 
+    // Until languages are confirmed, the Translate tab leads to the welcome / selection steps.
+    if (view === "translate" && !languagesConfirmed) {
+      view = setupView;
+    }
+
     if (!Object.prototype.hasOwnProperty.call(viewOrder, view)) {
       return;
     }
 
     if (view === currentView) {
       return;
+    }
+
+    if (view === "languages") {
+      prepareLanguageView();
     }
 
     const goingDown =
@@ -252,13 +269,20 @@
 
     function finishSwitch() {
 
+      $("welcomeView").hidden = view !== "welcome";
+
+      $("languageView").hidden = view !== "languages";
+
       $("translateView").hidden = view !== "translate";
 
       $("savedView").hidden = view !== "saved";
 
+      // Welcome, language selection and the workspace all sit under the Translate tab.
+      const tab = view === "saved" ? "saved" : "translate";
+
       [$("translateNav"), $("savedNav")].forEach(button => {
 
-        const current = button.dataset.view === view;
+        const current = button.dataset.view === tab;
 
         button.classList.toggle("active", current);
 
@@ -273,6 +297,14 @@
       if (view === "saved") {
         renderSaved();
       }
+
+      // Line gutters cannot be measured while the workspace is hidden
+      if (view === "translate") {
+        syncScroll(source, $("sourceLines"));
+        syncScroll(output, $("outputLines"));
+      }
+
+      window.scrollTo(0, 0);
 
       // Close mobile sidebar
       if (mobileOpen) {
@@ -435,6 +467,7 @@
     source.readOnly = loading;
     language.disabled = loading;
     sourceLanguage.disabled = loading;
+    $("changeLanguages").disabled = loading;
     $("uploadButton").disabled = loading;
     $("attachment").disabled = loading;
     $("translateLabel").textContent = loading ? "Stop" : "Translate";
@@ -457,45 +490,105 @@
   }
   function languageChanged() {
     updateTargetLanguageOptions();
-    setLanguageIcon("sourceLanguageIcon", sourceLanguage.value);
-    setLanguageIcon("languageIcon", language.value);
+    updateLanguageLabels();
     refreshButtons();
   }
-  const LANGUAGE_ICON_SLUGS = {
-  "python": "python", "java": "java", "c": "c", "c++": "cplusplus", "cpp": "cplusplus",
-  "javascript": "javascript", "js": "javascript", "typescript": "typescript", "ts": "typescript",
-  "c#": "csharp", "csharp": "csharp", "go": "go", "golang": "go", "rust": "rust",
-  "php": "php", "swift": "swift", "kotlin": "kotlin", "ruby": "ruby", "sql": "mysql",
-  "mysql": "mysql", "node": "nodejs", "nodejs": "nodejs", "r": "r", "dart": "dart",
-  "scala": "scala", "perl": "perl", "haskell": "haskell", "lua": "lua",
-  "html": "html5", "css": "css3", "bash": "bash", "shell": "bash",
-  "matlab": "matlab", "objective-c": "objectivec", "objectivec": "objectivec"
-};
 
-function setLanguageIcon(iconId, langValue) {
-  const icon = $(iconId);
-  const key = (langValue || "").trim().toLowerCase();
-  const slug = LANGUAGE_ICON_SLUGS[key];
-
-  // Unknown language: hide the icon
-  if (!slug) {
-    icon.removeAttribute("src");
-    icon.style.display = "none";
-    return;
+  // Shows the confirmed pair in the workspace: centre column, panel badges and placeholders.
+  function updateLanguageLabels() {
+    const from = languagesConfirmed ? sourceLanguage.value : "";
+    const to = languagesConfirmed ? language.value : "";
+    $("sourceLanguageLabel").textContent = from || "Source";
+    $("targetLanguageLabel").textContent = to || "Target";
+    $("sourceLanguageBadge").textContent = from;
+    $("sourceLanguageBadge").hidden = !from;
+    $("targetLanguageBadge").textContent = to;
+    $("targetLanguageBadge").hidden = !to;
+    source.placeholder = from ? `Paste your ${from} code here...` : "Paste your code here...";
+    output.placeholder = to ? `Your ${to} code will appear here...` : "Your translated code will appear here...";
   }
 
-  const url = `https://cdn.jsdelivr.net/gh/devicons/devicon/icons/${slug}/${slug}-original.svg`;
+  // Step 1 picks the source language, step 2 the target. The chosen source is
+  // not offered as a target.
+  function renderLanguageChoices() {
+    document.querySelectorAll('input[name="sourceChoice"]').forEach((input) => {
+      input.checked = input.value === pendingSource;
+      input.closest(".language-option").classList.toggle("is-selected", input.checked);
+    });
+    document.querySelectorAll('input[name="targetChoice"]').forEach((input) => {
+      const option = input.closest(".language-option");
+      const isSource = input.value === pendingSource;
+      input.disabled = !pendingSource || isSource;
+      input.checked = !input.disabled && input.value === pendingTarget;
+      option.classList.toggle("is-selected", input.checked);
+      option.classList.toggle("is-disabled", input.disabled);
+      option.title = isSource ? "Already selected as the source language" : "";
+    });
+    $("targetStep").classList.toggle("is-locked", !pendingSource);
+    $("targetStepHelp").textContent = pendingSource ? `The language to translate your ${pendingSource} code into.` : "Select a source language first.";
+    $("continueButton").disabled = !(pendingSource && pendingTarget);
+    $("languagePrompt").textContent = !pendingSource ? "Start by selecting the language your code is written in." :
+      !pendingTarget ? "Now select the language you want to translate into." :
+      `${pendingSource} to ${pendingTarget}. Continue when you're ready.`;
+  }
+  // Opening the selection screen from the workspace preselects the current pair.
+  function prepareLanguageView() {
+    setupView = "languages";
+    pendingSource = languagesConfirmed ? sourceLanguage.value : "";
+    pendingTarget = languagesConfirmed && language.value !== pendingSource ? language.value : "";
+    $("languageBackLabel").textContent = languagesConfirmed ? "Back to workspace" : "Back";
+    renderLanguageChoices();
+  }
+  document.querySelectorAll('input[name="sourceChoice"]').forEach((input) => {
+    input.addEventListener("change", () => {
+      pendingSource = input.value;
+      if (pendingTarget === pendingSource) pendingTarget = "";
+      renderLanguageChoices();
+    });
+  });
+  document.querySelectorAll('input[name="targetChoice"]').forEach((input) => {
+    input.addEventListener("change", () => { pendingTarget = input.value; renderLanguageChoices(); });
+  });
+  // Same language logos the workspace used; an option simply shows no logo if the CDN is unreachable.
+  document.querySelectorAll(".language-option").forEach((option) => {
+    const slug = { python: "python", java: "java", c: "c", "c++": "cplusplus" }[option.querySelector("input").value.toLowerCase()];
+    if (!slug) return;
+    const logo = new Image();
+    logo.className = "language-option-icon";
+    logo.alt = "";
+    logo.setAttribute("aria-hidden", "true");
+    logo.onerror = () => logo.remove();
+    logo.src = `https://cdn.jsdelivr.net/gh/devicons/devicon/icons/${slug}/${slug}-original.svg`;
+    option.insertBefore(logo, option.querySelector("span"));
+  });
+  $("getStartedButton").addEventListener("click", () => showView("languages"));
+  $("languageBack").addEventListener("click", () => showView(languagesConfirmed ? "translate" : "welcome"));
+  $("changeLanguages").addEventListener("click", () => { if (!activeController) showView("languages"); });
+  $("continueButton").addEventListener("click", () => {
+    if (!pendingSource || !pendingTarget || activeController) return;
+    const hadLanguages = languagesConfirmed;
+    const sourceChanged = !hadLanguages || sourceLanguage.value !== pendingSource;
+    const targetChanged = !hadLanguages || language.value !== pendingTarget;
+    sourceLanguage.value = pendingSource;
+    updateTargetLanguageOptions();
+    language.value = pendingTarget;
+    languagesConfirmed = true;
+    // A result in the previous target language no longer matches the workspace.
+    if (hadLanguages && targetChanged && output.value) {
+      const panel = $("outputRunOutput");
+      const stopRun = liveStops.get(panel);
+      if (stopRun) stopRun();
+      panel.hidden = true;
+      panel.textContent = "";
+      output.value = "";
+      completedTranslation = null;
+      updateLines(output, $("outputLines"));
+    }
+    languageChanged();
+    showView("translate");
+    if (sourceChanged || targetChanged) setStatus(source.value.trim() ? `Ready to translate ${sourceLanguage.value} to ${language.value}.` : "");
+  });
 
-  icon.src = "";
-  icon.onload = () => { icon.style.display = ""; };
-  icon.onerror = () => { icon.style.display = "none"; };   // hide if the CDN fails
-  icon.alt = `${langValue} logo`;
-  requestAnimationFrame(() => { icon.src = url; });
-}
-
-// Triggered when the dropdown changes
-language.addEventListener("change", () => languageChanged());
-sourceLanguage.addEventListener("change", () => languageChanged());
   source.addEventListener("input", () => {
     fileReadVersion += 1;
     updateLines(source, $("sourceLines"));
@@ -1010,6 +1103,7 @@ sourceLanguage.addEventListener("change", () => languageChanged());
     updateTargetLanguageOptions();
     language.value = hasOption(language, entry.language) ? entry.language : "Python";
     completedTranslation = { ...entry, fileName: sourceFileName };
+    languagesConfirmed = true;
     source.scrollTop = 0; output.scrollTop = 0;
     languageChanged(); updateFileLabel();
     updateLines(source, $("sourceLines")); updateLines(output, $("outputLines"));
@@ -1048,6 +1142,7 @@ sourceLanguage.addEventListener("change", () => languageChanged());
   applyPreferences();
   updateSidebar();
   languageChanged();
+  renderLanguageChoices();
   renderSaved();
   refreshButtons();
 })();
