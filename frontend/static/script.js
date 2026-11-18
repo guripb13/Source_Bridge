@@ -545,7 +545,7 @@
           sourceHintDismissed = true;
           sourceHintTimer = null;
         }, 220);
-      }, 3000);
+      }, 5000);
     }
   }
   function refreshButtons() {
