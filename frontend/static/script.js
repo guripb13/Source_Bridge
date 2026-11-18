@@ -532,13 +532,19 @@
       clearTimeout(sourceHintTimer);
       sourceHintTimer = null;
       sourceHintDismissed = false;
+      hint.classList.remove("is-hiding");
       hint.hidden = true;
     } else if (hint.hidden && !sourceHintDismissed) {
       hint.hidden = false;
+      hint.classList.remove("is-hiding");
       sourceHintTimer = setTimeout(() => {
-        hint.hidden = true;
-        sourceHintDismissed = true;
-        sourceHintTimer = null;
+        hint.classList.add("is-hiding");
+        sourceHintTimer = setTimeout(() => {
+          hint.hidden = true;
+          hint.classList.remove("is-hiding");
+          sourceHintDismissed = true;
+          sourceHintTimer = null;
+        }, 220);
       }, 3000);
     }
   }
