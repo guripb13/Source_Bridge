@@ -1,0 +1,25 @@
+/* Header: top bar, brand, icon buttons, sign-in */
+/* Header */
+.topbar { height: var(--header-height); padding: 0 32px 0 20px; display: flex; align-items: center; justify-content: space-between; gap: 20px; background: var(--surface); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 30; }
+.brand-group, .brand, .header-actions, .editor-actions { display: flex; align-items: center; }
+.brand-group { gap: 17px; }
+.brand { gap: 20px; font-weight: 650; font-size: 30px; letter-spacing: -1.1px; white-space: nowrap; }
+.brand-mark { display: grid; place-items: center; width: 55px; height: 55px; font-size: 27px; font-weight: 450; letter-spacing: -1px; }
+.header-actions { gap: 30px; }
+.icon-button { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; width: 38px; height: 38px; border: 0; border-radius: 10px; background: transparent; padding: 7px; transition: background .18s, color .18s; }
+.icon-button:hover:not(:disabled), .text-button:hover:not(:disabled) { background: var(--green-soft); }
+.sidebar-toggle { color: var(--muted); }
+.mobile-menu { display: none; }
+.text-button { display: inline-flex; align-items: center; justify-content: center; gap: 10px; background: transparent; border: 0; border-radius: 8px; padding: 8px; font-size: 16px; white-space: nowrap; transition: background .18s; }
+.tips-button { font-size: 19px; gap: 9px; }
+.tips-button .icon { width: 28px; height: 28px; }
+.theme-button { width: 44px; height: 44px; border-radius: 50%; }
+.theme-button .icon { width: 29px; height: 29px; }
+.sign-in-button { display: inline-flex; justify-content: center; align-items: center; gap: 14px; background: transparent; border: 1.5px solid var(--green); border-radius: 99px; min-height: 51px; min-width: 162px; padding: 10px 24px; font-size: 18px; font-weight: 600; transition: background .18s; }
+.sign-in-button:hover { background: var(--green-soft); }
+
+/* Brand logo: separate artwork for light and dark themes */
+.brand-mark img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.brand-mark .logo-dark { display: none; }
+[data-theme="dark"] .brand-mark .logo-light { display: none; }
+[data-theme="dark"] .brand-mark .logo-dark { display: block; }

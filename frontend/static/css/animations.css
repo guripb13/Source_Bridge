@@ -1,0 +1,218 @@
+/* Navigation icon animations, page transitions, reduced motion */
+/* =========================================
+   NAVIGATION ICON ANIMATIONS
+========================================= */
+
+/* HOME ICON */
+
+.home .home-body {
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    transition: fill .35s ease, stroke .35s ease;
+}
+
+.home .home-door {
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    transition: stroke .35s ease;
+}
+
+.home.active .home-body {
+    fill: var(--green);
+    stroke: var(--green);
+}
+
+.home.active .home-door {
+    stroke: #fff;
+}
+
+.nav-item.home.animate .icon {
+    animation: nav-home-bounce .6s ease;
+}
+
+
+/* SAVE ICON */
+
+.saved .bookmark-path {
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    transition: fill .35s ease, stroke .35s ease;
+}
+
+.saved.active .bookmark-path {
+    fill: var(--green);
+    stroke: var(--green);
+}
+
+.nav-item.saved.animate .icon {
+    animation: nav-bookmark-pop .6s cubic-bezier(.3, 1.6, .5, 1);
+}
+
+
+/* EXIT ANIMATION FOR PREVIOUS ICON */
+
+.nav-item.home.leave .icon,
+.nav-item.saved.leave .icon {
+    animation: nav-icon-shrink .4s ease;
+}
+
+
+/* =========================================
+   KEYFRAME ANIMATIONS
+========================================= */
+
+@keyframes nav-home-bounce {
+    0% {
+        transform: translateY(0) scale(1);
+    }
+
+    30% {
+        transform: translateY(-7px) scale(1.12);
+    }
+
+    55% {
+        transform: translateY(0) scale(.95);
+    }
+
+    75% {
+        transform: translateY(-3px) scale(1.04);
+    }
+
+    100% {
+        transform: translateY(0) scale(1);
+    }
+}
+
+
+@keyframes nav-bookmark-pop {
+    0% {
+        transform: scale(1);
+    }
+
+    40% {
+        transform: scale(1.35) rotate(-8deg);
+    }
+
+    70% {
+        transform: scale(.92) rotate(4deg);
+    }
+
+    100% {
+        transform: scale(1) rotate(0);
+    }
+}
+
+
+@keyframes nav-icon-shrink {
+    0% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(.85);
+    }
+
+    100% {
+        transform: scale(1);
+    }
+}
+
+
+/* =========================================
+   PAGE TRANSITIONS
+========================================= */
+
+@keyframes viewExitUp {
+    to {
+        opacity: 0;
+        transform: translateY(-24px);
+    }
+}
+
+@keyframes viewExitDown {
+    to {
+        opacity: 0;
+        transform: translateY(24px);
+    }
+}
+
+@keyframes viewEnterFromBottom {
+    from {
+        opacity: 0;
+        transform: translateY(24px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes viewEnterFromTop {
+    from {
+        opacity: 0;
+        transform: translateY(-24px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+
+/* TRANSITION CLASSES */
+
+.view-exit-up {
+    animation: viewExitUp .22s ease forwards;
+}
+
+.view-exit-down {
+    animation: viewExitDown .22s ease forwards;
+}
+
+.view-enter-from-bottom {
+    animation: viewEnterFromBottom .28s ease forwards;
+}
+
+.view-enter-from-top {
+    animation: viewEnterFromTop .28s ease forwards;
+}
+
+@keyframes viewExitLeft { to { opacity: 0; transform: translateX(-24px); } }
+@keyframes viewExitRight { to { opacity: 0; transform: translateX(24px); } }
+@keyframes viewEnterFromRight { from { opacity: 0; transform: translateX(24px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes viewEnterFromLeft { from { opacity: 0; transform: translateX(-24px); } to { opacity: 1; transform: translateX(0); } }
+
+.view-exit-left { animation: viewExitLeft .22s ease forwards; }
+.view-exit-right { animation: viewExitRight .22s ease forwards; }
+.view-enter-from-right { animation: viewEnterFromRight .28s ease forwards; }
+.view-enter-from-left { animation: viewEnterFromLeft .28s ease forwards; }
+/* ACCESSIBILITY */
+
+@media (prefers-reduced-motion: reduce) {
+  .nav-item.home.animate .icon,
+  .nav-item.saved.animate .icon,
+  .nav-item.home.leave .icon,
+  .nav-item.saved.leave .icon,
+  .view-exit-up,
+  .view-exit-down,
+  .view-enter-from-bottom,
+  .view-enter-from-top,
+  .view-exit-left,
+  .view-exit-right,
+  .view-enter-from-right,
+  .view-enter-from-left {
+    animation: none !important;
+  }
+}
+

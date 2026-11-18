@@ -1,0 +1,46 @@
+/* Editor extras: language badges + logos, resize handle, uploaded-file chip, in-editor progress text */
+
+/* ---- Language badge (Python / Java / C / C++) and the logo that replaces the generic file icon ---- */
+.language-badge { display: inline-flex; align-items: center; gap: 6px; box-shadow: inset 0 0 0 1px var(--green-edge); line-height: 1.2; }
+.language-badge::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--green); flex-shrink: 0; }
+.heading-logo { width: 25px; height: 25px; flex-shrink: 0; object-fit: contain; display: block; }
+.heading-logo[hidden] { display: none; }
+.editor-heading h2.has-logo > .icon { display: none; }
+@media (max-width: 1250px) { .heading-logo { width: 21px; height: 21px; } }
+@container (max-width: 350px) { .heading-logo { display: none; } .editor-heading h2.has-logo > .icon { display: block; } }
+@container (max-width: 310px) { .language-badge::before { display: none; } }
+/* Same rule as language-flow.css (this file loads later, so it must repeat it): too narrow for a badge */
+@container (max-width: 295px) { .language-badge { display: none; } }
+@container (max-width: 295px) { .editor-heading h2.has-logo > .icon { display: none; } }
+
+/* ---- Height handle under each editor. Both editors share one height so the two panels stay level. ---- */
+.resize-handle { flex: 0 0 auto; display: flex; align-items: center; justify-content: center; height: 14px; margin: 2px 0 -10px; /* sits in the card's bottom padding */ border-radius: 8px; cursor: ns-resize; touch-action: none; }
+.resize-handle::before { content: ""; width: 44px; height: 4px; border-radius: 99px; background: var(--green-edge); opacity: .75; transition: width .2s var(--ease-soft), background-color .2s, opacity .2s; }
+.resize-handle:hover::before, .resize-handle:focus-visible::before, body.is-resizing-editor .resize-handle::before { width: 72px; background: var(--green); opacity: 1; }
+.resize-handle:focus-visible { outline: 2px solid var(--focus); outline-offset: 0; }
+body.is-resizing-editor, body.is-resizing-editor * { cursor: ns-resize !important; user-select: none !important; -webkit-user-select: none !important; }
+.workspace-grid.has-custom-height .code-surface { height: var(--editor-height) !important; }
+
+/* ---- Uploaded file name with a remove button ---- */
+.upload-actions { flex-wrap: wrap; row-gap: 8px; }
+.file-chip { display: inline-flex; align-items: center; gap: 8px; min-width: 0; max-width: 100%; padding: 5px 5px 5px 12px; border: 1px solid var(--green-edge); border-radius: 99px; background: var(--surface); font-size: 14px; font-weight: 500; }
+.file-chip[hidden] { display: none; }
+.file-chip > .icon { width: 18px; height: 18px; color: var(--green); }
+.file-chip-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.file-chip-remove { display: grid; place-items: center; flex-shrink: 0; width: 28px; height: 28px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--muted); transition: background .18s, color .18s, transform .18s; }
+.file-chip-remove .icon { width: 16px; height: 16px; }
+.file-chip-remove:hover:not(:disabled) { background: color-mix(in srgb, var(--error) 14%, transparent); color: var(--error); transform: rotate(90deg); }
+.file-chip-remove:disabled { opacity: .45; }
+@media (max-width: 600px) { .file-chip { font-size: 13px; max-width: 220px; } }
+
+/* ---- Progress text shown inside the empty output editor while translating ---- */
+.translate-progress { position: absolute; left: 66px; right: 14px; top: 15px; display: flex; align-items: center; gap: 10px; min-height: var(--code-line); color: var(--green); font-size: 14px; font-weight: 500; pointer-events: none; }
+.translate-progress[hidden] { display: none; }
+.translate-progress-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); flex-shrink: 0; animation: term-pulse 1.1s ease-in-out infinite; }
+.translate-progress-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.translate-progress-text.is-swapping { animation: progress-swap .38s var(--ease-soft) both; }
+@keyframes progress-swap { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: none; } }
+body.hide-line-numbers .translate-progress { left: 20px; }
+body.is-translating #translatedCode::placeholder { color: transparent; }
+@media (max-width: 900px) { .translate-progress { left: 56px; } }
+@media (prefers-reduced-motion: reduce) { .translate-progress-dot, .translate-progress-text.is-swapping { animation: none; } }

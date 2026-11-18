@@ -1,0 +1,59 @@
+/* Custom language dropdown (used when a .language-select exists) */
+/* =========================================
+   CUSTOM LANGUAGE DROPDOWN (Translate from / Translate to)
+   Built by script.js on top of the native <select>.
+========================================= */
+.language-select.has-menu { cursor: pointer; transition: border-color .2s var(--ease-soft, ease), box-shadow .25s var(--ease-soft, ease), opacity .2s; }
+.language-select.has-menu select { pointer-events: none; }        /* clicks go to the wrapper, not the OS list */
+.language-select.has-menu:has(select:disabled) { cursor: not-allowed; opacity: .7; }
+.language-select.has-menu .select-chevron { transition: transform .3s var(--ease-soft, ease); }
+.language-select.is-open { border-color: var(--focus); box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus) 18%, transparent); }
+.language-select.is-open .select-chevron { transform: rotate(180deg); }
+
+.lang-menu {
+  position: absolute; z-index: 20;
+  left: -1px; top: calc(100% + 8px);
+  min-width: calc(100% + 2px); width: max-content; max-width: 260px;
+  max-height: min(320px, 50vh); overflow: auto;
+  margin: 0; padding: 6px; list-style: none;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: 0 18px 50px rgb(var(--scrim, 14 26 18) / .22), 0 2px 8px rgb(var(--scrim, 14 26 18) / .08);
+  scrollbar-width: thin; scrollbar-color: var(--border) transparent;
+  /* closed state */
+  opacity: 0; visibility: hidden; pointer-events: none;
+  transform: translateY(-6px) scale(.97); transform-origin: top center;
+  transition:
+    opacity .2s var(--ease-soft, ease),
+    transform .26s var(--ease-soft, ease),
+    visibility 0s linear .26s;
+}
+.language-select.opens-up .lang-menu {
+  top: auto; bottom: calc(100% + 8px);
+  transform: translateY(6px) scale(.97); transform-origin: bottom center;
+}
+.language-select.is-open .lang-menu {
+  opacity: 1; visibility: visible; pointer-events: auto; transform: none;
+  transition: opacity .2s var(--ease-soft, ease), transform .26s var(--ease-soft, ease), visibility 0s;
+}
+
+.lang-option {
+  display: flex; align-items: center; gap: 12px;
+  min-height: 46px; padding: 9px 12px;
+  border-radius: 11px;
+  font-size: 16px; color: var(--ink); white-space: nowrap;
+  cursor: pointer; user-select: none;
+  transition: background-color .15s;
+}
+.lang-option + .lang-option { margin-top: 2px; }
+.lang-option.is-active { background: color-mix(in srgb, var(--green-soft) 55%, transparent); }
+.lang-option[aria-selected="true"] { background: var(--green-soft); font-weight: 600; }
+.lang-option[aria-selected="true"].is-active { background: color-mix(in srgb, var(--green-soft) 75%, var(--green) 25%); }
+.lang-option-icon { width: 24px; height: 24px; flex-shrink: 0; }
+.lang-option-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.lang-check { width: 18px; height: 18px; flex-shrink: 0; color: var(--green); stroke-width: 2.2; opacity: 0; transform: scale(.6); transition: opacity .2s, transform .25s var(--ease-soft, ease); }
+.lang-option[aria-selected="true"] .lang-check { opacity: 1; transform: none; }
+
+@media (max-width: 380px) { .lang-option { font-size: 15px; min-height: 44px; } }
+

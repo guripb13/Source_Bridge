@@ -1,0 +1,14 @@
+/* Text selection: static, instructional and decorative text cannot be highlighted.
+   Code editors, the terminal, status/error messages and saved code previews stay selectable. */
+:is(.topbar, .sidebar, .page-intro, .welcome-panel, .language-step, .language-actions,
+    .editor-heading, .language-label, .language-summary, .conversion-controls .translate-button,
+    .pill-button, .file-help, .file-chip, .keyboard-hint, .personalize > summary, .personalize-label,
+    .personalize-footer, .suggestion-chip, .saved-empty, .saved-card-top, .saved-card h2,
+    .saved-card-actions, .term-bar, .term-label, .toast, .resize-handle, .translate-progress) {
+  -webkit-user-select: none;
+  user-select: none;
+}
+/* Every dialog is pure instruction / settings text, including the tips list. */
+.app-dialog, .app-dialog * { -webkit-user-select: none; user-select: none; }
+/* ...except text a person may want to copy */
+.status-details > pre, .status-message { -webkit-user-select: text; user-select: text; }
