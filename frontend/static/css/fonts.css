@@ -1,0 +1,7 @@
+/* Custom font: Inter (SIL Open Font License, see fonts/Inter-LICENSE.txt).
+   Latin subset, bundled locally so the page needs no external font service.
+   font-display: swap shows the system font first, so text never stays invisible. */
+@font-face { font-family: "Inter"; font-style: normal; font-weight: 400; font-display: swap; src: url("../fonts/Inter-Regular.woff") format("woff"); }
+@font-face { font-family: "Inter"; font-style: normal; font-weight: 500; font-display: swap; src: url("../fonts/Inter-Medium.woff") format("woff"); }
+@font-face { font-family: "Inter"; font-style: normal; font-weight: 600; font-display: swap; src: url("../fonts/Inter-SemiBold.woff") format("woff"); }
+@font-face { font-family: "Inter"; font-style: normal; font-weight: 700; font-display: swap; src: url("../fonts/Inter-Bold.woff") format("woff"); }

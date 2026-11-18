@@ -1,0 +1,28 @@
+/* "Personalize the translation" box with suggestion chips */
+.personalize { grid-area: instructions; min-width: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 16px; box-shadow: var(--shadow); }
+.personalize > summary { display: flex; align-items: center; gap: 12px; padding: 9px 18px; min-height: 46px; border-radius: 16px; list-style: none; cursor: pointer; font-size: 16px; font-weight: 600; }
+.personalize > summary::-webkit-details-marker { display: none; }
+.personalize > summary:hover { background: var(--gutter); }
+.personalize > summary:focus-visible { outline-offset: -2px; }
+.personalize > summary > .icon { width: 22px; height: 22px; color: var(--green); }
+.personalize-optional { font-weight: 400; color: var(--muted); font-size: 14px; }
+.personalize-state { margin-left: auto; padding: 2px 9px; border-radius: 99px; background: var(--green-soft); font-size: 12px; font-weight: 600; }
+.personalize-state[hidden] { display: none; }
+.personalize-chevron { width: 18px; height: 18px; color: var(--muted); transition: transform .25s var(--ease-soft); }
+.personalize[open] .personalize-chevron { transform: rotate(180deg); }
+.personalize-body { display: grid; gap: 12px; padding: 2px 18px 18px; }
+.personalize-label { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.5; }
+.personalize textarea { display: block; width: 100%; min-height: 78px; max-height: 240px; padding: 12px 14px; border: 1px solid var(--editor-border); border-radius: 10px; resize: vertical; background: var(--surface); color: var(--ink); font-size: 15px; line-height: 1.55; transition: border-color .18s, box-shadow .18s; }
+.personalize textarea::placeholder { color: var(--muted); opacity: .85; }
+.personalize textarea:focus { outline: none; border-color: var(--focus); box-shadow: 0 0 0 2px color-mix(in srgb, var(--focus) 12%, transparent); }
+.personalize textarea:disabled { opacity: .6; }
+.suggestion-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.suggestion-chip { padding: 6px 13px; border: 1px solid var(--green-edge); border-radius: 99px; background: transparent; font-size: 13.5px; line-height: 1.4; transition: background .18s, border-color .18s, transform .18s; }
+.suggestion-chip:hover:not(:disabled) { background: var(--green-soft); transform: translateY(-1px); }
+.suggestion-chip[aria-pressed="true"] { background: var(--green-soft); border-color: var(--green); font-weight: 600; }
+.suggestion-chip:disabled { opacity: .55; }
+.personalize-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 24px; }
+.personalize-count { color: var(--muted); font-size: 12px; }
+.personalize-clear { padding: 4px 8px; font-size: 13px; color: var(--green); font-weight: 600; }
+.personalize-clear[hidden] { display: none; }
+@media (max-width: 600px) { .personalize > summary { padding: 12px 14px; font-size: 15px; } .personalize-optional { display: none; } .personalize-body { padding: 2px 14px 14px; } }

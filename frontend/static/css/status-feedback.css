@@ -1,0 +1,10 @@
+/* Status line: friendly error messages (title, explanation, suggestion, optional technical details) */
+.status-message .status-title { display: block; font-weight: 600; font-size: 14px; }
+.status-message .status-text { display: block; }
+.status-message .status-tip { display: block; margin-top: 3px; color: var(--muted); }
+.status-message.is-error .status-tip { color: color-mix(in srgb, var(--error) 78%, var(--muted)); }
+.status-message .status-tip strong { font-weight: 600; }
+.status-details { margin-top: 6px; }
+.status-details > summary { display: inline-block; cursor: pointer; font-weight: 600; font-size: 12.5px; }
+.status-details > pre { margin: 6px 0 0; padding: 10px 12px; max-height: 150px; overflow: auto; border: 1px solid var(--border); border-radius: 8px; background: var(--gutter); color: var(--ink); font: 12px/1.6 "SFMono-Regular", Consolas, "Liberation Mono", monospace; white-space: pre-wrap; overflow-wrap: anywhere; user-select: text; }
+.status-message.is-working { color: var(--green); }
