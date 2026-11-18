@@ -62,6 +62,8 @@
   let completedTranslation = null;
   let sourceFileName = "";
   let toastTimer;
+  let sourceHintTimer;
+  let sourceHintDismissed = false;
   let fileReadVersion = 0;
   // Welcome -> language selection -> workspace. The confirmed pair lives in the
   // (hidden) sourceLanguage / language selects, which is what /send receives.
@@ -524,6 +526,22 @@
   });
 
   function targetLanguage() { return language.value.trim(); }
+  function updateSourceRunHint() {
+    const hint = $("runSourceHint");
+    if (!source.value) {
+      clearTimeout(sourceHintTimer);
+      sourceHintTimer = null;
+      sourceHintDismissed = false;
+      hint.hidden = true;
+    } else if (hint.hidden && !sourceHintDismissed) {
+      hint.hidden = false;
+      sourceHintTimer = setTimeout(() => {
+        hint.hidden = true;
+        sourceHintDismissed = true;
+        sourceHintTimer = null;
+      }, 3000);
+    }
+  }
   function refreshButtons() {
     const loading = Boolean(activeController);
     translateButton.disabled = !loading && (!source.value.trim() || !targetLanguage());
@@ -673,11 +691,17 @@
   source.addEventListener("input", () => {
     fileReadVersion += 1;
     updateLines(source, $("sourceLines"));
+    updateSourceRunHint();
     refreshButtons();
     if (completedTranslation) setStatus("Source updated. Translate again to refresh the result.");
     else setStatus("");
   });
   source.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" && event.altKey) {
+      event.preventDefault();
+      $("runSource").click();
+      return;
+    }
     if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
       event.preventDefault();
       if (!activeController) form.requestSubmit();
@@ -804,6 +828,7 @@
       if (version !== fileReadVersion || activeController) return;
       if (text.includes("\u0000")) { notify("This file isn't UTF-8 text. Please upload a plain-text code file."); return; }
       source.value = text.replace(/^\uFEFF/, "");
+      updateSourceRunHint();
       sourceFileName = file.name;
       source.scrollTop = 0;
       updateFileLabel();
@@ -1316,6 +1341,12 @@
     const lang = completedTranslation ? completedTranslation.language : targetLanguage();
     runCode(output.value, executableLanguages[lang.trim().toLowerCase()] || null, $("runOutput"), $("outputRunOutput"));
   });
+  output.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" && event.altKey) {
+      event.preventDefault();
+      $("runOutput").click();
+    }
+  });
 
   function downloadName(translation) {
     const extension = extensionMap[translation.language.toLowerCase()] || "txt";
@@ -1394,6 +1425,7 @@
     if (activeController) { notify("Stop the current translation before opening a saved one."); return; }
     fileReadVersion += 1;
     source.value = entry.source;
+    updateSourceRunHint();
     output.value = entry.output;
     sourceFileName = typeof entry.fileName === "string" ? entry.fileName : "";
     const hasOption = (select, value) => Array.from(select.options).some((option) => option.value === value);

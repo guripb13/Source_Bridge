@@ -164,7 +164,10 @@
           <div class="editor-heading">
             <h2 id="sourceTitle"><svg class="icon" aria-hidden="true"><use href="#i-file"/></svg><span class="editor-title">Source<span class="title-extra"> Code</span></span><span class="language-badge" id="sourceLanguageBadge" hidden></span></h2>
             <div class="editor-actions">
-              <button type="button" class="text-button run-button" id="runSource" aria-label="Run source code" disabled><svg class="icon" aria-hidden="true"><use href="#i-play"/></svg><span>Run</span></button>
+              <div class="run-action">
+                <button type="button" class="text-button run-button" id="runSource" aria-label="Run source code" disabled><svg class="icon" aria-hidden="true"><use href="#i-play"/></svg><span>Run</span></button>
+                <span class="run-shortcut-hint" id="runSourceHint" hidden style="display:flex;padding:0px;margin:0px;">Alt + Enter</span>
+              </div>
               <button type="button" class="text-button copy-button" id="copySource" aria-label="Copy source code" disabled><svg class="icon" aria-hidden="true"><use href="#i-copy"/></svg><span>Copy</span></button>
             </div>
           </div>
@@ -241,7 +244,7 @@
 
   <dialog class="app-dialog" id="tipsDialog" aria-labelledby="tipsTitle">
     <div class="dialog-heading"><h2 id="tipsTitle">A few helpful tips</h2><button type="button" class="icon-button" data-close-dialog aria-label="Close tips"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></button></div>
-    <ul class="tips-list"><li><strong>Start with your code.</strong> Paste it into the source editor or upload a text-based code file.</li><li><strong>Choose your languages.</strong> Pick a source and a target from Python, Java, C and C++. Use Change languages in the workspace to switch at any time.</li><li><strong>Keep writing.</strong> Enter creates a new line. Ctrl + Enter (⌘ + Enter on Mac) starts a translation.</li><li><strong>Take it with you.</strong> Copy, download, or bookmark a finished translation. Hold Alt and drag code into another app.</li><li><strong>Review the result.</strong> Check and test translated code before using it in your project.</li></ul>
+    <ul class="tips-list"><li><strong>Start with your code.</strong> Paste it into the source editor or upload a text-based code file.</li><li><strong>Choose your languages.</strong> Pick a source and a target from Python, Java, C and C++. Use Change languages in the workspace to switch at any time.</li><li><strong>Keep writing.</strong> Enter creates a new line. Ctrl + Enter (⌘ + Enter on Mac) starts a translation. Alt + Enter compiles and runs code in the focused editor.</li><li><strong>Take it with you.</strong> Copy, download, or bookmark a finished translation. Hold Alt and drag code into another app.</li><li><strong>Review the result.</strong> Check and test translated code before using it in your project.</li></ul>
   </dialog>
 
   <dialog class="app-dialog" id="settingsDialog" aria-labelledby="settingsTitle">
