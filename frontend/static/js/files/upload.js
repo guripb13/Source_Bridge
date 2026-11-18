@@ -5,6 +5,7 @@ import { state } from "../core/state.js";
 import { notify, setStatus } from "../core/feedback.js";
 import { refreshButtons } from "../ui/buttons.js";
 import { updateLines } from "../editor/line-numbers.js";
+import { updateSourceRunHint } from "../editor/source-input.js";
 
 const { source, sourceLanguage } = dom;
 const SUPPORTED_TEXT = ".py, .java, .c or .cpp";
@@ -37,6 +38,7 @@ async function loadFile(file) {
     if (version !== state.fileReadVersion || state.activeController) return;
     if (text.includes("\u0000")) { notify("This file isn't plain text. Please upload a source code file."); return; }
     source.value = text.replace(/^\uFEFF/, "");
+    updateSourceRunHint();
     state.uploadedText = source.value;
     state.sourceFileName = file.name;
     source.scrollTop = 0;
@@ -61,6 +63,7 @@ function removeFile() {
   state.uploadedText = "";
   if (untouched) {
     source.value = "";
+    updateSourceRunHint();
     source.scrollTop = 0;
     updateLines(source, $("sourceLines"));
   }

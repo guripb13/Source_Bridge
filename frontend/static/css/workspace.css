@@ -12,6 +12,11 @@
 .editor-heading h2 { display: flex; align-items: center; gap: 12px; margin: 0; font-size: 19px; font-weight: 600; letter-spacing: -.35px; white-space: nowrap; }
 .editor-heading h2 > .icon { width: 25px; height: 25px; }
 .editor-actions { gap: 0; }
+.run-action { position: relative; display: flex; flex-direction: column; align-items: center; }
+.run-shortcut-hint { position: absolute; top: calc(100% + 7px); left: 50%; z-index: 2; padding: 4px 7px; color: var(--ink); font-size: 11px; line-height: 1; white-space: nowrap; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; box-shadow: 0 2px 7px rgb(0 0 0 / 12%); transform-origin: top center; animation: run-hint-morph-in .3s var(--ease-soft) both; }
+.run-shortcut-hint::before, .run-shortcut-hint::after { position: absolute; left: 50%; width: 0; height: 0; border-right: 7px solid transparent; border-bottom: 7px solid var(--border); border-left: 7px solid transparent; content: ""; transform: translateX(-50%); }
+.run-shortcut-hint::before { top: -7px; }
+.run-shortcut-hint::after { top: -6px; border-right-width: 6px; border-bottom-width: 6px; border-left-width: 6px; border-bottom-color: var(--surface); }
 .copy-button { gap: 7px; font-size: 15px; padding: 7px; }
 .copy-button .icon { width: 20px; height: 20px; }
 .copy-button:disabled { opacity: .5; }
@@ -68,4 +73,15 @@ kbd { font-family: inherit; font-size: .95em; }
 body.drag-mode .code-editor:not(:placeholder-shown) { cursor: grab; }
 body.drag-mode .code-surface { border-style: dashed; border-color: var(--green); }
 .noscript-message { color: var(--error); }
+
+@keyframes run-hint-morph-in {
+  from { opacity: 0; transform: translate(-50%, -4px) scale(.86); border-radius: 12px 12px 4px 4px; }
+  to { opacity: 1; transform: translate(-50%, 0) scale(1); border-radius: 6px; }
+}
+.run-shortcut-hint.is-hiding { animation: run-hint-morph-out .22s var(--ease-soft) both; }
+@keyframes run-hint-morph-out {
+  from { opacity: 1; transform: translate(-50%, 0) scale(1); border-radius: 6px; }
+  to { opacity: 0; transform: translate(-50%, -4px) scale(.86); border-radius: 12px 12px 4px 4px; }
+}
+@media (prefers-reduced-motion: reduce) { .run-shortcut-hint, .run-shortcut-hint.is-hiding { animation: none; } }
 

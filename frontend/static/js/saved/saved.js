@@ -5,6 +5,7 @@ import { notify, setStatus } from "../core/feedback.js";
 import { addSaved, findSaved, isFull, removeSavedById } from "./store.js";
 import { refreshButtons } from "../ui/buttons.js";
 import { updateLines } from "../editor/line-numbers.js";
+import { updateSourceRunHint } from "../editor/source-input.js";
 import { showView } from "../ui/navigation.js";
 import { updateTargetLanguageOptions, languageChanged } from "../languages/selection.js";
 import { updateFileLabel } from "../files/upload.js";
@@ -49,6 +50,7 @@ function openSaved(entry) {
   if (state.activeController) { notify("Stop the current translation before opening a saved one."); return; }
   state.fileReadVersion += 1;
   source.value = entry.source;
+  updateSourceRunHint();
   output.value = entry.output;
   state.sourceFileName = typeof entry.fileName === "string" ? entry.fileName : "";
   state.uploadedText = state.sourceFileName ? entry.source : "";
