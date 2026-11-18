@@ -713,6 +713,22 @@
       if (!activeController) form.requestSubmit();
     }
   });
+  document.addEventListener("keydown", (event) => {
+    if (event.altKey && event.key === "Enter" && !$("translateView").hidden) {
+      event.preventDefault();
+      const runOutputFocused = document.activeElement === output;
+      const runSourceFocused = document.activeElement === source;
+      if (runOutputFocused && !$("runOutput").disabled) {
+        $("runOutput").click();
+      } else if (runSourceFocused && !$("runSource").disabled) {
+        $("runSource").click();
+      } else if (!$("runSource").disabled) {
+        $("runSource").click();
+      } else if (!$("runOutput").disabled) {
+        $("runOutput").click();
+      }
+    }
+  });
   if (/Mac|iPhone|iPad/.test(navigator.platform)) $("shortcutModifier").textContent = "⌘";
 
   function appendOutput(text) {

@@ -177,7 +177,7 @@
           <div class="editor-heading">
             <h2 id="sourceTitle"><svg class="icon" aria-hidden="true"><use href="#i-file"/></svg><span class="editor-title">Source<span class="title-extra"> Code</span></span><span class="language-badge" id="sourceLanguageBadge" hidden></span></h2>
             <div class="editor-actions">
-              <button type="button" class="text-button run-button" id="runSource" aria-label="Run source code" disabled><svg class="icon" aria-hidden="true"><use href="#i-play"/></svg><span>Run</span></button>
+              <button type="button" class="text-button run-button" id="runSource" aria-label="Run source code" title="Run source code (Alt+Enter)" disabled><svg class="icon" aria-hidden="true"><use href="#i-play"/></svg><span>Run</span></button>
               <button type="button" class="text-button copy-button" id="copySource" aria-label="Copy source code" disabled><svg class="icon" aria-hidden="true"><use href="#i-copy"/></svg><span>Copy</span></button>
             </div>
           </div>
@@ -222,7 +222,7 @@
           <div class="editor-heading">
             <h2 id="outputTitle"><svg class="icon" aria-hidden="true"><use href="#i-file"/></svg><span class="editor-title">Translated<span class="title-extra"> Code</span></span><span class="language-badge" id="targetLanguageBadge" hidden></span></h2>
             <div class="editor-actions">
-              <button type="button" class="text-button run-button" id="runOutput" aria-label="Run translated code" disabled><svg class="icon" aria-hidden="true"><use href="#i-play"/></svg><span>Run</span></button>
+              <button type="button" class="text-button run-button" id="runOutput" aria-label="Run translated code" title="Run translated code (Alt+Enter)" disabled><svg class="icon" aria-hidden="true"><use href="#i-play"/></svg><span>Run</span></button>
               <button type="button" class="icon-button save-button" id="saveButton" title="Save translation" aria-label="Save translation" aria-pressed="false" disabled><svg class="icon" aria-hidden="true"><use href="#i-bookmark"/></svg></button>
               <button type="button" class="text-button copy-button" id="copyOutput" aria-label="Copy translated code" disabled><svg class="icon" aria-hidden="true"><use href="#i-copy"/></svg><span>Copy</span></button>
             </div>
@@ -241,7 +241,7 @@
         </div>
         <div class="download-actions"><button type="button" class="pill-button" id="downloadButton" disabled><svg class="icon" aria-hidden="true"><use href="#i-download"/></svg><span>Download</span></button></div>
       </form>
-      <div class="workspace-bottom"><p class="status-message" id="statusMessage" role="status" aria-live="polite"></p><p class="keyboard-hint" id="keyboardHint"><kbd id="shortcutModifier">Ctrl</kbd> + <kbd>Enter</kbd> to translate</p></div>
+      <div class="workspace-bottom"><p class="status-message" id="statusMessage" role="status" aria-live="polite"></p><p class="keyboard-hint" id="keyboardHint"><kbd>Alt</kbd> + <kbd>Enter</kbd> to run · <kbd id="shortcutModifier">Ctrl</kbd> + <kbd>Enter</kbd> to translate</p></div>
       <noscript><p class="noscript-message">Please enable JavaScript to use the code translator.</p></noscript>
     </section>
 
@@ -277,7 +277,7 @@
 
   <dialog class="app-dialog" id="tipsDialog" aria-labelledby="tipsTitle">
     <div class="dialog-heading"><h2 id="tipsTitle">A few helpful tips</h2><button type="button" class="icon-button" data-close-dialog aria-label="Close tips"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></button></div>
-    <ul class="tips-list"><li><strong>Start with your code.</strong> Paste it into the source editor or upload a text-based code file.</li><li><strong>Choose your languages.</strong> Pick a source and a target from Python, Java, C and C++. Use Change languages in the workspace to switch at any time.</li><li><strong>Keep writing.</strong> Enter creates a new line. Ctrl + Enter (⌘ + Enter on Mac) starts a translation.</li><li><strong>Take it with you.</strong> Copy, download, or bookmark a finished translation. Hold Alt and drag code into another app.</li><li><strong>Keep a history.</strong> Create an account or sign in and every translation, finished or not, is recorded under History. Bookmarked ones also live in Saved.</li><li><strong>Review the result.</strong> Check and test translated code before using it in your project.</li></ul>
+    <ul class="tips-list"><li><strong>Start with your code.</strong> Paste it into the source editor or upload a text-based code file.</li><li><strong>Choose your languages.</strong> Pick a source and a target from Python, Java, C and C++. Use Change languages in the workspace to switch at any time.</li><li><strong>Keep writing.</strong> Enter creates a new line. Ctrl + Enter (⌘ + Enter on Mac) starts a translation. Alt + Enter runs the code in the focused editor.</li><li><strong>Take it with you.</strong> Copy, download, or bookmark a finished translation. Hold Alt and drag code into another app.</li><li><strong>Keep a history.</strong> Create an account or sign in and every translation, finished or not, is recorded under History. Bookmarked ones also live in Saved.</li><li><strong>Review the result.</strong> Check and test translated code before using it in your project.</li></ul>
   </dialog>
 
   <dialog class="app-dialog" id="settingsDialog" aria-labelledby="settingsTitle">
