@@ -810,8 +810,11 @@ html.theme-vt .theme-button .icon, html.theme-switching .theme-button .icon { tr
 .term-btn:active:not(:disabled) { transform: translateY(1px); }
 .term-btn:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 .term-btn[hidden] { display: none !important; }
+.term-close { gap: 4px; }
+.term-esc-hint { margin: 0; padding: 0; border: 1px solid var(--term-line); border-radius: 4px; color: var(--term-dim); font-size: 11px; line-height: 1; }
 .term-rerun { background: var(--green); border-color: var(--green); color: #fff; }
-.term-rerun .icon { fill: currentColor; stroke: none; }
+.term-rerun-shortcut { display: inline-flex; align-items: center; gap: 3px; padding: 3px 4px; border: 0.75px solid currentColor; border-radius: 4px; }
+.term-rerun-key { margin: 0; padding: 0; border: 0; font-size: 9px; line-height: 1; }
 .term-rerun:hover:not(:disabled) { background: var(--green-hover); border-color: var(--green-hover); }
 :root[data-theme="dark"] .term-rerun { color: #10200f; }
 .term-close:hover:not(:disabled) { color: var(--term-danger); border-color: var(--term-danger); background: var(--term-danger-soft); }
@@ -913,7 +916,6 @@ html.theme-vt .theme-button .icon, html.theme-switching .theme-button .icon { tr
 .term-btn:active:not(:disabled), .term-send:active:not(:disabled), .term-stop:active:not(:disabled) { transform: translateY(0) scale(.97); box-shadow: none; }
 .term-btn:disabled { opacity: .5; cursor: default; }
 .term-btn .icon { transition: transform .22s var(--ease-soft); }
-.term-rerun:hover:not(:disabled) .icon { transform: translateX(2px) scale(1.1); }
 .term-close:hover:not(:disabled) .icon { transform: rotate(90deg); }
 .term-state { transition: color .25s, background-color .25s, border-color .25s; }
 .run-button { transition: background .18s, transform .18s var(--ease-soft); }
@@ -929,7 +931,7 @@ html.theme-vt .theme-button .icon, html.theme-switching .theme-button .icon { tr
   .language-pair { flex: 1; max-width: 210px; gap: 12px; }
   .language-pair .language-control { max-width: none; }
 }
-@media (max-width: 560px) { .term-send { min-width: 64px; padding: 0 12px; } .term-stop { padding: 0 12px; } .term-btn-text { display: none; } .term-btn { width: 34px; padding: 0; } .term-bar { gap: 8px; } .term-row { padding: 10px; gap: 6px; } }
+@media (max-width: 560px) { .term-send { min-width: 64px; padding: 0 12px; } .term-stop { padding: 0 12px; } .term-btn-text { display: none; } .term-btn { width: 34px; padding: 0; } .term-btn.term-rerun { width: auto; padding: 0 5px; } .term-bar { gap: 8px; } .term-row { padding: 10px; gap: 6px; } }
 @media (max-width: 380px) { .language-pair { max-width: 158px; } .run-button span { display: none; } }
 @media (prefers-reduced-motion: reduce) {
   .term-status::before { animation: none; }

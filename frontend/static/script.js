@@ -702,8 +702,12 @@
     if (completedTranslation) setStatus("Source updated. Translate again to refresh the result.");
     else setStatus("");
   });
+  function isAltEnter(event, shiftKey = false) {
+    return event.key === "Enter" && event.shiftKey === shiftKey &&
+      (event.altKey || event.getModifierState("AltGraph"));
+  }
   source.addEventListener("keydown", (event) => {
-    if (event.key === "Enter" && event.altKey) {
+    if (isAltEnter(event)) {
       event.preventDefault();
       $("runSource").click();
       return;
@@ -905,6 +909,43 @@
   // `at` = the exact spot inside the output where the answer was asked for, so the terminal can
   // show every typed answer in the right place (the re-run output has no echo).
   const liveStops = new WeakMap();   // panel -> function that stops its current run
+  let activeCompilerPanel = null;
+  document.addEventListener("keydown", (event) => {
+    if (event.defaultPrevented || event.isComposing) return;
+    if (event.target instanceof Element && event.target.closest("dialog[open]")) return;
+
+    if (isAltEnter(event, true)) {
+      let focusedPanel = event.target instanceof Element ?
+        event.target.closest(".run-output.is-terminal:not([hidden])") : null;
+      if (!focusedPanel && event.target === source) focusedPanel = $("sourceRunOutput");
+      if (!focusedPanel && event.target === output) focusedPanel = $("outputRunOutput");
+      if (!focusedPanel || focusedPanel.hidden || focusedPanel.classList.contains("is-leaving")) {
+        focusedPanel = activeCompilerPanel;
+      }
+      if (!focusedPanel || focusedPanel.hidden || focusedPanel.classList.contains("is-leaving")) {
+        const visiblePanels = document.querySelectorAll(".run-output.is-terminal:not([hidden]):not(.is-leaving)");
+        focusedPanel = visiblePanels[visiblePanels.length - 1] || null;
+      }
+      const rerunButton = focusedPanel?.querySelector(".term-rerun:not(:disabled)");
+      if (rerunButton) {
+        event.preventDefault();
+        rerunButton.click();
+      }
+      return;
+    }
+    if (event.key !== "Escape") return;
+
+    let panel = event.target instanceof Element ? event.target.closest(".run-output.is-terminal") : null;
+    if (!panel || panel.hidden || panel.classList.contains("is-leaving")) panel = activeCompilerPanel;
+    if (!panel || panel.hidden || panel.classList.contains("is-leaving")) {
+      const visiblePanels = document.querySelectorAll(".run-output.is-terminal:not([hidden]):not(.is-leaving)");
+      panel = visiblePanels[visiblePanels.length - 1] || null;
+    }
+    const closeButton = panel?.querySelector(".term-close:not(:disabled)");
+    if (!closeButton) return;
+    event.preventDefault();
+    closeButton.click();
+  });
 
   function withAnswers(stdout, answers) {
     let text = "";
@@ -1100,6 +1141,7 @@
 
     const previousStop = liveStops.get(panel);
     if (previousStop) previousStop();
+    activeCompilerPanel = panel;
 
     button.disabled = true;
     stateOf(panel);                          // starts watching the panel for size changes
@@ -1131,8 +1173,17 @@
       b.append(svg, makeEl("span", "term-btn-text", text));
       return b;
     }
-    const rerunButton = barButton("term-rerun", "Run again", "#i-play", "Rerun");
-    const closeButton = barButton("term-close", "Close terminal", "#i-close", "Close");
+    const rerunButton = barButton("term-rerun", "Run again (Alt+Shift+Enter)", "#i-play", "Rerun");
+    rerunButton.querySelector(".icon").remove();
+    const rerunShortcut = makeEl("span", "term-rerun-shortcut");
+    rerunShortcut.setAttribute("aria-hidden", "true");
+    ["Alt", "⇧", "↵"].forEach((key) => rerunShortcut.append(makeEl("kbd", "term-rerun-key", key)));
+    rerunButton.insertBefore(rerunShortcut, rerunButton.firstChild);
+    const closeButton = barButton("term-close", "Close terminal (Esc)", "#i-close", "Close");
+    closeButton.querySelector(".icon").remove();
+    const closeShortcut = makeEl("kbd", "term-esc-hint", "Esc");
+    closeShortcut.setAttribute("aria-hidden", "true");
+    closeButton.insertBefore(closeShortcut, closeButton.firstChild);
     barActions.append(rerunButton, closeButton);
     bar.append(barTitle, barState, barActions);
 
@@ -1348,7 +1399,7 @@
     runCode(output.value, executableLanguages[lang.trim().toLowerCase()] || null, $("runOutput"), $("outputRunOutput"));
   });
   output.addEventListener("keydown", (event) => {
-    if (event.key === "Enter" && event.altKey) {
+    if (isAltEnter(event)) {
       event.preventDefault();
       $("runOutput").click();
     }
