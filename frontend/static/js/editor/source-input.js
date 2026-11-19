@@ -8,32 +8,6 @@ import { initAutoClose } from "./auto-close.js";
 
 const { form, source, output } = dom;
 
-let sourceHintTimer;
-let sourceHintDismissed = false;
-
-export function updateSourceRunHint() {
-  const hint = $("runSourceHint");
-  if (!source.value) {
-    clearTimeout(sourceHintTimer);
-    sourceHintTimer = null;
-    sourceHintDismissed = false;
-    hint.classList.remove("is-hiding");
-    hint.hidden = true;
-  } else if (hint.hidden && !sourceHintDismissed) {
-    hint.hidden = false;
-    hint.classList.remove("is-hiding");
-    sourceHintTimer = setTimeout(() => {
-      hint.classList.add("is-hiding");
-      sourceHintTimer = setTimeout(() => {
-        hint.hidden = true;
-        hint.classList.remove("is-hiding");
-        sourceHintDismissed = true;
-        sourceHintTimer = null;
-      }, 220);
-    }, 5000);
-  }
-}
-
 // Retain the original Alt-drag convenience without rendering code as HTML.
 function setDragMode(on) {
   document.body.classList.toggle("drag-mode", on);
@@ -45,7 +19,6 @@ export function initSourceInput() {
   source.addEventListener("input", () => {
     state.fileReadVersion += 1;
     updateLines(source, $("sourceLines"));
-    updateSourceRunHint();
     refreshButtons();
     if (state.completedTranslation) setStatus("Source updated. Translate again to refresh the result.");
     else setStatus("");

@@ -190,7 +190,7 @@
             <div class="editor-actions">
               <div class="run-action">
                 <button type="button" class="text-button run-button" id="runSource" aria-label="Run source code" disabled><svg class="icon" aria-hidden="true"><use href="#i-play"/></svg><span>Run</span></button>
-                <span class="run-shortcut-hint" id="runSourceHint" hidden>Alt + Enter</span>
+                <span class="run-shortcut-hint" id="runSourceHint">Alt + Enter</span>
               </div>
               <button type="button" class="text-button copy-button" id="copySource" aria-label="Copy source code" disabled><svg class="icon" aria-hidden="true"><use href="#i-copy"/></svg><span>Copy</span></button>
             </div>
@@ -199,7 +199,7 @@
             <div class="line-gutter" aria-hidden="true"><div class="line-numbers" id="sourceLines">1&#10;2&#10;3&#10;4&#10;5</div></div>
             <textarea class="code-editor" id="message" name="message" aria-label="Source code" placeholder="Paste your code here..." spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off" wrap="off" aria-describedby="keyboardHint"></textarea>
           </div>
-          <div class="resize-handle" id="sourceResize" role="separator" aria-orientation="horizontal" aria-label="Adjust editor height" tabindex="0" title="Drag to adjust the editor height (double-click to reset)"></div>
+          <div class="resize-handle" id="sourceResize" role="separator" aria-orientation="horizontal" aria-label="Adjust editor height" tabindex="0"><span class="resize-hint" aria-hidden="true">Double-click to restore default height</span></div>
           <div class="run-output" id="sourceRunOutput" hidden aria-live="polite"></div>
         </section>
 
@@ -247,7 +247,7 @@
             <textarea class="code-editor" id="translatedCode" aria-label="Translated code" placeholder="Your translated code will appear here..." spellcheck="false" wrap="off" readonly></textarea>
             <div class="translate-progress" id="translateProgress" aria-hidden="true" hidden><span class="translate-progress-dot"></span><span class="translate-progress-text" id="translateProgressText"></span></div>
           </div>
-          <div class="resize-handle" id="outputResize" role="separator" aria-orientation="horizontal" aria-label="Adjust editor height" tabindex="0" title="Drag to adjust the editor height (double-click to reset)"></div>
+          <div class="resize-handle" id="outputResize" role="separator" aria-orientation="horizontal" aria-label="Adjust editor height" tabindex="0"><span class="resize-hint" aria-hidden="true">Double-click to restore default height</span></div>
           <div class="run-output" id="outputRunOutput" hidden aria-live="polite"></div>
         </section>
 
