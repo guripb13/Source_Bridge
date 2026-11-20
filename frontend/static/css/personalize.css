@@ -10,6 +10,7 @@
 .personalize-state[hidden] { display: none; }
 .personalize-chevron { width: 18px; height: 18px; color: var(--muted); transition: transform .25s var(--ease-soft); }
 .personalize[open] .personalize-chevron { transform: rotate(180deg); }
+.personalize.is-closing .personalize-chevron { transform: rotate(0); }
 .personalize-body { display: grid; gap: 12px; padding: 2px 18px 18px; }
 .personalize-label { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.5; }
 .personalize textarea { display: block; width: 100%; min-height: 78px; max-height: 240px; padding: 12px 14px; border: 1px solid var(--editor-border); border-radius: 10px; resize: vertical; background: var(--surface); color: var(--ink); font-size: 15px; line-height: 1.55; transition: border-color .18s, box-shadow .18s; }
