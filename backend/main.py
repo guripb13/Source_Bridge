@@ -39,8 +39,13 @@ WORKFLOW OF /execute (Run button) - STATELESS "interactive" input
     stops itself and we answer  needs_input: true  (+ which variable asked and what was
     printed so far). The page shows the input box, adds the answer and calls /execute again
     with the longer list. No process, thread or session survives between two calls.
-    (This replaces interactive.py's live sessions, which keep processes in server memory and
-    therefore are not stateless - so interactive.py is deliberately not registered here.)
+
+SANDBOX NOTE
+    When RUNNER_URL is set (Docker deployment), /execute and the compiler gate forward code
+    to an isolated runner container that has no access to GEMINI_API_KEY and runs with
+    --network none. When RUNNER_URL is not set (Vercel, local dev), compiler.py is imported
+    directly; POSIX resource limits and Python -I apply but full network/filesystem isolation
+    requires the Docker path. See docker-compose.yml and Dockerfile.runner.
 """
 import functools
 import json
@@ -51,6 +56,9 @@ from concurrent.futures import TimeoutError as FutureTimeoutError
 from datetime import timedelta
 
 from flask import Flask, Response, g, jsonify, render_template, request, session
+from flask_limiter import Limiter                     # hard import — must be in requirements.txt
+from flask_limiter.util import get_remote_address
+from werkzeug.middleware.proxy_fix import ProxyFix   # correct client-IP detection behind proxies
 from google import genai
 from google.genai import types
 
@@ -71,8 +79,6 @@ def _first_existing(*paths):
     return paths[0]
 
 
-# Works with  backend/main.py + frontend/{templates,static}   (your Vercel layout)
-# and with    main.py + {templates,static} in the same folder  (the zip layout).
 app = Flask(
     __name__,
     template_folder=_first_existing(
@@ -85,40 +91,148 @@ app = Flask(
     ),
 )
 
+# ProxyFix: when running behind Vercel's load balancer or nginx, the real client
+# IP arrives in X-Forwarded-For. Without this, get_remote_address returns the
+# proxy's IP (127.0.0.1) and ALL clients share one rate-limit bucket.
+# x_for=1 trusts exactly one proxy hop; increase only if you have multiple
+# trusted reverse proxies in front of the app.
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
+
 # Create users.db / translations.db on first start (does nothing if they already exist).
 db.init_db()
 
 app.config.update(
-    SECRET_KEY=db.get_secret_key(),               # SECRET_KEY env var, else generated + kept in users.db
+    SECRET_KEY=db.get_secret_key(),               # SECRET_KEY env var preferred; else DB-generated
     SESSION_COOKIE_HTTPONLY=True,                 # JavaScript can't read the login cookie
     SESSION_COOKIE_SAMESITE="Lax",                # not sent on cross-site POSTs (CSRF protection)
-    SESSION_COOKIE_SECURE=bool(os.environ.get("VERCEL")) or os.environ.get("COOKIE_SECURE") == "1",
+    # FIX VULN-010: Secure by default; to disable in local dev set COOKIE_SECURE=0
+    SESSION_COOKIE_SECURE=os.environ.get("COOKIE_SECURE", "1") != "0",
     PERMANENT_SESSION_LIFETIME=timedelta(days=30),
 )
 
-# Rate limiting protects /execute (it runs user code), the paid AI call and the login forms.
-# Optional: if flask-limiter is not installed the app still runs, just unlimited
-# (accounts are still protected by the temporary lock after repeated wrong passwords).
-try:
-    from flask_limiter import Limiter
-    from flask_limiter.util import get_remote_address
+# --------------------------------------------------------------------------
+# Rate limiting — hard dependency; flask-limiter must be in requirements.txt.
+# FIX VULN-007: removed the try/except ImportError fallback that silently
+# disabled all rate limits when flask-limiter was not installed.
+# --------------------------------------------------------------------------
+_limiter = Limiter(
+    get_remote_address,
+    app=app,
+    default_limits=[],
+    storage_uri=os.environ.get("LIMITER_STORAGE_URI", "memory://"),
+)
+limit = _limiter.limit
 
-    _limiter = Limiter(get_remote_address, app=app, default_limits=[])
-    limit = _limiter.limit
-except ImportError:                                # pragma: no cover
-    def limit(_rule):
-        return lambda fn: fn
-
-# The API key comes from the environment, never from the code.
-# Set GEMINI_API_KEY in your shell or in Vercel -> Environment Variables.
-API_KEY = "API_KEY"  # os.environ.get("GEMINI_API_KEY")
-MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.5-flash-lite")
+# --------------------------------------------------------------------------
+# API key — pop from the environment after reading so that user code running
+# as the same OS user cannot exfiltrate it via /proc/<flask-pid>/environ.
+# FIX VULN-003: was API_KEY = "API_KEY"  (literal string placeholder).
+# FIX VULN-001 (partial): popping removes it from the environment before
+# any user-submitted code is compiled or run.
+# --------------------------------------------------------------------------
+API_KEY = os.environ.pop("GEMINI_API_KEY", "").strip()
 if not API_KEY:
-    raise RuntimeError("GEMINI_API_KEY environment variable is not set.")
+    raise RuntimeError(
+        "GEMINI_API_KEY environment variable is not set or is empty.\n"
+        "  Local:  export GEMINI_API_KEY='your-real-key'\n"
+        "  Vercel: Settings -> Environment Variables -> GEMINI_API_KEY"
+    )
+
+MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.5-flash-lite")
 client = genai.Client(api_key=API_KEY)
 
 MAX_SOURCE_CHARS = compiler.MAX_CODE_CHARS
 GATE_TIMEOUT = compiler.COMPILE_TIMEOUT + compiler.RUN_TIMEOUT + 10
+
+# --------------------------------------------------------------------------
+# Runner dispatch — Docker vs direct (FIX VULN-001)
+# --------------------------------------------------------------------------
+# When RUNNER_URL is set the app calls the isolated runner container over HTTP
+# instead of importing compiler.py directly. The runner container has no
+# GEMINI_API_KEY and runs with --network none, so user code cannot reach the
+# internet or read the AI key. See docker-compose.yml and Dockerfile.runner.
+RUNNER_URL = os.environ.get("RUNNER_URL", "").rstrip("/")
+
+
+def _run_code(code, lang, stdin_text, eof=False):
+    """
+    Execute code and return the result dict.
+
+    Routes to the isolated runner HTTP service (Docker) when RUNNER_URL is set,
+    otherwise calls compiler.submit_run() directly (Vercel / local dev).
+    """
+    if RUNNER_URL:
+        import requests as _req   # only needed in Docker deployment
+        try:
+            resp = _req.post(
+                f"{RUNNER_URL}/run",
+                json={"code": code, "language": lang,
+                      "stdin_text": stdin_text, "eof": eof},
+                timeout=GATE_TIMEOUT,
+            )
+            resp.raise_for_status()
+            return resp.json()
+        except _req.exceptions.Timeout:
+            raise FutureTimeoutError("runner timed out")
+        except _req.exceptions.RequestException as exc:
+            raise RuntimeError(f"runner unreachable: {exc}") from exc
+    else:
+        return compiler.submit_run(code, lang, stdin_text, eof).result(timeout=GATE_TIMEOUT)
+
+
+# --------------------------------------------------------------------------
+# Security headers — applied to every response.
+# FIX VULN-014 (CSP, HSTS, X-Frame-Options, X-Content-Type-Options)
+# FIX VULN-017 (Server header disclosure)
+# --------------------------------------------------------------------------
+@app.after_request
+def add_security_headers(response):
+    # Prevent MIME-type sniffing attacks.
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+
+    # Prevent the page from being loaded in any frame (clickjacking).
+    response.headers.setdefault("X-Frame-Options", "DENY")
+
+    # Referrer information sent on navigation.
+    response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+
+    # Disable access to powerful browser APIs not used by this app.
+    response.headers.setdefault(
+        "Permissions-Policy",
+        "geolocation=(), microphone=(), camera=(), payment=()"
+    )
+
+    # HSTS: tell browsers to always use HTTPS for this origin.
+    response.headers.setdefault(
+        "Strict-Transport-Security",
+        "max-age=63072000; includeSubDomains"
+    )
+
+    # Content-Security-Policy:
+    #   - All scripts loaded from same origin (/static/).
+    #   - Styles from same origin (/static/).
+    #   - Language icons loaded as <img src="..."> from jsdelivr CDN.
+    #   - fetch() calls go to same origin only (/send, /execute, /translations, etc.).
+    #   - No inline scripts, no eval.
+    response.headers.setdefault(
+        "Content-Security-Policy",
+        (
+            "default-src 'self'; "
+            "script-src 'self'; "
+            "style-src 'self'; "
+            "img-src 'self' cdn.jsdelivr.net data:; "
+            "font-src 'self'; "
+            "connect-src 'self'; "
+            "frame-ancestors 'none'; "
+            "base-uri 'self'; "
+            "form-action 'self';"
+        )
+    )
+
+    # Strip the Server header that reveals Flask/Werkzeug version strings.
+    response.headers.remove("Server")
+
+    return response
 
 
 # --------------------------------------------------------------------------
@@ -206,44 +320,144 @@ class Attempt:
 
 
 # --------------------------------------------------------------------------
-# Prompt for the translation API
+# Language allowlist — prevents prompt injection via the language field.
+# FIX VULN-012: replaced the permissive regex with a strict known-languages
+# allowlist. No user-supplied free text ever reaches the Gemini system prompt.
 # --------------------------------------------------------------------------
-def build_task(language):
-    return f"""You are a code translation engine. Your target language is {language}.
-
-Step 1 - Validation:
-Check whether the given input is valid, translatable source code (in any recognizable programming language).
-If the input is NOT code (e.g. plain text, gibberish, an empty/meaningless snippet), or is code written in a language/format that cannot be reasonably translated to {language}, do NOT attempt translation.
-Instead, return only this single line, with no extra text:
-ERROR: The provided input cannot be translated to {language}. Please provide valid source code in a supported language.
-
-Step 2 - Syntax check:
-If the input contains syntax errors, still translate as much as possible, but mark each problematic line in the output using a {language}-appropriate comment placed directly above or beside that line, in this format:
-// SYNTAX ERROR: <short description of the issue>
-(use the correct comment syntax for {language} instead of // if different)
-
-Step 3 - Translation:
-Convert the given code to {language}.
-Return only the translated code (with syntax-error comments where applicable). No explanations, no markdown, no extra messages of any kind.
-Format it like a normal {language} file: one statement per line, and proper indentation for each nested level."""
+_KNOWN_LANGUAGES = {
+    # General programming languages
+    "python": "Python", "python3": "Python", "py": "Python",
+    "java": "Java",
+    "c": "C",
+    "c++": "C++", "cpp": "C++", "cplusplus": "C++", "c plus plus": "C++",
+    "c#": "C#", "csharp": "C#", "c sharp": "C#", "cs": "C#",
+    "javascript": "JavaScript", "js": "JavaScript",
+    "node": "JavaScript", "nodejs": "JavaScript", "node.js": "JavaScript",
+    "typescript": "TypeScript", "ts": "TypeScript",
+    "go": "Go", "golang": "Go",
+    "rust": "Rust", "rs": "Rust",
+    "php": "PHP",
+    "swift": "Swift",
+    "kotlin": "Kotlin", "kt": "Kotlin",
+    "ruby": "Ruby", "rb": "Ruby",
+    "scala": "Scala",
+    "dart": "Dart",
+    "r": "R",
+    "lua": "Lua",
+    "perl": "Perl",
+    "haskell": "Haskell",
+    "matlab": "MATLAB",
+    "objective-c": "Objective-C", "objc": "Objective-C", "objectivec": "Objective-C",
+    "objective-c++": "Objective-C++",
+    "bash": "Bash", "sh": "Bash", "shell": "Bash", "zsh": "Bash",
+    "powershell": "PowerShell", "ps1": "PowerShell",
+    "julia": "Julia",
+    "groovy": "Groovy",
+    "elixir": "Elixir",
+    "clojure": "Clojure",
+    "f#": "F#", "fsharp": "F#",
+    "visual basic": "Visual Basic", "vb": "Visual Basic",
+    "vb.net": "Visual Basic .NET", "vbnet": "Visual Basic .NET",
+    "visual basic .net": "Visual Basic .NET",
+    "cobol": "COBOL",
+    "fortran": "Fortran",
+    "pascal": "Pascal",
+    "lisp": "Lisp", "common lisp": "Common Lisp",
+    "scheme": "Scheme",
+    "prolog": "Prolog",
+    "erlang": "Erlang",
+    "ocaml": "OCaml",
+    "racket": "Racket",
+    "ada": "Ada",
+    "nim": "Nim",
+    "crystal": "Crystal",
+    "zig": "Zig",
+    "d": "D",
+    "assembly": "Assembly", "asm": "Assembly",
+    "coffeescript": "CoffeeScript",
+    "clojurescript": "ClojureScript",
+    "purescript": "PureScript",
+    "elm": "Elm",
+    "reasonml": "ReasonML", "reason": "ReasonML",
+    "v": "V",
+    "mojo": "Mojo",
+    # SQL variants
+    "sql": "SQL",
+    "mysql": "MySQL",
+    "postgresql": "PostgreSQL", "postgres": "PostgreSQL", "psql": "PostgreSQL",
+    "sqlite": "SQLite",
+    "t-sql": "T-SQL", "tsql": "T-SQL", "mssql": "T-SQL",
+    "transact-sql": "T-SQL", "sql server": "T-SQL",
+    "pl/sql": "PL/SQL", "plsql": "PL/SQL", "oracle sql": "PL/SQL",
+    # Data formats
+    "json": "JSON",
+    "yaml": "YAML", "yml": "YAML",
+    "xml": "XML",
+    "toml": "TOML",
+    # Markup / styling
+    "html": "HTML", "html5": "HTML",
+    "css": "CSS", "css3": "CSS",
+    "markdown": "Markdown", "md": "Markdown",
+    # Hardware description
+    "verilog": "Verilog",
+    "vhdl": "VHDL",
+}
 
 
 def clean_language(value, default=""):
-    """Language names go into the AI prompt, so accept only a short, plain name."""
+    """
+    Validate and normalise a language name before it is used in an AI prompt.
+
+    STRICT: only languages in _KNOWN_LANGUAGES are accepted. Everything else
+    returns None, which the calling route turns into a 400 error response.
+    This is a hard security boundary: no user-supplied free text ever reaches
+    the Gemini system prompt via this field.
+    """
     value = (value or "").strip()
     if not value:
         return default
-    if len(value) > 40 or not re.fullmatch(r"[A-Za-z0-9+#./\- ]+", value):
+
+    if len(value) > 40:
         return None
-    return value
+
+    normalised = " ".join(value.lower().split())
+    return _KNOWN_LANGUAGES.get(normalised)   # None if not in the allowlist
 
 
 # --------------------------------------------------------------------------
-# STEP 1 - compiler gate (compiler.py)
+# Prompt for the translation API
+# FIX VULN-012: language is quoted and validated before being embedded in
+# the system prompt.
+# --------------------------------------------------------------------------
+def build_task(language):
+    # `language` has already been validated against _KNOWN_LANGUAGES.
+    # Strip residual quote chars as belt-and-braces.
+    lang = language.replace('"', "").replace("'", "")
+    return f"""You are a code translation engine. Your target language is "{lang}".
+
+Step 1 - Validation:
+Check whether the given input is valid, translatable source code (in any recognizable programming language).
+If the input is NOT code (e.g. plain text, gibberish, an empty/meaningless snippet), or is code written in a language/format that cannot be reasonably translated to "{lang}", do NOT attempt translation.
+Instead, return only this single line, with no extra text:
+ERROR: The provided input cannot be translated to "{lang}". Please provide valid source code in a supported language.
+
+Step 2 - Syntax check:
+If the input contains syntax errors, still translate as much as possible, but mark each problematic line in the output using a "{lang}"-appropriate comment placed directly above or beside that line, in this format:
+// SYNTAX ERROR: <short description of the issue>
+(use the correct comment syntax for "{lang}" instead of // if different)
+
+Step 3 - Translation:
+Convert the given code to "{lang}".
+Return only the translated code (with syntax-error comments where applicable). No explanations, no markdown, no extra messages of any kind.
+Format it like a normal "{lang}" file: one statement per line, and proper indentation for each nested level."""
+
+
+# --------------------------------------------------------------------------
+# STEP 1 - compiler gate (compiler.py or runner HTTP service)
 # --------------------------------------------------------------------------
 def check_source_code(text, source_language):
     """
-    Hidden pre-translation gate. Compiles AND runs the code once through compiler.py.
+    Hidden pre-translation gate. Compiles AND runs the code once.
     Returns None if the code is fine, otherwise a user-facing error message.
 
     Passes:   exit code 0, or the program stopped because it wants user input.
@@ -259,7 +473,7 @@ def check_source_code(text, source_language):
         return None
 
     try:
-        result = compiler.submit_run(text, lang, "").result(timeout=GATE_TIMEOUT)
+        result = _run_code(text, lang, "")
     except FutureTimeoutError:
         app.logger.exception("Source-code check did not finish in time.")
         return "Source-code check timed out. Please try again."
@@ -401,7 +615,7 @@ def delete_translation(translation_id):
 # /send  -  compiler -> convertibility -> translation API  (+ history for signed-in users)
 # --------------------------------------------------------------------------
 @app.route("/send", methods=["POST"])
-@limit("20 per minute")
+@limit("15 per minute")       # reduced from 20 — protects Gemini API quota
 def send():
     text = request.form.get("message", "").strip()
     language = clean_language(request.form.get("language"), default="Java")
@@ -428,8 +642,12 @@ def send():
         if len(text) > MAX_SOURCE_CHARS:
             yield fail("The source code is too large.")
             return
-        if language is None or source_language is None:
-            yield fail("Invalid language name.")
+        if language is None:
+            yield fail("Unrecognised target language. Please select from the dropdown.")
+            return
+        if source_language is None and request.form.get("source_language"):
+            # source_language was supplied but not in the allowlist
+            yield fail("Unrecognised source language.")
             return
 
         attempt = Attempt(user_id, source_language, language, text)   # row: 'pending'
@@ -531,7 +749,7 @@ def read_answers(data):
 
 
 @app.route("/execute", methods=["POST"])
-@limit("120 per minute")
+@limit("20 per minute")       # reduced from 120 — each request may compile + run user code
 def execute_code():
     if not request.is_json:
         return jsonify(error="Send the request as JSON."), 415
@@ -558,7 +776,7 @@ def execute_code():
         return jsonify(error="Only C, C++, Python and Java can be compiled and run right now."), 400
 
     try:
-        result = compiler.submit_run(code, lang, stdin_text, eof).result(timeout=GATE_TIMEOUT)
+        result = _run_code(code, lang, stdin_text, eof)
     except Exception:
         app.logger.exception("Run request failed.")
         return jsonify(error="The compiler failed. Please try again."), 500

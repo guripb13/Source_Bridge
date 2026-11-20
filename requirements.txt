@@ -1,2 +1,25 @@
-flask
-google-genai
+# Source Bridge — Python dependencies
+#
+# Exact version pins prevent silent upgrades introducing supply-chain issues.
+# Update pins deliberately after testing; then regenerate the lockfile:
+#   pip install -r requirements.txt
+#   pip freeze > requirements-lock.txt
+#
+# Install from the lockfile for reproducible deployments:
+#   pip install -r requirements-lock.txt
+
+# Web framework
+flask==3.1.3
+
+# Rate limiting — required; main.py refuses to start without it. (FIX VULN-007)
+flask-limiter==4.1.1
+
+# Google Gemini AI SDK
+google-genai==3.6.1
+
+# Werkzeug (Flask's WSGI layer — pinned for security-patch visibility)
+werkzeug==3.1.9
+
+# requests — used by the web container to call the runner HTTP API
+# when RUNNER_URL is set (Docker deployment). Safe to include on Vercel too.
+requests==2.32.3

@@ -1,0 +1,88 @@
+# =============================================================================
+# docker-compose.yml — Source Bridge production deployment
+# =============================================================================
+# Two-container architecture that provides meaningful sandbox isolation:
+#
+#   web     Flask + Gemini API. Has outbound internet (needs Gemini).
+#           Reads GEMINI_API_KEY. Does NOT run user code when RUNNER_URL is set.
+#           Reachable from the host on port 8000.
+#
+#   runner  compiler.py wrapped in a minimal Flask API. Runs user code.
+#           NO GEMINI_API_KEY. Network restricted to internal Docker network
+#           only (cannot reach the internet). Read-only filesystem with a
+#           /tmp tmpfs. All capabilities dropped. 64-process limit.
+#           NOT reachable from the host.
+#
+# Network topology:
+#
+#   internet <──> web:8000 <──> runner:8001  (internal Docker network only)
+#                                   │
+#                              user code subprocess
+#                              (can only talk to other containers on 'internal',
+#                               and 'internal' has no route to the internet)
+#
+# Start:
+#   GEMINI_API_KEY=your-real-key docker compose up --build
+#
+# Stop:
+#   docker compose down
+# =============================================================================
+
+services:
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - GEMINI_API_KEY=${GEMINI_API_KEY:?GEMINI_API_KEY is required}
+      - GEMINI_MODEL=${GEMINI_MODEL:-gemini-3.5-flash-lite}
+      - RUNNER_URL=http://runner:8001
+      - LIMITER_STORAGE_URI=${LIMITER_STORAGE_URI:-memory://}
+    networks:
+      - public     # web <-> internet (Gemini API calls)
+      - internal   # web <-> runner
+    depends_on:
+      runner:
+        condition: service_healthy
+    restart: unless-stopped
+
+  runner:
+    build:
+      context: .
+      dockerfile: Dockerfile.runner
+    # NOT exposed to the host — only reachable from the web container.
+    expose:
+      - "8001"
+    environment:
+      - RUNNER_PORT=8001
+      - RUNNER_ALLOWED_HOST=web   # only accept calls from the web container
+    networks:
+      - internal   # runner <-> web only; no route to the internet
+    # Security hardening: drop all Linux capabilities, read-only root fs,
+    # /tmp as a size-limited tmpfs (compiler writes temp files here),
+    # 64-process limit to contain fork bombs.
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp:size=256m,exec,uid=1001,gid=1001
+    pids_limit: 64
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
+networks:
+  public:
+    driver: bridge
+  internal:
+    driver: bridge
+    internal: true   # no routing to the host network or the internet

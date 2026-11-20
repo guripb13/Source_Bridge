@@ -799,7 +799,10 @@ def _build(lang, code, workdir, instrument=False):
             return "error", str(e), "python", None, True
         with open(os.path.join(workdir, "sb_runner.py"), "w", encoding="utf-8") as f:
             f.write(_PY_RUNNER)
-        return "success", "", "python", [sys.executable, "-u", "-B", "sb_runner.py"], True
+        # -I: isolated mode - disables PYTHONSTARTUP and user site-packages.
+        # This is a defence-in-depth measure; it does NOT prevent import socket
+        # or file system access. Full isolation requires Docker (see module docstring).
+        return "success", "", "python", [sys.executable, "-I", "-u", "-B", "sb_runner.py"], True
 
     if lang in ("c", "cpp"):
         if lang == "c":
@@ -866,7 +869,7 @@ def _build(lang, code, workdir, instrument=False):
 # running process or user state.
 # --------------------------------------------------------------------------
 _CACHE_TTL = 120          # seconds a build is kept after its last use
-_CACHE_MAX = 24           # builds kept at once
+_CACHE_MAX = 12           # builds kept at once (reduced from 24 to limit DoS surface)
 _cache = {}
 _cache_lock = threading.Lock()
 
