@@ -94,7 +94,6 @@ export async function runCode(code, execLanguage, button, panel) {
   function barButton(className, label, iconId, text) {
     const b = makeEl("button", `term-btn ${className}`);
     b.type = "button";
-    b.title = label;
     b.setAttribute("aria-label", label);
     const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
     svg.setAttribute("class", "icon");
@@ -106,17 +105,18 @@ export async function runCode(code, execLanguage, button, panel) {
     return b;
   }
   const rerunButton = barButton("term-rerun", "Run again (Alt+Shift+Enter)", "#i-play", "Rerun");
-  rerunButton.querySelector(".icon").remove();
-  const rerunShortcut = makeEl("span", "term-rerun-shortcut");
-  rerunShortcut.setAttribute("aria-hidden", "true");
-  ["Alt", "⇧", "↵"].forEach((key) => rerunShortcut.append(makeEl("kbd", "term-rerun-key", key)));
-  rerunButton.insertBefore(rerunShortcut, rerunButton.firstChild);
   const closeButton = barButton("term-close", "Close terminal (Esc)", "#i-close", "Close");
-  closeButton.querySelector(".icon").remove();
-  const closeShortcut = makeEl("kbd", "term-esc-hint", "Esc");
-  closeShortcut.setAttribute("aria-hidden", "true");
-  closeButton.insertBefore(closeShortcut, closeButton.firstChild);
-  barActions.append(rerunButton, closeButton);
+  function shortcutAction(button, shortcut) {
+    const action = makeEl("div", "term-action");
+    const hint = makeEl("span", "run-shortcut-hint", shortcut);
+    hint.setAttribute("aria-hidden", "true");
+    action.append(button, hint);
+    return action;
+  }
+  barActions.append(
+    shortcutAction(rerunButton, "Alt + Shift + Enter"),
+    shortcutAction(closeButton, "Esc")
+  );
   bar.append(barTitle, barState, barActions);
 
   const screen = makeEl("pre", "term-screen");

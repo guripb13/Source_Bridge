@@ -14,7 +14,8 @@
 .editor-actions { gap: 0; }
 .run-action { position: relative; display: flex; flex-direction: column; align-items: center; }
 .run-shortcut-hint { position: absolute; top: calc(100% + 7px); left: 50%; z-index: 2; padding: 4px 7px; color: var(--ink); font-size: 11px; line-height: 1; white-space: nowrap; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; box-shadow: 0 2px 7px rgb(0 0 0 / 12%); transform-origin: top center; visibility: hidden; pointer-events: none; animation: run-hint-morph-out .22s var(--ease-soft) both; transition: visibility 0s linear .22s; }
-.run-button:not(:disabled):hover + .run-shortcut-hint, .run-button:not(:disabled):focus-visible + .run-shortcut-hint { visibility: visible; animation: run-hint-morph-in .3s var(--ease-soft) both; transition: visibility 0s; }
+.run-button:not(:disabled):hover + .run-shortcut-hint, .run-button:not(:disabled):focus-visible + .run-shortcut-hint,
+.term-btn:not(:disabled):hover + .run-shortcut-hint, .term-btn:not(:disabled):focus-visible + .run-shortcut-hint { visibility: visible; animation: run-hint-morph-in .3s var(--ease-soft) both; transition: visibility 0s; }
 .run-shortcut-hint::before, .run-shortcut-hint::after { position: absolute; left: 50%; width: 0; height: 0; border-right: 7px solid transparent; border-bottom: 7px solid var(--border); border-left: 7px solid transparent; content: ""; transform: translateX(-50%); }
 .run-shortcut-hint::before { top: -7px; }
 .run-shortcut-hint::after { top: -6px; border-right-width: 6px; border-bottom-width: 6px; border-left-width: 6px; border-bottom-color: var(--surface); }
