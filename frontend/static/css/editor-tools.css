@@ -1,14 +1,12 @@
 /* Editor extras: language badges + logos, resize handle, uploaded-file chip, in-editor progress text */
 
 /* ---- Language badge (Python / Java / C / C++) and the logo that replaces the generic file icon ---- */
-.language-badge { display: inline-flex; align-items: center; gap: 6px; box-shadow: inset 0 0 0 1px var(--green-edge); line-height: 1.2; }
-.language-badge::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--green); flex-shrink: 0; }
+.language-badge { display: inline-flex; align-items: center; box-shadow: inset 0 0 0 1px var(--green-edge); line-height: 1.2; }
 .heading-logo { width: 25px; height: 25px; flex-shrink: 0; object-fit: contain; display: block; }
 .heading-logo[hidden] { display: none; }
 .editor-heading h2.has-logo > .icon { display: none; }
 @media (max-width: 1250px) { .heading-logo { width: 21px; height: 21px; } }
 @container (max-width: 350px) { .heading-logo { display: none; } .editor-heading h2.has-logo > .icon { display: block; } }
-@container (max-width: 310px) { .language-badge::before { display: none; } }
 /* Same rule as language-flow.css (this file loads later, so it must repeat it): too narrow for a badge */
 @container (max-width: 295px) { .language-badge { display: none; } }
 @container (max-width: 295px) { .editor-heading h2.has-logo > .icon { display: none; } }
