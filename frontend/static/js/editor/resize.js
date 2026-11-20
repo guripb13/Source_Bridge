@@ -14,7 +14,6 @@ export function initEditorResize() {
   const handles = [$("sourceResize"), $("outputResize")];
   let minHeight = FALLBACK_MIN;
   let maxHeight = Math.round(FALLBACK_MIN * MAX_EXTENSION);
-  let hasMeasuredDefault = false;
   let pendingStoredHeight = readStorage(keys.editorHeight, null);
   if (typeof pendingStoredHeight !== "number" || !Number.isFinite(pendingStoredHeight)) pendingStoredHeight = null;
 
@@ -26,7 +25,6 @@ export function initEditorResize() {
     grid.style.removeProperty("--editor-height");
     const defaultHeight = Math.round(surface.getBoundingClientRect().height);
     if (defaultHeight > 0) {
-      hasMeasuredDefault = true;
       minHeight = Math.max(FALLBACK_MIN, defaultHeight);
       maxHeight = Math.round(minHeight * MAX_EXTENSION);
     }
@@ -34,8 +32,6 @@ export function initEditorResize() {
     if (hasCustomHeight) grid.classList.add("has-custom-height");
     grid.classList.remove("is-measuring-editor-height");
   }
-  updateHeightLimits();
-
   const clamp = (value) => Math.min(maxHeight, Math.max(minHeight, Math.round(value)));
 
   function sync(height) {
@@ -69,28 +65,27 @@ export function initEditorResize() {
     sync(minHeight);
   }
 
-  function refreshHeightLimit() {
+  const translateView = $("translateView");
+  let hasInitializedHeight = false;
+  // Measure once when the workspace first appears; later viewport changes must not reset manual resizing.
+  const visibilityObserver = new MutationObserver(initializeHeight);
+
+  function initializeHeight() {
+    if (hasInitializedHeight || translateView.hidden) return;
     updateHeightLimits();
     const height = surface.getBoundingClientRect().height;
     if (height <= 0) return;
+    hasInitializedHeight = true;
     if (pendingStoredHeight !== null) {
       const appliedHeight = apply(pendingStoredHeight);
       pendingStoredHeight = null;
       writeStorage(keys.editorHeight, grid.classList.contains("has-custom-height") ? appliedHeight : null);
-    } else if (grid.classList.contains("has-custom-height")) {
-      const appliedHeight = apply(height);
-      writeStorage(keys.editorHeight, grid.classList.contains("has-custom-height") ? appliedHeight : null);
     } else sync(height);
+    visibilityObserver.disconnect();
   }
 
-  if (hasMeasuredDefault) refreshHeightLimit();
-  else sync(surface.getBoundingClientRect().height);
-
-  window.addEventListener("resize", refreshHeightLimit);
-  const translateView = $("translateView");
-  new MutationObserver(() => {
-    if (!translateView.hidden) refreshHeightLimit();
-  }).observe(translateView, { attributes: true, attributeFilter: ["hidden"] });
+  visibilityObserver.observe(translateView, { attributes: true, attributeFilter: ["hidden"] });
+  initializeHeight();
 
   handles.forEach((handle) => {
     handle.addEventListener("pointerdown", (event) => {

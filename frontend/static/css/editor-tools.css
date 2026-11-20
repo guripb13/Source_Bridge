@@ -23,7 +23,8 @@
 @media (prefers-reduced-motion: reduce) { .resize-hint { animation: none; transition: none; } }
 body.is-resizing-editor, body.is-resizing-editor * { cursor: ns-resize !important; user-select: none !important; -webkit-user-select: none !important; }
 .workspace-grid.has-custom-height .code-surface { height: var(--editor-height) !important; }
-.workspace-grid.is-measuring-editor-height .code-surface { transition: none; }
+.workspace-grid.is-measuring-editor-height .code-surface,
+body.is-resizing-editor .code-surface { transition: none; }
 
 /* ---- Uploaded file name with a remove button ---- */
 .upload-actions { flex-wrap: wrap; row-gap: 8px; }
