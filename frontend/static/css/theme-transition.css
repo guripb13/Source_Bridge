@@ -1,0 +1,50 @@
+/* Light / dark theme cross-fade */
+/* =========================================
+   THEME TRANSITION (light <-> dark)
+   ========================================= */
+
+/* Primary: View Transitions API. Two full-screen GPU layers cross-fade. */
+@supports (view-transition-name: root) {
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation-duration: 650ms;
+    animation-timing-function: cubic-bezier(0.45, 0, 0.2, 1);
+    mix-blend-mode: normal; /* no brightness spike halfway through */
+  }
+  ::view-transition-old(root) { z-index: 1; }
+  ::view-transition-new(root) { z-index: 2; }
+}
+/* While the GPU fade runs, per-element transitions are off so nothing fights it. */
+html.theme-vt *, html.theme-vt *::before, html.theme-vt *::after { transition: none !important; }
+
+/* Fallback: browsers without View Transitions. */
+html.theme-switching *, html.theme-switching *::before, html.theme-switching *::after {
+  transition: background-color .3s ease, border-color .3s ease, color .3s ease,
+              fill .3s ease, stroke .3s ease, box-shadow .3s ease !important;
+}
+html.theme-switching::after {
+  content: ""; position: fixed; inset: 0; z-index: 2147483647; pointer-events: none;
+  -webkit-backdrop-filter: blur(0); backdrop-filter: blur(0);
+  animation: theme-screen-blur .3s ease both;
+}
+@keyframes theme-screen-blur {
+  0%   { -webkit-backdrop-filter: blur(0px); backdrop-filter: blur(0px); }
+  50%  { -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px); }
+  100% { -webkit-backdrop-filter: blur(0px); backdrop-filter: blur(0px); }
+}
+
+/* Button micro-interaction: smooth 90deg turn while the icon swaps mid-fade. */
+.theme-button .icon { transition: transform .3s var(--ease-soft, ease); }
+.theme-button .icon.theme-icon-turn { transform: rotate(90deg); }
+html.theme-vt .theme-button .icon, html.theme-switching .theme-button .icon { transition: transform .3s var(--ease-soft, ease) !important; }
+
+/* Reduced motion: no fades at all, instant switch. */
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(root), ::view-transition-new(root) { animation: none !important; }
+  html.theme-switching::after { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+}
+

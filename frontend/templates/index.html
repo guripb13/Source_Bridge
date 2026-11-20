@@ -7,9 +7,29 @@
   <meta name="theme-color" content="#f8faf7">
   <meta name="description" content="Source Bridge — translate, learn and explore code.">
   <title>Source Bridge — Code Translator</title>
-  <link rel="icon" type="image/png" href="{{ url_for('static', filename='Icon.png') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
-  <script src="{{ url_for('static', filename='script.js') }}" defer></script>
+  <link rel="icon" type="image/webp" href="{{ url_for('static', filename='icon.webp') }}">
+  <!-- Styles are split by concern (order matters: later files build on earlier ones). -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/fonts.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/header.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/sidebar.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/workspace.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dialogs.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/responsive.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/theme-transition.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/animations.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/terminal.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/scrollbar-page.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/language-dropdown.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/language-flow.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/editor-tools.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/personalize.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/status-feedback.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/sidebar-peek.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/credits.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/selection.css') }}">
+  <!-- Scripts are ES modules under static/js; main.js wires everything together. -->
+  <script type="module" src="{{ url_for('static', filename='js/main.js') }}"></script>
 </head>
 <body>
   <!-- Inline icons keep the interface independent of CDNs and icon libraries. -->
@@ -37,6 +57,7 @@
     <symbol id="i-code" viewBox="0 0 24 24"><path d="m7 6-6 6 6 6m10-12 6 6-6 6m-4-15-2 18"/></symbol>
     <symbol id="i-play" viewBox="0 0 24 24"><path d="M6 4.5v15a1 1 0 0 0 1.53.85l12-7.5a1 1 0 0 0 0-1.7l-12-7.5A1 1 0 0 0 6 4.5Z"/></symbol>
     <symbol id="i-stop" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2"/></symbol>
+    <symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M16 5.2a3.2 3.2 0 0 1 0 5.6M18 14.3c1.8.8 3 2.6 3 4.7"/></symbol>
     <symbol id="i-python" viewBox="0 0 32 32">
       <path fill="#3776AB" stroke="none" d="M16 2C8 2 8 5 8 5v6h9v2H5s-5 0-5 7 5 7 5 7h3v-5s0-5 5-5h9s5 0 5-5V7s0-5-11-5Z" transform="translate(2 0) scale(.9)"/>
       <path fill="#FFD343" stroke="none" d="M16 30c8 0 8-3 8-3v-6h-9v-2h12s5 0 5-7-5-7-5-7h-3v5s0 5-5 5h-9s-5 0-5 5v5s0 5 11 5Z" transform="translate(2 3) scale(.9)"/>
@@ -53,8 +74,8 @@
       </button>
       <a class="brand" href="{{ url_for('home') }}" aria-label="Source Bridge home">
         <span class="brand-mark">
-  <img class="logo-light" src="{{ url_for('static', filename='Icon.png') }}" alt="Source Bridge logo">
-  <img class="logo-dark" src="{{ url_for('static', filename='IconDark.png') }}" alt="" aria-hidden="true">
+  <img class="logo-light" src="{{ url_for('static', filename='icon.webp') }}" alt="Source Bridge logo">
+  <img class="logo-dark" src="{{ url_for('static', filename='iconDark.webp') }}" alt="" aria-hidden="true">
 </span>
         <span>Source Bridge</span>
       </a>
@@ -116,6 +137,9 @@
       <button type="button" class="nav-item" data-dialog="settingsDialog" title="Settings">
         <svg class="icon" aria-hidden="true"><use href="#i-settings"/></svg><span class="nav-label">Settings</span>
       </button>
+      <button type="button" class="nav-item" data-dialog="creditsDialog" title="Credits">
+        <svg class="icon" aria-hidden="true"><use href="#i-users"/></svg><span class="nav-label">Credits</span>
+      </button>
     </nav>
     <div class="sidebar-footer" aria-hidden="true"><p>Code<br>Without<br><span>Borders</span></p></div>
     <svg class="sidebar-landscape" viewBox="0 0 260 190" preserveAspectRatio="none" aria-hidden="true"><path d="M0 97Q36 37 73 94T147 82T219 71T260 87V190H0Z"/><path d="M0 126Q48 52 89 110T169 139T260 173V190H0Z"/><path d="M0 85Q34 49 72 107T142 150T260 188V190H0Z"/></svg>
@@ -125,8 +149,8 @@
     <section id="welcomeView" class="welcome-view" aria-labelledby="welcomeTitle">
       <div class="welcome-panel">
         <span class="brand-mark welcome-mark">
-  <img class="logo-light" src="{{ url_for('static', filename='Icon.png') }}" alt="Source Bridge logo">
-  <img class="logo-dark" src="{{ url_for('static', filename='IconDark.png') }}" alt="" aria-hidden="true">
+  <img class="logo-light" src="{{ url_for('static', filename='icon.webp') }}" alt="Source Bridge logo">
+  <img class="logo-dark" src="{{ url_for('static', filename='iconDark.webp') }}" alt="" aria-hidden="true">
 </span>
         <div class="page-intro">
           <h1 id="welcomeTitle">Welcome to Source Bridge</h1>
@@ -175,9 +199,12 @@
       <form class="workspace-grid" id="form" method="POST" action="{{ url_for('send') }}" enctype="multipart/form-data">
         <section class="editor-card source-card" aria-labelledby="sourceTitle">
           <div class="editor-heading">
-            <h2 id="sourceTitle"><svg class="icon" aria-hidden="true"><use href="#i-file"/></svg><span class="editor-title">Source<span class="title-extra"> Code</span></span><span class="language-badge" id="sourceLanguageBadge" hidden></span></h2>
+            <h2 id="sourceTitle"><svg class="icon" aria-hidden="true"><use href="#i-file"/></svg><img class="heading-logo" id="sourceLogo" alt="" aria-hidden="true" hidden><span class="editor-title">Source<span class="title-extra"> Code</span></span><span class="language-badge" id="sourceLanguageBadge" hidden></span></h2>
             <div class="editor-actions">
-              <button type="button" class="text-button run-button" id="runSource" aria-label="Run source code" title="Run source code (Alt+Enter)" disabled><svg class="icon" aria-hidden="true"><use href="#i-play"/></svg><span>Run</span></button>
+              <div class="run-action">
+                <button type="button" class="text-button run-button" id="runSource" aria-label="Run source code" title="Run source code (Alt+Enter)" disabled><svg class="icon" aria-hidden="true"><use href="#i-play"/></svg><span>Run</span></button>
+                <span class="run-shortcut-hint" id="runSourceHint">Alt + Enter</span>
+              </div>
               <button type="button" class="text-button copy-button" id="copySource" aria-label="Copy source code" disabled><svg class="icon" aria-hidden="true"><use href="#i-copy"/></svg><span>Copy</span></button>
             </div>
           </div>
@@ -185,6 +212,7 @@
             <div class="line-gutter" aria-hidden="true"><div class="line-numbers" id="sourceLines">1&#10;2&#10;3&#10;4&#10;5</div></div>
             <textarea class="code-editor" id="message" name="message" aria-label="Source code" placeholder="Paste your code here..." spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off" wrap="off" aria-describedby="keyboardHint"></textarea>
           </div>
+          <div class="resize-handle" id="sourceResize" role="separator" aria-orientation="horizontal" aria-label="Adjust editor height" tabindex="0"><span class="resize-hint" aria-hidden="true">Double-click to restore default height</span></div>
           <div class="run-output" id="sourceRunOutput" hidden aria-live="polite"></div>
         </section>
 
@@ -220,7 +248,7 @@
 
         <section class="editor-card output-card" aria-labelledby="outputTitle" aria-busy="false">
           <div class="editor-heading">
-            <h2 id="outputTitle"><svg class="icon" aria-hidden="true"><use href="#i-file"/></svg><span class="editor-title">Translated<span class="title-extra"> Code</span></span><span class="language-badge" id="targetLanguageBadge" hidden></span></h2>
+            <h2 id="outputTitle"><svg class="icon" aria-hidden="true"><use href="#i-file"/></svg><img class="heading-logo" id="outputLogo" alt="" aria-hidden="true" hidden><span class="editor-title">Translated<span class="title-extra"> Code</span></span><span class="language-badge" id="targetLanguageBadge" hidden></span></h2>
             <div class="editor-actions">
               <button type="button" class="text-button run-button" id="runOutput" aria-label="Run translated code" title="Run translated code (Alt+Enter)" disabled><svg class="icon" aria-hidden="true"><use href="#i-play"/></svg><span>Run</span></button>
               <button type="button" class="icon-button save-button" id="saveButton" title="Save translation" aria-label="Save translation" aria-pressed="false" disabled><svg class="icon" aria-hidden="true"><use href="#i-bookmark"/></svg></button>
@@ -230,16 +258,28 @@
           <div class="code-surface" id="outputSurface">
             <div class="line-gutter" aria-hidden="true"><div class="line-numbers" id="outputLines">1&#10;2&#10;3&#10;4&#10;5</div></div>
             <textarea class="code-editor" id="translatedCode" aria-label="Translated code" placeholder="Your translated code will appear here..." spellcheck="false" wrap="off" readonly></textarea>
+            <div class="translate-progress" id="translateProgress" aria-hidden="true" hidden><span class="translate-progress-dot"></span><span class="translate-progress-text" id="translateProgressText"></span></div>
           </div>
+          <div class="resize-handle" id="outputResize" role="separator" aria-orientation="horizontal" aria-label="Adjust editor height" tabindex="0"><span class="resize-hint" aria-hidden="true">Double-click to restore default height</span></div>
           <div class="run-output" id="outputRunOutput" hidden aria-live="polite"></div>
         </section>
 
         <div class="upload-actions">
-          <input type="file" id="attachment" class="sr-only" tabindex="-1" accept=".py,.java,.cpp,.cc,.c,.h,.hpp,.js,.jsx,.ts,.tsx,.txt,.cs,.go,.rs,.php,.rb,.swift,.kt,.kts,.sql,.html,.css,.json,.xml,.sh,.r,.lua,.scala,.dart,.vue,.svelte,.yaml,.yml,.md,text/*">
+          <input type="file" id="attachment" class="sr-only" tabindex="-1" accept=".py,.java,.c,.h,.cpp,.cc,.cxx,.hpp,.hh,.hxx">
           <button type="button" class="pill-button" id="uploadButton"><svg class="icon" aria-hidden="true"><use href="#i-attach"/></svg><span>Upload File</span></button>
-          <span class="file-help" id="fileHelp">Supports .py, .java, .cpp, .c, .js, .txt &amp; more</span>
+          <span class="file-help" id="fileHelp">Supports .py, .java, .c and .cpp files</span>
+          <span class="file-chip" id="fileChip" hidden><svg class="icon" aria-hidden="true"><use href="#i-file"/></svg><span class="file-chip-name" id="fileName"></span><button type="button" class="file-chip-remove" id="removeFile" aria-label="Remove uploaded file" title="Remove uploaded file"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></button></span>
         </div>
         <div class="download-actions"><button type="button" class="pill-button" id="downloadButton" disabled><svg class="icon" aria-hidden="true"><use href="#i-download"/></svg><span>Download</span></button></div>
+        <details class="personalize" id="personalize">
+          <summary><svg class="icon" aria-hidden="true"><use href="#i-bulb"/></svg><span>Personalize the translation <span class="personalize-optional">(optional)</span></span><span class="personalize-state" id="personalizeState" hidden>Added</span><svg class="icon personalize-chevron" aria-hidden="true"><use href="#i-chevron"/></svg></summary>
+          <div class="personalize-body">
+            <p class="personalize-label" id="instructionsLabel">Tell the translator how you want the result to look. Pick a suggestion or write your own.</p>
+            <div class="suggestion-chips" role="group" aria-labelledby="instructionsLabel"><button type="button" class="suggestion-chip" data-text="Add clear comments explaining each step." aria-pressed="false">Explain with comments</button><button type="button" class="suggestion-chip" data-text="Keep the code simple and beginner friendly." aria-pressed="false">Beginner friendly</button><button type="button" class="suggestion-chip" data-text="Use descriptive variable and function names." aria-pressed="false">Descriptive names</button><button type="button" class="suggestion-chip" data-text="Follow the idiomatic style and naming conventions of the target language." aria-pressed="false">Idiomatic style</button><button type="button" class="suggestion-chip" data-text="Keep the original comments." aria-pressed="false">Keep my comments</button><button type="button" class="suggestion-chip" data-text="Add input validation and error handling." aria-pressed="false">Error handling</button><button type="button" class="suggestion-chip" data-text="Optimize for performance where possible." aria-pressed="false">Optimize</button><button type="button" class="suggestion-chip" data-text="Include a main function / entry point so it can run." aria-pressed="false">Add a main entry</button></div>
+            <textarea id="instructions" maxlength="500" rows="3" aria-labelledby="instructionsLabel" placeholder="For example: add comments, use camelCase names, avoid external libraries…" spellcheck="true"></textarea>
+            <div class="personalize-footer"><button type="button" class="text-button personalize-clear" id="instructionsClear" hidden>Reset instructions</button><span class="personalize-count" id="instructionsCount" aria-hidden="true">0 / 500</span></div>
+          </div>
+        </details>
       </form>
       <div class="workspace-bottom"><p class="status-message" id="statusMessage" role="status" aria-live="polite"></p><p class="keyboard-hint" id="keyboardHint"><kbd>Alt</kbd> + <kbd>Enter</kbd> to run · <kbd id="shortcutModifier">Ctrl</kbd> + <kbd>Enter</kbd> to translate</p></div>
       <noscript><p class="noscript-message">Please enable JavaScript to use the code translator.</p></noscript>
@@ -277,7 +317,7 @@
 
   <dialog class="app-dialog" id="tipsDialog" aria-labelledby="tipsTitle">
     <div class="dialog-heading"><h2 id="tipsTitle">A few helpful tips</h2><button type="button" class="icon-button" data-close-dialog aria-label="Close tips"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></button></div>
-    <ul class="tips-list"><li><strong>Start with your code.</strong> Paste it into the source editor or upload a text-based code file.</li><li><strong>Choose your languages.</strong> Pick a source and a target from Python, Java, C and C++. Use Change languages in the workspace to switch at any time.</li><li><strong>Keep writing.</strong> Enter creates a new line. Ctrl + Enter (⌘ + Enter on Mac) starts a translation. Alt + Enter runs the code in the focused editor.</li><li><strong>Take it with you.</strong> Copy, download, or bookmark a finished translation. Hold Alt and drag code into another app.</li><li><strong>Keep a history.</strong> Create an account or sign in and every translation, finished or not, is recorded under History. Bookmarked ones also live in Saved.</li><li><strong>Review the result.</strong> Check and test translated code before using it in your project.</li></ul>
+    <ul class="tips-list"><li><strong>Start with your code.</strong> Paste it into the source editor or upload a .py, .java, .c or .cpp file.</li><li><strong>Choose your languages.</strong> Pick a source and a target from Python, Java, C and C++. Use Change languages in the workspace to switch at any time.</li><li><strong>Keep writing.</strong> Enter creates a new line. Ctrl + Enter (⌘ + Enter on Mac) starts a translation.<br> Alt + Enter compiles and runs code in the focused editor. Alt + Shift + Enter reruns code from the focused editor or terminal.<br> Press Esc or click Close to close the compiler terminal.</li><li><strong>Take it with you.</strong> Copy, download, or bookmark a finished translation. Hold Alt and drag code into another app.</li><li><strong>Keep a history.</strong> Create an account or sign in and every translation, finished or not, is recorded under History. Bookmarked ones also live in Saved.</li><li><strong>Review the result.</strong> Check and test translated code before using it in your project.</li></ul>
   </dialog>
 
   <dialog class="app-dialog" id="settingsDialog" aria-labelledby="settingsTitle">
@@ -347,6 +387,20 @@
         <button type="submit" class="pill-button danger-button" id="deleteSubmit">Delete account</button>
       </form>
     </div>
+  </dialog>
+  <dialog class="app-dialog" id="creditsDialog" aria-labelledby="creditsTitle">
+    <div class="dialog-heading"><h2 id="creditsTitle">Made by</h2><button type="button" class="icon-button" data-close-dialog aria-label="Close credits"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></button></div>
+    <!-- TODO: replace the team name and member names below with your own. -->
+    <div class="credits-team">
+      <h3>Your Team Name</h3>
+      <p>The group behind Source Bridge.</p>
+      <ul class="credits-members">
+        <li><span>Member name</span><small>Role</small></li>
+        <li><span>Member name</span><small>Role</small></li>
+        <li><span>Member name</span><small>Role</small></li>
+      </ul>
+    </div>
+    <p class="credits-footnote">Source Bridge translates code between Python, Java, C and C++. Interface font: Inter (SIL Open Font License). Language logos: Devicon (MIT).</p>
   </dialog>
   <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 </body>
