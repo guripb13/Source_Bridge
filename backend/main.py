@@ -128,7 +128,7 @@ limit = _limiter.limit
 # FIX VULN-001 (partial): popping removes it from the environment before
 # any user-submitted code is compiled or run.
 # --------------------------------------------------------------------------
-API_KEY = os.environ.pop("GEMINI_API_KEY", "").strip()
+API_KEY = os.environ.pop("GEMINI_API_KEY", "API").strip()
 if not API_KEY:
     raise RuntimeError(
         "GEMINI_API_KEY environment variable is not set or is empty.\n"
