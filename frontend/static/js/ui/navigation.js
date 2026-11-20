@@ -10,8 +10,12 @@ const viewOrder = {
   welcome: 0,
   languages: 1,
   translate: 2,
-  saved: 3
+  saved: 3,
+  history: 4
 };
+
+// Saved and History are full pages (they slide up / down); the setup steps slide sideways.
+const isPage = (view) => view === "saved" || view === "history";
 
 
 /* RESTART CSS ANIMATION ON EVERY CLICK */
@@ -77,7 +81,7 @@ export function showView(view) {
   const goingDown =
     viewOrder[view] > viewOrder[state.currentView];
         // Welcome, language selection and workspace are steps, so they slide sideways
-  const sideways = view !== "saved" && state.currentView !== "saved";
+  const sideways = !isPage(view) && !isPage(state.currentView);
   const main = $("mainContent");
 
   state.currentView = view;
@@ -95,10 +99,12 @@ export function showView(view) {
 
     $("savedView").hidden = view !== "saved";
 
-    // Welcome, language selection and the workspace all sit under the Translate tab.
-    const tab = view === "saved" ? "saved" : "translate";
+    $("historyView").hidden = view !== "history";
 
-    [$("translateNav"), $("savedNav")].forEach(button => {
+    // Welcome, language selection and the workspace all sit under the Translate tab.
+    const tab = isPage(view) ? view : "translate";
+
+    [$("translateNav"), $("savedNav"), $("historyNav")].forEach(button => {
 
       const current = button.dataset.view === tab;
 
@@ -123,6 +129,9 @@ export function showView(view) {
     }
 
     window.scrollTo(0, 0);
+
+    // Lets other modules (History) load their data when their page opens.
+    document.dispatchEvent(new CustomEvent("sb:viewchange", { detail: { view } }));
 
     // Close mobile sidebar
     if (state.mobileOpen) {

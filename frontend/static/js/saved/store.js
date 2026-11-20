@@ -6,7 +6,10 @@ import { writeStorage } from "../core/storage.js";
 const same = (entry, t) => entry.source === t.source && entry.output === t.output && entry.language === t.language;
 
 export const findSaved = (translation) => state.saved.find((entry) => same(entry, translation));
-export const isSaved = (translation) => Boolean(findSaved(translation));
+// Signed in: the server copy decides (translationId + isSaved). Visitors: the browser list decides.
+export const isSaved = (translation) => state.user
+  ? Boolean(translation?.translationId && translation.isSaved)
+  : Boolean(findSaved(translation));
 export const isFull = () => state.saved.length >= MAX_SAVED;
 
 export function addSaved(translation) {

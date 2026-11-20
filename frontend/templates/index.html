@@ -28,6 +28,8 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/sidebar-peek.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/credits.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/selection.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/account.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/history.css') }}">
   <!-- Scripts are ES modules under static/js; main.js wires everything together. -->
   <script type="module" src="{{ url_for('static', filename='js/main.js') }}"></script>
 </head>
@@ -87,7 +89,7 @@
       <button type="button" class="icon-button theme-button" id="themeToggle" aria-label="Switch to dark mode" title="Switch to dark mode">
         <svg class="icon" aria-hidden="true"><use id="themeIcon" href="#i-moon"/></svg>
       </button>
-      <button type="button" class="sign-in-button" id="accountButton" aria-haspopup="dialog" aria-label="Sign in or create an account">
+      <button type="button" class="sign-in-button" id="accountButton" aria-haspopup="dialog" aria-label="Sign in or create an account" title="Sign in or create an account">
         <svg class="icon" aria-hidden="true"><use href="#i-user"/></svg><span id="accountLabel">Sign In</span>
       </button>
     </div>
@@ -328,7 +330,9 @@
     <label class="setting-row" for="lineNumbersSetting"><span>Show line numbers</span><input type="checkbox" id="lineNumbersSetting" checked></label>
   </dialog>
 
-  <!-- Sign in / create account. One form, two modes (switched by the tabs). -->
+  <!-- Sign in / create account. One form, two modes (switched by the tabs, see js/account/auth-dialog.js).
+       Fields that do not belong to the current mode are hidden, never removed, so password managers
+       keep seeing a normal username + password form. -->
   <dialog class="app-dialog auth-dialog" id="authDialog" aria-labelledby="authTitle">
     <div class="dialog-heading"><h2 id="authTitle">Welcome back</h2><button type="button" class="icon-button" data-close-dialog aria-label="Close sign in"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></button></div>
     <div class="auth-tabs" role="tablist" aria-label="Account">
@@ -337,26 +341,35 @@
     </div>
     <p class="dialog-description auth-lead" id="authLead">Sign in to keep a history of your translations and save the ones you like.</p>
     <form class="auth-form" id="authForm" novalidate>
-      <label class="auth-field" id="fieldUsername" for="authUsername" hidden>
-        <span>Username</span>
-        <input type="text" id="authUsername" name="username" autocomplete="username" autocapitalize="off" spellcheck="false" maxlength="30" placeholder="3-30 letters, numbers, . _ -">
+      <div class="auth-field" id="fieldUsername" hidden>
+        <label for="authUsername">Username</label>
+        <input type="text" id="authUsername" name="username" autocomplete="username" autocapitalize="off" autocorrect="off" spellcheck="false" maxlength="30" placeholder="3-30 letters, numbers, . _ -" aria-describedby="errorUsername">
         <small class="field-error" id="errorUsername" role="alert" hidden></small>
-      </label>
-      <label class="auth-field" id="fieldIdentifier" for="authIdentifier">
-        <span>Username or email</span>
-        <input type="text" id="authIdentifier" name="identifier" autocomplete="username" autocapitalize="off" spellcheck="false" maxlength="254" placeholder="you@example.com">
+      </div>
+      <div class="auth-field" id="fieldIdentifier">
+        <label for="authIdentifier">Username or email</label>
+        <input type="text" id="authIdentifier" name="identifier" autocomplete="username" autocapitalize="off" autocorrect="off" spellcheck="false" maxlength="254" placeholder="you@example.com" aria-describedby="errorIdentifier">
         <small class="field-error" id="errorIdentifier" role="alert" hidden></small>
-      </label>
-      <label class="auth-field" id="fieldEmail" for="authEmail" hidden>
-        <span>Email</span>
-        <input type="email" id="authEmail" name="email" autocomplete="email" autocapitalize="off" spellcheck="false" maxlength="254" placeholder="you@example.com">
+      </div>
+      <div class="auth-field" id="fieldEmail" hidden>
+        <label for="authEmail">Email</label>
+        <input type="email" id="authEmail" name="email" autocomplete="email" autocapitalize="off" autocorrect="off" spellcheck="false" maxlength="254" placeholder="you@example.com" aria-describedby="errorEmail">
         <small class="field-error" id="errorEmail" role="alert" hidden></small>
-      </label>
-      <label class="auth-field" for="authPassword">
-        <span>Password</span>
-        <input type="password" id="authPassword" name="password" autocomplete="current-password" maxlength="128" placeholder="At least 8 characters">
+      </div>
+      <div class="auth-field" id="fieldPassword">
+        <label for="authPassword">Password</label>
+        <input type="password" id="authPassword" name="password" autocomplete="current-password" maxlength="128" placeholder="Your password" aria-describedby="errorPassword passwordMeterLabel">
+        <div class="password-meter" id="passwordMeter" data-level="0" hidden>
+          <span class="meter-bars" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+          <span class="meter-label" id="passwordMeterLabel"></span>
+        </div>
         <small class="field-error" id="errorPassword" role="alert" hidden></small>
-      </label>
+      </div>
+      <div class="auth-field" id="fieldConfirm" hidden>
+        <label for="authConfirm">Confirm password</label>
+        <input type="password" id="authConfirm" name="confirm" autocomplete="new-password" maxlength="128" placeholder="Type the password again" aria-describedby="errorConfirm">
+        <small class="field-error" id="errorConfirm" role="alert" hidden></small>
+      </div>
       <label class="auth-show"><input type="checkbox" id="authShowPassword"><span>Show password</span></label>
       <p class="auth-message" id="authMessage" role="alert" hidden></p>
       <button type="submit" class="pill-button dialog-primary auth-submit" id="authSubmit"><span id="authSubmitLabel">Sign in</span><svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></button>
@@ -374,15 +387,17 @@
     </div>
     <div class="account-actions">
       <button type="button" class="pill-button" id="accountHistory"><svg class="icon" aria-hidden="true"><use href="#i-history"/></svg><span>View history</span></button>
-      <button type="button" class="pill-button" id="accountSignOut"><svg class="icon" aria-hidden="true"><use href="#i-logout"/></svg><span>Sign out</span></button>
+      <button type="button" class="pill-button" id="accountSignOut"><svg class="icon" aria-hidden="true"><use href="#i-logout"/></svg><span id="accountSignOutLabel">Sign out</span></button>
     </div>
+    <p class="auth-message" id="accountMessage" role="alert" hidden></p>
     <div class="danger-zone">
       <button type="button" class="link-button danger-link" id="deleteToggle" aria-expanded="false" aria-controls="deleteForm">Delete my account</button>
       <form id="deleteForm" class="delete-form" hidden novalidate>
         <p>This permanently deletes your account and your whole translation history. It can't be undone.</p>
-        <label class="auth-field" for="deletePassword"><span>Confirm with your password</span>
-          <input type="password" id="deletePassword" autocomplete="current-password" maxlength="128">
-        </label>
+        <div class="auth-field">
+          <label for="deletePassword">Confirm with your password</label>
+          <input type="password" id="deletePassword" name="password" autocomplete="current-password" maxlength="128">
+        </div>
         <p class="auth-message" id="deleteMessage" role="alert" hidden></p>
         <button type="submit" class="pill-button danger-button" id="deleteSubmit">Delete account</button>
       </form>

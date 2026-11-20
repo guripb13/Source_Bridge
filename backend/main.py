@@ -52,6 +52,7 @@ import re
 import sqlite3
 from concurrent.futures import TimeoutError as FutureTimeoutError
 from datetime import timedelta
+from urllib.parse import urlsplit
 
 from flask import Flask, Response, g, jsonify, render_template, request, session
 from flask_limiter import Limiter                     # hard import — must be in requirements.txt
@@ -246,6 +247,27 @@ def login_required(view):
             return reply({"error": "Please sign in first."}, 401)
         return view(*args, **kwargs)
     return wrapper
+
+
+# --------------------------------------------------------------------------
+# Cross-site request protection (defence in depth on top of SameSite=Lax cookies).
+# Browsers attach an Origin header to every cross-origin write. If it names a different
+# site than the one serving this app, the request is refused before any route runs.
+# Requests without an Origin header (curl, same-origin GETs) are not affected.
+# Behind a proxy that rewrites the Host header, list your public host(s) in
+# ALLOWED_HOSTS (comma separated, e.g. "myapp.vercel.app").
+# --------------------------------------------------------------------------
+_ALLOWED_HOSTS = {h.strip().lower() for h in os.environ.get("ALLOWED_HOSTS", "").split(",") if h.strip()}
+
+
+@app.before_request
+def block_cross_site_writes():
+    if request.method in ("POST", "PUT", "PATCH", "DELETE"):
+        origin = request.headers.get("Origin")
+        if origin:
+            host = urlsplit(origin).netloc.lower()
+            if host != request.host.lower() and host not in _ALLOWED_HOSTS:
+                return reply({"error": "Cross-site request blocked."}, 403)
 
 
 def _safe(function, *args):

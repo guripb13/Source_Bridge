@@ -20,7 +20,9 @@ export function refreshButtons() {
   const alreadySaved = Boolean(state.completedTranslation && isSaved(state.completedTranslation));
   $("saveButton").classList.toggle("is-saved", alreadySaved);
   $("saveButton").setAttribute("aria-pressed", String(alreadySaved));
-  $("saveButton").title = alreadySaved ? "Saved. Click to remove from Saved" : "Save translation in this browser";
+  $("saveButton").title = state.user
+    ? (alreadySaved ? "Saved to your account. Click to remove from Saved" : "Save translation to your account")
+    : (alreadySaved ? "Saved. Click to remove from Saved" : "Save translation in this browser");
   $("saveButton").setAttribute("aria-label", $("saveButton").title);
 }
 

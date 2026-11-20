@@ -1,0 +1,81 @@
+/* Accounts: header button when signed in, sign-in / create-account dialog, account dialog.
+ * Uses only the existing design tokens (base.css), so light and dark themes both work.
+ * No inline styles anywhere (the page's Content-Security-Policy forbids them). */
+
+/* ---- Header button: filled once someone is signed in ---- */
+.sign-in-button.is-signed-in { background: var(--green-soft); }
+.sign-in-button.is-signed-in:hover { background: color-mix(in srgb, var(--green-soft) 75%, var(--green) 25%); }
+#accountLabel { max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ---- Shared link-style button (switch mode, delete account, retry) ---- */
+.link-button { display: inline; padding: 2px 4px; border: 0; border-radius: 6px; background: transparent; color: var(--green); font: inherit; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; transition: color .18s; }
+.link-button:hover:not(:disabled) { color: var(--green-hover); }
+.link-button:disabled { opacity: .55; }
+
+/* ---- Sign in / create account ---- */
+.auth-dialog { width: min(440px, calc(100vw - 32px)); }
+.auth-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; margin-bottom: 18px; background: var(--page); border: 1px solid var(--border); border-radius: 99px; }
+.auth-tab { min-height: 42px; padding: 0 12px; border: 0; border-radius: 99px; background: transparent; color: var(--muted); font-size: 15px; font-weight: 600; transition: background .18s, color .18s, box-shadow .18s; }
+.auth-tab:hover:not(:disabled):not(.is-active) { color: var(--ink); background: var(--gutter); }
+.auth-tab.is-active { background: var(--green-soft); color: var(--ink); box-shadow: inset 0 0 0 1px var(--green-edge); }
+.auth-tab:disabled { cursor: not-allowed; }
+.auth-tab:focus-visible { outline-offset: 2px; }
+.auth-lead { margin: 0 0 20px; font-size: 14.5px; line-height: 1.6; }
+.auth-form { display: grid; gap: 16px; }
+.auth-field { display: grid; gap: 7px; min-width: 0; }
+.auth-field > label { font-size: 14px; font-weight: 600; }
+.auth-field input { display: block; width: 100%; min-height: 48px; padding: 11px 14px; border: 1px solid var(--border); border-radius: 10px; background: var(--page); color: var(--ink); font-size: 15px; transition: border-color .18s, box-shadow .18s, background .18s; }
+.auth-field input::placeholder { color: var(--muted); opacity: .85; }
+.auth-field input:focus { outline: none; border-color: var(--focus); box-shadow: 0 0 0 2px color-mix(in srgb, var(--focus) 18%, transparent); background: var(--surface); }
+.auth-field input[aria-invalid="true"] { border-color: var(--error); }
+.auth-field input[aria-invalid="true"]:focus { box-shadow: 0 0 0 2px color-mix(in srgb, var(--error) 18%, transparent); }
+.field-error { color: var(--error); font-size: 13px; line-height: 1.45; }
+.auth-show { display: inline-flex; align-items: center; gap: 10px; width: fit-content; color: var(--muted); font-size: 14px; cursor: pointer; }
+.auth-show input { width: 18px; height: 18px; margin: 0; accent-color: var(--green); cursor: pointer; }
+.auth-message { margin: 0; padding: 11px 14px; border: 1px solid color-mix(in srgb, var(--error) 45%, transparent); border-radius: 10px; background: color-mix(in srgb, var(--error) 9%, var(--surface)); color: var(--error); font-size: 14px; line-height: 1.5; overflow-wrap: anywhere; }
+.auth-submit { width: 100%; margin-top: 2px; }
+.auth-submit:disabled { cursor: progress; }
+.auth-switch { margin: 18px 0 0; text-align: center; color: var(--muted); font-size: 14px; }
+.auth-note { margin: 12px 0 0; text-align: center; color: var(--muted); font-size: 12.5px; line-height: 1.6; }
+
+/* Password strength: four bars, coloured by data-level (set by auth-dialog.js) */
+.password-meter { --meter-weak: var(--error); --meter-fair: #b9822c; --meter-good: var(--green-edge); --meter-strong: var(--green); display: flex; align-items: center; gap: 10px; }
+:root[data-theme="dark"] .password-meter { --meter-fair: #d4a95a; --meter-good: #6f9468; }
+.meter-bars { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; width: 96px; flex-shrink: 0; }
+.meter-bars i { height: 4px; border-radius: 99px; background: var(--border); transition: background-color .25s var(--ease-soft); }
+.meter-label { color: var(--muted); font-size: 12.5px; line-height: 1.4; }
+.password-meter[data-level="1"] .meter-bars i:nth-child(-n+1) { background: var(--meter-weak); }
+.password-meter[data-level="2"] .meter-bars i:nth-child(-n+2) { background: var(--meter-fair); }
+.password-meter[data-level="3"] .meter-bars i:nth-child(-n+3) { background: var(--meter-good); }
+.password-meter[data-level="4"] .meter-bars i { background: var(--meter-strong); }
+
+/* ---- Your account ---- */
+.account-card { display: flex; align-items: center; gap: 16px; margin-bottom: 18px; padding: 18px; border: 1px solid var(--border); border-radius: 15px; background: var(--page); }
+.account-avatar { display: grid; place-items: center; flex-shrink: 0; width: 56px; height: 56px; border-radius: 50%; background: var(--green-soft); box-shadow: inset 0 0 0 1px var(--green-edge); color: var(--green); font-size: 24px; font-weight: 650; }
+.account-who { display: grid; gap: 2px; min-width: 0; }
+.account-who strong { overflow: hidden; font-size: 18px; letter-spacing: -.3px; text-overflow: ellipsis; white-space: nowrap; }
+.account-who span { overflow: hidden; color: var(--muted); font-size: 14px; text-overflow: ellipsis; white-space: nowrap; }
+.account-who small { color: var(--muted); font-size: 12.5px; }
+.account-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.account-actions .pill-button { min-height: 48px; padding: 12px 16px; gap: 9px; font-size: 15px; }
+.account-actions .pill-button .icon { width: 21px; height: 21px; }
+#accountMessage { margin-top: 14px; }
+.danger-zone { margin-top: 22px; padding-top: 16px; border-top: 1px solid var(--border); }
+.danger-link { color: var(--error); font-size: 14px; font-weight: 500; }
+.danger-link:hover:not(:disabled) { color: var(--error); opacity: .8; }
+.delete-form { display: grid; gap: 14px; margin-top: 14px; }
+.delete-form p:not(.auth-message) { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.6; }
+.danger-button { border-color: color-mix(in srgb, var(--error) 55%, transparent); background: color-mix(in srgb, var(--error) 10%, var(--surface)); color: var(--error); font-size: 15px; }
+.danger-button:hover:not(:disabled) { background: color-mix(in srgb, var(--error) 18%, var(--surface)); }
+
+/* Safari will not let people type into an input marked user-select: none, and selection.css
+ * turns selection off for everything inside a dialog. Inputs and messages must stay selectable. */
+.app-dialog input, .app-dialog .field-error, .app-dialog .auth-message { -webkit-user-select: text; user-select: text; }
+
+@media (max-width: 420px) {
+  .account-actions { grid-template-columns: 1fr; }
+  .auth-tab { font-size: 14px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .auth-tab, .auth-field input, .meter-bars i { transition: none; }
+}

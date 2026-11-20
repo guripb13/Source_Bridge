@@ -6,7 +6,28 @@ export const keys = {
   editorHeight: "sourceBridge.editorHeight"
 };
 
-export const endpoints = { execute: document.body.dataset.executeUrl || "/execute" };
+export const endpoints = {
+  execute: document.body.dataset.executeUrl || "/execute",
+  // Account + history routes (backend/main.py).
+  me: "/me",
+  signup: "/signup",
+  login: "/login",
+  logout: "/logout",
+  account: "/account",
+  translations: "/translations"
+};
+
+// Same rules the server enforces (backend/database.py). The server stays the authority;
+// these only give people instant feedback before a request is sent.
+export const AUTH_RULES = {
+  usernamePattern: /^[A-Za-z0-9_.\-]{3,30}$/,
+  emailPattern: /^[^@\s]+@[^@\s]+\.[^@\s]+$/,
+  emailMax: 254,
+  passwordMin: 8,
+  passwordMax: 128
+};
+
+export const HISTORY_PAGE_SIZE = 20;
 
 // Languages compiler.py can build and run -> the name /execute expects.
 export const executableLanguages = { python: "python", java: "java", c: "c", "c++": "cpp" };

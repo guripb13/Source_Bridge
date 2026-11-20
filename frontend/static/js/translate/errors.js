@@ -116,7 +116,7 @@ export const STOPPED_INFO = {
 
 /* One readable sentence for the terminal (Run) panel. */
 export function runErrorMessage(error) {
-  if (error?.status === 401) return "The server asked for a sign-in before running code. Sign-in isn't available in this version, so the /execute route must not require a login.";
+  if (error?.status === 401) return "The server asked for a sign-in before running code. Running code doesn't need an account, so please refresh the page and try again.";
   if (error?.status === 429) return "Too many runs in a short time. Wait a few seconds and try again.";
   if (error instanceof TypeError) return "Can't reach the server. Check your connection and try Run again.";
   if (error?.status >= 500) return `The server had a problem while running your code (code ${error.status}). Wait a moment and try Run again.`;

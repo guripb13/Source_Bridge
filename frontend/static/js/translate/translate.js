@@ -8,6 +8,7 @@ import { updateLines } from "../editor/line-numbers.js";
 import { explainTranslationError, STOPPED_INFO } from "./errors.js";
 import { startProgress, stopProgress } from "./progress.js";
 import { getInstructions } from "./instructions.js";
+import { loadSession } from "../account/session.js";
 
 const { form, source, output, sourceLanguage } = dom;
 
@@ -73,6 +74,7 @@ export function initTranslate() {
       const events = response.headers.get("content-type")?.includes("application/x-ndjson");
       let pendingText = "";
       let completed = false;
+      let recorded = null;               // the 'complete' event: { translation_id, persisted, ... } for signed-in users
       function consumeLine(line) {
         if (!line.trim()) return;
         let item;
@@ -80,7 +82,7 @@ export function initTranslate() {
         catch (_) { throw kindError("The translation stream was interrupted.", "stream"); }
         if (item.type === "chunk" && typeof item.text === "string") appendOutput(item.text);
         else if (item.type === "error") throw kindError(item.message || "Translation failed.", "server");
-        else if (item.type === "complete") completed = true;
+        else if (item.type === "complete") { completed = true; recorded = item; }
       }
       function consumeText(text) {
         if (!events) { appendOutput(text); return; }
@@ -115,7 +117,14 @@ export function initTranslate() {
       // Existing server.py returns upstream errors as plain text with HTTP 200.
       if (/^\s*Error:\s*/i.test(output.value)) throw kindError(output.value.trim(), "server");
       if (!output.value.trim()) throw kindError("No code was returned.", "server");
-      state.completedTranslation = { source: originalSource, output: output.value, language: target, sourceLanguage: sourceLanguage.value, fileName: originalFileName };
+      // translationId links this result to its row in the signed-in user's history (needed to bookmark it).
+      state.completedTranslation = {
+        source: originalSource, output: output.value, language: target, sourceLanguage: sourceLanguage.value, fileName: originalFileName,
+        translationId: state.user && recorded?.persisted ? recorded.translation_id : null,
+        isSaved: false
+      };
+      // Signed in but the server did not record it: the login probably expired. Find out quietly.
+      if (state.user && recorded && !recorded.persisted) loadSession();
       setStatus(`Translated to ${target}. Ready to run, copy, save, or download.`);
     } catch (error) {
       if (error.name === "AbortError") setRichStatus(STOPPED_INFO, false);
