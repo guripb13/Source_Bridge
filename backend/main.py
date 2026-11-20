@@ -41,11 +41,9 @@ WORKFLOW OF /execute (Run button) - STATELESS "interactive" input
     with the longer list. No process, thread or session survives between two calls.
 
 SANDBOX NOTE
-    When RUNNER_URL is set (Docker deployment), /execute and the compiler gate forward code
-    to an isolated runner container that has no access to GEMINI_API_KEY and runs with
-    --network none. When RUNNER_URL is not set (Vercel, local dev), compiler.py is imported
-    directly; POSIX resource limits and Python -I apply but full network/filesystem isolation
-    requires the Docker path. See docker-compose.yml and Dockerfile.runner.
+    /execute and the compiler gate call compiler.py directly (no Docker). POSIX resource
+    limits and Python -I apply, but user code runs on the same machine as the app, so there
+    is no full network/filesystem isolation.
 """
 import functools
 import json
@@ -126,7 +124,6 @@ limit = _limiter.limit
 # --------------------------------------------------------------------------
 # API key — pop from the environment after reading so that user code running
 # as the same OS user cannot exfiltrate it via /proc/<flask-pid>/environ.
-# FIX VULN-003: was API_KEY = "API_KEY"  (literal string placeholder).
 # FIX VULN-001 (partial): popping removes it from the environment before
 # any user-submitted code is compiled or run.
 # --------------------------------------------------------------------------
@@ -144,40 +141,9 @@ client = genai.Client(api_key=API_KEY)
 MAX_SOURCE_CHARS = compiler.MAX_CODE_CHARS
 GATE_TIMEOUT = compiler.COMPILE_TIMEOUT + compiler.RUN_TIMEOUT + 10
 
-# --------------------------------------------------------------------------
-# Runner dispatch — Docker vs direct (FIX VULN-001)
-# --------------------------------------------------------------------------
-# When RUNNER_URL is set the app calls the isolated runner container over HTTP
-# instead of importing compiler.py directly. The runner container has no
-# GEMINI_API_KEY and runs with --network none, so user code cannot reach the
-# internet or read the AI key. See docker-compose.yml and Dockerfile.runner.
-RUNNER_URL = os.environ.get("RUNNER_URL", "").rstrip("/")
-
-
 def _run_code(code, lang, stdin_text, eof=False):
-    """
-    Execute code and return the result dict.
-
-    Routes to the isolated runner HTTP service (Docker) when RUNNER_URL is set,
-    otherwise calls compiler.submit_run() directly (Vercel / local dev).
-    """
-    if RUNNER_URL:
-        import requests as _req   # only needed in Docker deployment
-        try:
-            resp = _req.post(
-                f"{RUNNER_URL}/run",
-                json={"code": code, "language": lang,
-                      "stdin_text": stdin_text, "eof": eof},
-                timeout=GATE_TIMEOUT,
-            )
-            resp.raise_for_status()
-            return resp.json()
-        except _req.exceptions.Timeout:
-            raise FutureTimeoutError("runner timed out")
-        except _req.exceptions.RequestException as exc:
-            raise RuntimeError(f"runner unreachable: {exc}") from exc
-    else:
-        return compiler.submit_run(code, lang, stdin_text, eof).result(timeout=GATE_TIMEOUT)
+    """Execute code directly with compiler.py (no Docker)."""
+    return compiler.submit_run(code, lang, stdin_text, eof).result(timeout=GATE_TIMEOUT)
 
 
 # --------------------------------------------------------------------------
