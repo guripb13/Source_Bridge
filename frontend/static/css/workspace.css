@@ -5,7 +5,7 @@
 .page-intro h1 { margin: 0 0 12px; font-size: clamp(29px, 3.3vw, 48px); line-height: 1.16; font-weight: 650; letter-spacing: -1.5px; }
 .page-intro > p { margin: 0; color: var(--muted); font-size: clamp(16px, 1.75vw, 23px); line-height: 1.5; }
 .workspace-grid { display: grid; grid-template-columns: minmax(0, 1fr) 156px minmax(0, 1fr); grid-template-areas: "source controls output" "upload upload download" "instructions instructions instructions"; gap: 18px 20px; max-width: 1550px; margin: 0 auto; }
-.editor-card { display: flex; flex-direction: column; min-width: 0; padding: 14px; background: var(--surface); border: 1px solid var(--border); border-radius: 16px; box-shadow: var(--shadow); }
+.editor-card { position: relative; display: flex; flex-direction: column; min-width: 0; padding: 14px; background: var(--surface); border: 1px solid var(--border); border-radius: 16px; box-shadow: var(--shadow); }
 .source-card { grid-area: source; }
 .output-card { grid-area: output; }
 .editor-heading { flex: 0 0 auto; display: flex; justify-content: space-between; align-items: center; min-height: 44px; gap: 6px; margin: 0 3px 12px; }

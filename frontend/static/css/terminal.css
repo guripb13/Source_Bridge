@@ -47,6 +47,18 @@
 }
 .run-output[hidden] { display: none !important; }
 .run-output.has-error .term-screen { color: var(--term-danger); }
+.term-tab-guide { position: absolute; inset: 0; z-index: 5; pointer-events: none; }
+.term-tab-guide-message {
+  position: absolute; left: 50%; display: inline-flex; align-items: center; gap: 4px; padding: 6px 9px;
+  border: 1px solid var(--border); border-radius: 7px; background: var(--surface); color: var(--ink);
+  box-shadow: 0 2px 7px rgb(0 0 0 / 12%); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+  font-size: 11px; line-height: 1; white-space: nowrap; transform: translate(-50%, -50%);
+  animation: term-tab-guide-in .3s var(--ease-soft) both;
+}
+.term-tab-guide-message kbd { padding: 3px 5px; border: 1px solid var(--border); border-radius: 4px; background: var(--surface); font: inherit; font-weight: 650; }
+.term-tab-guide.is-leaving .term-tab-guide-message { animation: term-tab-guide-out .22s var(--ease-soft) both; }
+@keyframes term-tab-guide-in { from { opacity: 0; transform: translate(-50%, -50%) scale(.88); border-radius: 12px 12px 4px 4px; } to { opacity: 1; transform: translate(-50%, -50%) scale(1); border-radius: 7px; } }
+@keyframes term-tab-guide-out { from { opacity: 1; transform: translate(-50%, -50%) scale(1); border-radius: 7px; } to { opacity: 0; transform: translate(-50%, -50%) scale(.9); border-radius: 12px 12px 4px 4px; } }
 
 /* Control bar: title, state chip, Rerun, Close */
 .term-bar {
@@ -88,6 +100,7 @@
   overflow: auto; color: inherit; font: inherit; white-space: pre-wrap; word-break: break-word;
   scrollbar-width: thin; scrollbar-color: var(--term-line) transparent;
 }
+.term-screen:focus-visible { outline: 2px solid var(--focus); outline-offset: -3px; border-radius: 4px; }
 /* ---- Input row: one 36px control height, equal 12px padding, one focus ring ---- */
 .term-row {
   --term-control: 36px;
@@ -200,6 +213,7 @@
 @media (max-width: 380px) { .language-pair { max-width: 158px; } .run-button span { display: none; } }
 @media (prefers-reduced-motion: reduce) {
   .term-status::before { animation: none; }
+  .term-tab-guide-message { animation: none; }
   .term-btn, .term-send, .term-stop, .term-btn .icon, .run-button, .run-button .icon { transition: none; }
   .run-output.is-entering .term-bar > *, .run-output.is-entering .term-screen, .run-output.is-entering .term-row { animation: none; }
   .term-row > .term-caret, .term-row > .term-label, .term-row > .term-input, .term-row > .term-send, .term-row > .term-stop, .term-row > .term-status { animation: none; }

@@ -19,10 +19,81 @@ const { source, output, sourceLanguage } = dom;
 // show every typed answer in the right place (the re-run output has no echo).
 export const liveStops = new WeakMap();   // panel -> function that stops its current run
 let activeCompilerPanel = null;
+const tabGuides = new WeakMap();
+const tabGuideSessionKey = "sourceBridge.inputTabGuideShown.v1";
+let tabGuideShownThisPage = false;
 
 function isAltEnter(event, shiftKey = false) {
   return event.key === "Enter" && event.shiftKey === shiftKey &&
     (event.altKey || event.getModifierState("AltGraph"));
+}
+
+function shouldShowTabGuide() {
+  if (tabGuideShownThisPage) return false;
+  tabGuideShownThisPage = true;
+  try {
+    if (sessionStorage.getItem(tabGuideSessionKey)) return false;
+    sessionStorage.setItem(tabGuideSessionKey, "true");
+  } catch (error) {
+    console.warn("Could not persist the compiler input shortcut hint for this session.", error);
+  }
+  return true;
+}
+
+function hideTabGuide(panel, animate = false) {
+  const guide = tabGuides.get(panel);
+  if (!guide) return;
+  clearTimeout(guide.timer);
+  cancelAnimationFrame(guide.frame);
+  guide.observer?.disconnect();
+  window.removeEventListener("resize", guide.update);
+  tabGuides.delete(panel);
+  if (animate && guide.element.isConnected) {
+    guide.element.classList.add("is-leaving");
+    setTimeout(() => guide.element.remove(), 220);
+  } else {
+    guide.element.remove();
+  }
+}
+
+function showTabGuide(panel, editor) {
+  hideTabGuide(panel);
+  const card = panel.closest(".editor-card");
+  const surface = editor.closest(".editor-card")?.querySelector(".code-surface");
+  if (!card || !surface) return;
+
+  const guide = makeEl("div", "term-tab-guide");
+  guide.setAttribute("aria-hidden", "true");
+  const message = makeEl("span", "term-tab-guide-message");
+  message.append(document.createTextNode("Press "));
+  message.append(makeEl("kbd", "", "Tab"));
+  message.append(document.createTextNode(" to switch between editor and input box"));
+  guide.append(message);
+  card.append(guide);
+
+  function positionGuide() {
+    const surfaceRect = surface.getBoundingClientRect();
+    const panelRect = panel.getBoundingClientRect();
+    const cardRect = card.getBoundingClientRect();
+    const middleY = (surfaceRect.bottom + panelRect.top) / 2 - cardRect.top - card.clientTop;
+    message.style.top = `${middleY}px`;
+  }
+
+  const state = { element: guide, frame: 0, timer: 0, update: null, observer: null };
+  state.update = () => {
+    cancelAnimationFrame(state.frame);
+    state.frame = requestAnimationFrame(positionGuide);
+  };
+  if ("ResizeObserver" in window) {
+    state.observer = new ResizeObserver(state.update);
+    state.observer.observe(card);
+    state.observer.observe(surface);
+    state.observer.observe(panel);
+  }
+  window.addEventListener("resize", state.update);
+  state.timer = setTimeout(() => hideTabGuide(panel, true), 5000);
+  tabGuides.set(panel, state);
+  state.update();
 }
 
 function withAnswers(stdout, answers) {
@@ -162,6 +233,7 @@ export async function runCode(code, execLanguage, button, panel) {
   closeButton.addEventListener("click", () => {
     const stop = liveStops.get(panel);
     if (stop) stop();
+    hideTabGuide(panel);
     closeButton.disabled = true;           // no double clicks while it collapses
     rerunButton.disabled = true;
     button.disabled = false;
@@ -255,6 +327,7 @@ export async function runCode(code, execLanguage, button, panel) {
     row.classList.remove("is-idle");
     status.textContent = "";
     setState("Waiting for input", "input");
+    if (shouldShowTabGuide()) showTabGuide(panel, button.id === "runSource" ? source : output);
     input.focus({ preventScroll: true });                 // focus without an abrupt jump; we scroll smoothly below
     bringInputIntoView();
   }
@@ -320,13 +393,17 @@ export async function runCode(code, execLanguage, button, panel) {
 
 
 export function initRun() {
+  const sourcePanel = $("sourceRunOutput");
+  const outputPanel = $("outputRunOutput");
+  const panelForEditor = new Map([[source, sourcePanel], [output, outputPanel]]);
+  const editorForPanel = new Map([[sourcePanel, source], [outputPanel, output]]);
   $("runSource").addEventListener("click", () => {
-    runCode(source.value, executableLanguages[sourceLanguage.value.trim().toLowerCase()] || null, $("runSource"), $("sourceRunOutput"));
+    runCode(source.value, executableLanguages[sourceLanguage.value.trim().toLowerCase()] || null, $("runSource"), sourcePanel);
   });
   $("runOutput").addEventListener("click", () => {
     // Run the language the translation was made in, even if the dropdown changed since.
     const lang = state.completedTranslation ? state.completedTranslation.language : targetLanguage();
-    runCode(output.value, executableLanguages[lang.trim().toLowerCase()] || null, $("runOutput"), $("outputRunOutput"));
+    runCode(output.value, executableLanguages[lang.trim().toLowerCase()] || null, $("runOutput"), outputPanel);
   });
   source.addEventListener("keydown", (event) => {
     if (!isAltEnter(event)) return;
@@ -341,6 +418,35 @@ export function initRun() {
   document.addEventListener("keydown", (event) => {
     if (event.defaultPrevented || event.isComposing) return;
     if (event.target instanceof Element && event.target.closest("dialog[open]")) return;
+
+    if (event.key === "Tab") {
+      let panel = null;
+      let editor = null;
+      let input = null;
+      if (event.target === source || event.target === output) {
+        editor = event.target;
+        panel = panelForEditor.get(editor);
+        input = panel?.querySelector(".term-input");
+      } else if (event.target instanceof Element) {
+        if (event.target.classList.contains("term-input")) {
+          panel = event.target.closest(".run-output.is-terminal:not([hidden]):not(.is-leaving)");
+          editor = panel ? editorForPanel.get(panel) : null;
+          input = event.target;
+        }
+      }
+      const row = input?.closest(".term-row");
+      if (panel && editor && input && row && !panel.hidden && !panel.classList.contains("is-leaving") &&
+          !row.hidden && !row.classList.contains("is-idle") && !input.disabled) {
+        event.preventDefault();
+        if (event.target === editor) {
+          input.focus({ preventScroll: true });
+        } else {
+          editor.focus({ preventScroll: true });
+        }
+        hideTabGuide(panel, true);
+        return;
+      }
+    }
 
     if (isAltEnter(event, true)) {
       let panel = event.target instanceof Element ?
