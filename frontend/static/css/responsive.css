@@ -487,6 +487,27 @@
   #uploadButton { width: 100%; }
   .upload-actions { flex-direction: column; align-items: stretch; }
   .upload-actions .file-help { text-align: center; }
+
+  /* Match the upload action's full-width footprint on phones */
+  .conversion-controls { flex-direction: column; align-items: stretch; }
+  .language-control { max-width: none; }
+  .conversion-controls .translate-button {
+    width: 100%;
+    justify-content: center;
+    align-items: center;
+    min-height: 50px;
+    padding: 0;
+    font-size: 15px;
+    border: 1px solid var(--green);
+    border-radius: 99px;
+    background: var(--green);
+    color: #fff;
+  }
+  .translate-circle { width: auto; height: auto; border-radius: 0; background: transparent; color: inherit; box-shadow: none; }
+  .conversion-controls .translate-circle .icon { width: 22px; height: 22px; }
+  .translate-button:hover:not(:disabled) { background: var(--green-hover); }
+  .translate-button:hover:not(:disabled) .translate-circle { background: transparent; box-shadow: none; transform: none; }
+  .translate-button:active:not(:disabled) .translate-circle { transform: none; }
 }
 
 @media (max-width: 760px) and (orientation: portrait) {
