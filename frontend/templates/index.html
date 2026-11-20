@@ -318,11 +318,13 @@
   </main>
 
   <dialog class="app-dialog" id="tipsDialog" aria-labelledby="tipsTitle">
+    <div class="dialog-drag-handle" aria-hidden="true"></div>
     <div class="dialog-heading"><h2 id="tipsTitle">A few helpful tips</h2><button type="button" class="icon-button" data-close-dialog aria-label="Close tips"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></button></div>
     <ul class="tips-list"><li><strong>Start with your code.</strong> Paste it into the source editor or upload a .py, .java, .c or .cpp file.</li><li><strong>Choose your languages.</strong> Pick a source and a target from Python, Java, C and C++. Use Change languages in the workspace to switch at any time.</li><li><strong>Keep writing.</strong> Enter creates a new line. Ctrl + Enter (⌘ + Enter on Mac) starts a translation.<br> Alt + Enter compiles and runs code in the focused editor. Alt + Shift + Enter reruns code from the focused editor or terminal.<br> Press Esc or click Close to close the compiler terminal.</li><li><strong>Take it with you.</strong> Copy, download, or bookmark a finished translation. Hold Alt and drag code into another app.</li><li><strong>Keep a history.</strong> Create an account or sign in and every translation, finished or not, is recorded under History. Bookmarked ones also live in Saved.</li><li><strong>Review the result.</strong> Check and test translated code before using it in your project.</li></ul>
   </dialog>
 
   <dialog class="app-dialog" id="settingsDialog" aria-labelledby="settingsTitle">
+    <div class="dialog-drag-handle" aria-hidden="true"></div>
     <div class="dialog-heading"><h2 id="settingsTitle">Make yourself at home</h2><button type="button" class="icon-button" data-close-dialog aria-label="Close settings"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></button></div>
     <p class="dialog-description">Adjust your workspace. Preferences stay in this browser.</p>
     <label class="setting-row" for="themeSetting"><span>Appearance</span><select id="themeSetting"><option value="light">Light</option><option value="dark">Dark</option><option value="system">System</option></select></label>
@@ -334,6 +336,7 @@
        Fields that do not belong to the current mode are hidden, never removed, so password managers
        keep seeing a normal username + password form. -->
   <dialog class="app-dialog auth-dialog" id="authDialog" aria-labelledby="authTitle">
+    <div class="dialog-drag-handle" aria-hidden="true"></div>
     <div class="dialog-heading"><h2 id="authTitle">Welcome back</h2><button type="button" class="icon-button" data-close-dialog aria-label="Close sign in"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></button></div>
     <div class="auth-tabs" role="tablist" aria-label="Account">
       <button type="button" role="tab" class="auth-tab is-active" id="tabLogin" data-auth-mode="login" aria-selected="true" aria-controls="authForm">Sign in</button>
@@ -380,6 +383,7 @@
 
   <!-- Shown instead of the sign-in form when someone is signed in. -->
   <dialog class="app-dialog" id="accountDialog" aria-labelledby="accountTitle">
+    <div class="dialog-drag-handle" aria-hidden="true"></div>
     <div class="dialog-heading"><h2 id="accountTitle">Your account</h2><button type="button" class="icon-button" data-close-dialog aria-label="Close account"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></button></div>
     <div class="account-card">
       <span class="account-avatar" id="accountAvatar" aria-hidden="true">?</span>
@@ -404,6 +408,7 @@
     </div>
   </dialog>
   <dialog class="app-dialog" id="creditsDialog" aria-labelledby="creditsTitle">
+    <div class="dialog-drag-handle" aria-hidden="true"></div>
     <div class="dialog-heading"><h2 id="creditsTitle">Made by</h2><button type="button" class="icon-button" data-close-dialog aria-label="Close credits"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></button></div>
     <!-- TODO: replace the team name and member names below with your own. -->
     <div class="credits-team">

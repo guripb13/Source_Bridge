@@ -384,15 +384,38 @@
     transform: none;
     opacity: 1;
   }
-  /* Add a drag indicator at top of bottom-sheet dialogs */
-  .app-dialog::before {
-    content: "";
+  .app-dialog[data-dragging] {
+    transition: none;
+    transform: translate3d(0, var(--dialog-drag-offset, 0px), 0) scale(var(--dialog-drag-scale, 1));
+    opacity: var(--dialog-drag-opacity, 1);
+    will-change: transform, opacity;
+  }
+  .app-dialog[data-dragging]::backdrop {
+    transition: none;
+    opacity: var(--dialog-backdrop-opacity, 1);
+  }
+  .app-dialog:not([open]) {
+    transform: translate3d(0, var(--dialog-close-offset, 14px), 0) scale(.98);
+    opacity: 0;
+    transition-duration: var(--dialog-close-duration, var(--dur-soft));
+  }
+  /* Add a drag handle at top of bottom-sheet dialogs */
+  .dialog-drag-handle {
     display: block;
     width: 40px; height: 4px;
     border-radius: 99px;
     background: var(--border);
     margin: 0 auto 20px;
+    touch-action: none;
+    cursor: grab;
+    transition: transform .18s var(--ease-soft), background-color .18s var(--ease-soft);
   }
+  .app-dialog[data-dragging] .dialog-drag-handle {
+    transition: none;
+    background: var(--green);
+    transform: scaleX(var(--dialog-handle-scale, 1));
+  }
+  .dialog-drag-handle:active { cursor: grabbing; }
   .dialog-heading { margin-bottom: 16px; }
   .dialog-heading h2 { font-size: 20px; }
 
@@ -637,6 +660,7 @@
 ========================================= */
 @media (prefers-reduced-motion: reduce) {
   .code-surface { transition: border-color .18s; }
+  .app-dialog, .app-dialog::backdrop, .dialog-drag-handle { transition-duration: .01s !important; }
   .run-shortcut-hint { animation: none; transition: none; }
   .filter-chip { transition: background .18s, border-color .18s; transform: none !important; }
 }
