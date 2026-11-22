@@ -1,73 +1,155 @@
-/* Adjustable editor height. Both editors share one height (a CSS variable on the grid), so the
- * panels stay level. Drag a handle, use the arrow keys on it, or double-click to reset. */
+/* Adjustable editor height. Both editors share one height, so the panels stay level.
+ * Drag a handle, use the arrow keys on it, or double-click / double-tap to reset.
+ *
+ * Smoothness model:
+ *  - While dragging, the height follows the finger 1:1 (inline height, no CSS transition, one write per frame).
+ *  - Past the min / max limit the box resists like a rubber band, then springs back with an animation on release.
+ *  - Every other change (release, keyboard, reset) is a short eased animation, never a snap.
+ *  - The two editors can start at different heights on phones; the gap is eased out instead of jumping. */
 import { $, dom } from "../core/dom.js";
 import { keys } from "../core/config.js";
 import { readStorage, writeStorage } from "../core/storage.js";
 
 const FALLBACK_MIN = 180;
-const MAX_EXTENSION = 1.7;
+const MAX_EXTENSION = 2.2;
 const STEP = 20;
+const EDGE = 70;          // px from the top/bottom of the screen where dragging starts auto-scrolling the page
+const SETTLE_MS = 280;    // release / keyboard / reset animation
+const RUBBER = 140;       // how far (px) the rubber band can be pulled past a limit, at most
+const OFFSET_EASE = 0.82; // per-frame decay of the gap between the two editors while dragging
+
+const easeOut = (t) => 1 - Math.pow(1 - t, 3);
+const motionOK = () => !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 export function initEditorResize() {
   const grid = dom.form;
   const surface = $("sourceSurface");
+  const outSurface = $("outputSurface");
   const handles = [$("sourceResize"), $("outputResize")];
+  const surfaces = [surface, outSurface];
+  const root = document.documentElement;
   let minHeight = FALLBACK_MIN;
   let maxHeight = Math.round(FALLBACK_MIN * MAX_EXTENSION);
+  let defaultOut = FALLBACK_MIN; // the output editor's own default height (differs from the source on phones)
   let pendingStoredHeight = readStorage(keys.editorHeight, null);
   if (typeof pendingStoredHeight !== "number" || !Number.isFinite(pendingStoredHeight)) pendingStoredHeight = null;
 
+  const clamp = (value) => Math.min(maxHeight, Math.max(minHeight, Math.round(value)));
+  const hasCustom = () => grid.classList.contains("has-custom-height");
+
   function updateHeightLimits() {
-    const hasCustomHeight = grid.classList.contains("has-custom-height");
+    const hadCustom = hasCustom();
     const customHeight = grid.style.getPropertyValue("--editor-height");
     grid.classList.add("is-measuring-editor-height");
     grid.classList.remove("has-custom-height");
     grid.style.removeProperty("--editor-height");
+    surfaces.forEach((s) => s.style.removeProperty("--editor-height"));
     const defaultHeight = Math.round(surface.getBoundingClientRect().height);
+    const outHeight = Math.round(outSurface.getBoundingClientRect().height);
     if (defaultHeight > 0) {
       minHeight = Math.max(FALLBACK_MIN, defaultHeight);
       maxHeight = Math.round(minHeight * MAX_EXTENSION);
+      defaultOut = outHeight > 0 ? outHeight : minHeight;
     }
-    if (customHeight) grid.style.setProperty("--editor-height", customHeight);
-    if (hasCustomHeight) grid.classList.add("has-custom-height");
+    if (customHeight) {
+      grid.style.setProperty("--editor-height", customHeight);
+      surfaces.forEach((s) => s.style.setProperty("--editor-height", customHeight));
+    }
+    if (hadCustom) grid.classList.add("has-custom-height");
     grid.classList.remove("is-measuring-editor-height");
   }
-  const clamp = (value) => Math.min(maxHeight, Math.max(minHeight, Math.round(value)));
 
+  // ---- accessibility attributes: written when a change settles, never per frame ----
   function sync(height) {
-    const hintText = grid.classList.contains("has-custom-height")
-      ? "Double-click to restore default height"
-      : "Drag to adjust the height";
+    const hintText = hasCustom() ? "Double-click to restore default height" : "Drag to adjust the height";
     handles.forEach((handle) => {
       handle.setAttribute("aria-valuemin", String(minHeight));
       handle.setAttribute("aria-valuemax", String(maxHeight));
       handle.setAttribute("aria-valuenow", String(Math.round(height)));
-      handle.querySelector(".resize-hint").textContent = hintText;
+      const hint = handle.querySelector(".resize-hint");
+      if (hint && hint.textContent !== hintText) hint.textContent = hintText;
     });
   }
-  function apply(height) {
-    const value = clamp(height);
-    if (value === minHeight) {
-      grid.classList.remove("has-custom-height");
-      grid.style.removeProperty("--editor-height");
-      sync(minHeight);
-      return minHeight;
-    }
+
+  // ---- low-level writers ----
+  // Live: inline height (wins over the stylesheet's !important), no transition, no custom-property inheritance.
+  function writeLive(src, out) {
+    surface.style.setProperty("height", `${src}px`, "important");
+    outSurface.style.setProperty("height", `${out}px`, "important");
+  }
+  function beginLive() {
+    grid.classList.add("has-custom-height");
+    surfaces.forEach((s) => { s.style.transition = "none"; });
+    root.style.overflowAnchor = "none"; // stop the browser "correcting" scroll while the layout above the finger changes
+    writeLive(shownSrc, shownOut);      // pin the current heights in the same step, so nothing jumps
+  }
+  function endLive() {
+    surfaces.forEach((s) => { s.style.removeProperty("height"); s.style.removeProperty("transition"); });
+    root.style.removeProperty("overflow-anchor");
+  }
+  // Rest state: the shared height lives in a CSS variable, nothing inline.
+  function commit(value) {
+    surfaces.forEach((s) => s.style.setProperty("--editor-height", `${value}px`));
     grid.style.setProperty("--editor-height", `${value}px`);
     grid.classList.add("has-custom-height");
+    endLive();
     sync(value);
-    return value;
   }
-  function reset() {
+  function restoreDefault() {
     grid.classList.remove("has-custom-height");
     grid.style.removeProperty("--editor-height");
-    writeStorage(keys.editorHeight, null);
+    surfaces.forEach((s) => s.style.removeProperty("--editor-height"));
+    endLive();
     sync(minHeight);
   }
 
+  // ---- one animation at a time ----
+  let anim = 0;
+  let shownSrc = surface.getBoundingClientRect().height;
+  let shownOut = outSurface.getBoundingClientRect().height;
+  function stopAnim() { if (anim) cancelAnimationFrame(anim); anim = 0; }
+
+  // Ease both editors from where they are now to (toSrc, toOut), then call done().
+  function animateTo(toSrc, toOut, done, ms = SETTLE_MS) {
+    stopAnim();
+    const fromSrc = shownSrc, fromOut = shownOut;
+    if (!motionOK() || (Math.abs(toSrc - fromSrc) < 0.5 && Math.abs(toOut - fromOut) < 0.5)) {
+      shownSrc = toSrc; shownOut = toOut;
+      done();
+      return;
+    }
+    beginLive();
+    const t0 = performance.now();
+    const tick = (now) => {
+      const k = Math.min(1, (now - t0) / ms);
+      const e = easeOut(k);
+      shownSrc = fromSrc + (toSrc - fromSrc) * e;
+      shownOut = fromOut + (toOut - fromOut) * e;
+      writeLive(shownSrc, shownOut);
+      if (k < 1) anim = requestAnimationFrame(tick);
+      else { anim = 0; shownSrc = toSrc; shownOut = toOut; done(); }
+    };
+    anim = requestAnimationFrame(tick);
+  }
+
+  function settleTo(value, persist = true) {
+    const v = clamp(value);
+    animateTo(v, v, () => {
+      commit(v);
+      if (persist) writeStorage(keys.editorHeight, v > minHeight ? v : null);
+    });
+    return v;
+  }
+  function reset() {
+    animateTo(minHeight, defaultOut, () => {
+      restoreDefault();
+      writeStorage(keys.editorHeight, null);
+    });
+  }
+
+  // ---- initial height ----
   const translateView = $("translateView");
   let hasInitializedHeight = false;
-  // Measure once when the workspace first appears; later viewport changes must not reset manual resizing.
   const visibilityObserver = new MutationObserver(initializeHeight);
 
   function initializeHeight() {
@@ -77,51 +159,96 @@ export function initEditorResize() {
     if (height <= 0) return;
     hasInitializedHeight = true;
     if (pendingStoredHeight !== null) {
-      const appliedHeight = apply(pendingStoredHeight);
+      const v = clamp(pendingStoredHeight);
       pendingStoredHeight = null;
-      writeStorage(keys.editorHeight, grid.classList.contains("has-custom-height") ? appliedHeight : null);
+      if (v > minHeight) commit(v); else sync(height);
+      writeStorage(keys.editorHeight, v > minHeight ? v : null);
     } else sync(height);
+    shownSrc = surface.getBoundingClientRect().height;
+    shownOut = outSurface.getBoundingClientRect().height;
     visibilityObserver.disconnect();
   }
-
   visibilityObserver.observe(translateView, { attributes: true, attributeFilter: ["hidden"] });
   initializeHeight();
+
+  // Rubber band: 1:1 inside the limits, increasing resistance beyond them.
+  function band(raw) {
+    if (raw < minHeight) return minHeight - RUBBER * (1 - 1 / ((minHeight - raw) * 0.6 / RUBBER + 1));
+    if (raw > maxHeight) return maxHeight + RUBBER * (1 - 1 / ((raw - maxHeight) * 0.6 / RUBBER + 1));
+    return raw;
+  }
 
   handles.forEach((handle) => {
     handle.addEventListener("pointerdown", (event) => {
       if (event.button !== undefined && event.button !== 0) return;
       event.preventDefault();
+      stopAnim();
+      handle.focus({ preventScroll: true });
+      if (!hasInitializedHeight) initializeHeight();
+      shownSrc = surface.getBoundingClientRect().height;
+      shownOut = outSurface.getBoundingClientRect().height;
       const startY = event.clientY;
-      const startHeight = surface.getBoundingClientRect().height;
-      let latest = startHeight;
-      handle.setPointerCapture(event.pointerId);
+      const startHeight = shownSrc;
+      let gap = shownOut - shownSrc; // output minus source; eased to 0 while dragging
+      let raw = startHeight;
+      try { handle.setPointerCapture(event.pointerId); } catch (_) { /* pointer already gone */ }
       document.body.classList.add("is-resizing-editor");
-      const move = (e) => { latest = apply(startHeight + (e.clientY - startY)); };
+      beginLive();
+
+      let pointerY = startY;
+      const scrollStart = window.scrollY;
+      let frame = 0;
+      let dragging = true;
+      const update = () => {
+        frame = 0;
+        if (!dragging) return;
+        let speed = 0;
+        if (pointerY > window.innerHeight - EDGE) speed = Math.min(1, (pointerY - (window.innerHeight - EDGE)) / EDGE) * 18;
+        else if (pointerY < EDGE) speed = -Math.min(1, (EDGE - pointerY) / EDGE) * 18;
+        if (speed) window.scrollBy(0, speed);
+        raw = startHeight + (pointerY - startY) + (window.scrollY - scrollStart);
+        shownSrc = band(raw);
+        gap *= OFFSET_EASE;
+        if (Math.abs(gap) < 0.5) gap = 0;
+        shownOut = shownSrc + gap;
+        writeLive(shownSrc, shownOut);
+        if (speed || gap) frame = requestAnimationFrame(update);
+      };
+      const move = (e) => {
+        pointerY = e.clientY;
+        if (!frame) frame = requestAnimationFrame(update);
+      };
       const end = () => {
+        dragging = false;
+        cancelAnimationFrame(frame);
+        frame = 0;
         handle.removeEventListener("pointermove", move);
         handle.removeEventListener("pointerup", end);
         handle.removeEventListener("pointercancel", end);
         document.body.classList.remove("is-resizing-editor");
-        writeStorage(keys.editorHeight, grid.classList.contains("has-custom-height") ? latest : null);
+        settleTo(raw); // springs back from the rubber band, or eases the last pixels into place
       };
       handle.addEventListener("pointermove", move);
       handle.addEventListener("pointerup", end);
       handle.addEventListener("pointercancel", end);
+      frame = requestAnimationFrame(update); // start easing the gap immediately
     });
+
     handle.addEventListener("keydown", (event) => {
       const big = event.shiftKey ? 3 : 1;
-      let next = null;
-      const current = surface.getBoundingClientRect().height;
+      const current = anim ? shownSrc : surface.getBoundingClientRect().height;
+      let next;
       if (event.key === "ArrowUp") next = current - STEP * big;
       else if (event.key === "ArrowDown") next = current + STEP * big;
       else if (event.key === "Home") next = minHeight;
       else if (event.key === "End") next = maxHeight;
       else return;
       event.preventDefault();
-      const appliedHeight = apply(next);
-      writeStorage(keys.editorHeight, grid.classList.contains("has-custom-height") ? appliedHeight : null);
+      shownSrc = current;
+      shownOut = anim ? shownOut : outSurface.getBoundingClientRect().height;
+      settleTo(next);
     });
     handle.addEventListener("focus", () => sync(surface.getBoundingClientRect().height));
-    handle.addEventListener("dblclick", reset);
+    handle.addEventListener("dblclick", () => { shownSrc = surface.getBoundingClientRect().height; shownOut = outSurface.getBoundingClientRect().height; reset(); });
   });
 }

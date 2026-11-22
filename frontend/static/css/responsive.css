@@ -524,7 +524,7 @@
   .source-card { padding: 10px; }
   .source-card .editor-heading { min-height: 36px; margin-bottom: 6px; }
   .workspace-grid:not(.has-custom-height) .source-card .code-surface { height: 180px; }
-  .source-card .resize-handle { height: 10px; margin-top: 0; }
+  .source-card .resize-handle { height: clamp(14px, 2.2dvh, 20px); margin-top: 0; }
   .upload-actions { row-gap: 4px; }
   .conversion-controls { gap: 8px; padding-top: 6px; padding-bottom: 8px; }
   .language-label { font-size: 13px; margin-bottom: 5px; }
