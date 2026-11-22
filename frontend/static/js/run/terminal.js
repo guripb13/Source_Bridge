@@ -238,7 +238,7 @@ export async function runCode(code, execLanguage, button, panel) {
     rerunButton.disabled = true;
     button.disabled = false;
     refreshButtons();
-    button.focus({ preventScroll: true });
+    (button.id === "runSource" ? source : output).focus({ preventScroll: true });
     closePanel(panel, () => {
       panel.textContent = "";
       panel.classList.remove("has-error", "is-terminal");
