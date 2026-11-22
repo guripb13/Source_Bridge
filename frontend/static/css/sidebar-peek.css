@@ -2,6 +2,7 @@
    (script adds .sidebar-peek) and it closes again when the pointer leaves.
    It floats above the page, so the content never jumps. Desktop with a mouse only. */
 @media (min-width: 901px) {
+  body.sidebar-collapsed.sidebar-peek-pending .sidebar { width: calc(var(--sidebar-rail) + 8px); }
   body.sidebar-collapsed.sidebar-peek .sidebar { width: var(--sidebar-width); box-shadow: 10px 0 36px rgb(var(--scrim) / .18); }
   body.sidebar-collapsed.sidebar-peek .nav-list { padding-left: 16px; padding-right: 16px; }
   body.sidebar-collapsed.sidebar-peek .nav-item { gap: 22px; padding: 18px 23px; }

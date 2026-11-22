@@ -2,7 +2,7 @@
 /* Desktop sidebar collapses into an icon rail. Mobile uses a hidden drawer. */
 .sidebar { position: fixed; left: 0; top: var(--header-height); bottom: 0; width: var(--sidebar-width); background: var(--sidebar); border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; z-index: 25; transition: width .25s ease, transform .25s ease; }
 .nav-list { display: flex; flex-direction: column; gap: 8px; padding: 38px 16px 0; position: relative; z-index: 1; transition: padding .25s ease; }
-.nav-item { display: flex; align-items: center; gap: 22px; width: 100%; padding: 18px 23px; min-height: 64px; border: 0; border-radius: 12px; background: transparent; text-align: left; font-size: 19px; white-space: nowrap; }
+.nav-item { display: flex; align-items: center; gap: 22px; width: 100%; padding: 18px 23px; min-height: 64px; border: 0; border-radius: 12px; background: transparent; text-align: left; font-size: 19px; white-space: nowrap; transition: gap .25s ease, padding .25s ease; }
 .nav-item .icon { width: 28px; height: 28px; }
 .nav-item:hover { background: var(--gutter); }
 .nav-item.active { background: var(--green-soft); font-weight: 600; }

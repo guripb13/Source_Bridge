@@ -36,9 +36,11 @@ export function closeSidebar(returnFocus = false) {
 
 // ---- Hover-to-open on the collapsed rail ----
 const PEEK_DELAY_MS = 650;
+const PEEK_PREVIEW_DELAY_MS = 500;
 let peekTimer = 0;
 function endPeek() {
   clearTimeout(peekTimer);
+  document.body.classList.remove("sidebar-peek-pending");
   document.body.classList.remove("sidebar-peek");
 }
 
@@ -80,8 +82,13 @@ export function initSidebar() {
     if (event.pointerType !== "mouse" || mobileQuery.matches || !state.desktopCollapsed) return;
     clearTimeout(peekTimer);
     peekTimer = setTimeout(() => {
-      if (state.desktopCollapsed && !mobileQuery.matches) document.body.classList.add("sidebar-peek");
-    }, PEEK_DELAY_MS);
+      if (!state.desktopCollapsed || mobileQuery.matches) return;
+      document.body.classList.add("sidebar-peek-pending");
+      peekTimer = setTimeout(() => {
+        document.body.classList.remove("sidebar-peek-pending");
+        if (state.desktopCollapsed && !mobileQuery.matches) document.body.classList.add("sidebar-peek");
+      }, PEEK_DELAY_MS);
+    }, PEEK_PREVIEW_DELAY_MS);
   });
   sidebar.addEventListener("pointerleave", endPeek);
   mobileQuery.addEventListener("change", endPeek);
