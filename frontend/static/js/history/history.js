@@ -146,6 +146,11 @@ function buildCard(item) {
     makeEl("span", "saved-language", pair),
     makeEl("span", `status-chip is-${item.status}`, STATUS_LABELS[item.status] || item.status)
   );
+  if (item.repeat_count > 1) {
+    const repeats = makeEl("span", "repeat-chip", `Repeated ×${item.repeat_count}`);
+    repeats.title = `The same translation was run ${item.repeat_count} times in a row`;
+    badges.append(repeats);
+  }
   const top = makeEl("div", "saved-card-top");
   top.append(badges, makeEl("span", "saved-date", formatDateTime(item.created_at)));
 

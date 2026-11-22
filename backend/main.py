@@ -4,6 +4,7 @@ main.py - Source Bridge backend.
 Files that must sit next to this one:  compiler.py, convertibility.py, database.py
 
 ACCOUNTS (database.py -> users.db)
+    GET  /username-available?username=NAME   live "is it taken?" check (username_index.db)
     POST /signup   create an account and sign in        {username, email, password}
     POST /login    sign in with username OR email       {identifier, password}
     POST /logout   sign out
@@ -62,7 +63,7 @@ from google import genai
 from google.genai import types
 
 import compiler                                   # step 1: compile + run
-import database as db                             # users.db + translations.db
+import database as db                             # users.db + translations.db + username_index.db
 from convertibility import check_convertible      # step 2: source -> target allowed?
 
 # --------------------------------------------------------------------------
@@ -302,8 +303,12 @@ class Attempt:
     def complete(self, target_code):
         if self.row and not self.closed:
             self.closed = True
-            self.stored = bool(_safe(db.complete_translation, self.row["id"],
-                                     self.user_id, target_code))
+            result = _safe(db.complete_translation, self.row["id"], self.user_id, target_code)
+            self.stored = bool(result)
+            if result:
+                # An identical back-to-back result is merged into the earlier entry, so from now
+                # on this attempt IS that entry (its id, its date, its repeat_count).
+                self.row = result
         return self.stored
 
 
@@ -514,6 +519,13 @@ def me():
     return reply({"authenticated": user is not None, "user": user})
 
 
+@app.route("/username-available", methods=["GET"])
+@limit("60 per minute")
+def username_available():
+    """Live sign-up check. Answers from username_index.db, so it is a single quick lookup."""
+    return reply(db.check_username(request.args.get("username", "")))
+
+
 @app.route("/signup", methods=["POST"])
 @limit("10 per minute")
 def signup():
@@ -689,6 +701,7 @@ def send():
                     user_id=user_id if attempt.stored else None,
                     is_saved=False,
                     created_at=attempt.row["created_at"] if attempt.stored else None,
+                    repeat_count=attempt.row.get("repeat_count", 1) if attempt.stored else None,
                     persisted=attempt.stored,
                 )
         finally:

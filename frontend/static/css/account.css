@@ -29,6 +29,9 @@
 .auth-field input:focus { outline: none; border-color: var(--focus); box-shadow: 0 0 0 2px color-mix(in srgb, var(--focus) 18%, transparent); background: var(--surface); }
 .auth-field input[aria-invalid="true"] { border-color: var(--error); }
 .auth-field input[aria-invalid="true"]:focus { box-shadow: 0 0 0 2px color-mix(in srgb, var(--error) 18%, transparent); }
+.field-status { font-size: 13px; line-height: 1.45; color: var(--muted); }
+.field-status[data-kind="ok"] { color: var(--green); }
+.field-status[data-kind="bad"] { color: var(--error); }
 .field-error { color: var(--error); font-size: 13px; line-height: 1.45; }
 .auth-show { display: inline-flex; align-items: center; gap: 10px; width: fit-content; color: var(--muted); font-size: 14px; cursor: pointer; }
 .auth-show input { width: 18px; height: 18px; margin: 0; accent-color: var(--green); cursor: pointer; }

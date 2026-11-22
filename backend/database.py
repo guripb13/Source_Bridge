@@ -2,7 +2,7 @@
 database.py - Source Bridge storage layer (SQLite: Python standard library + Werkzeug, which
 Flask already installs - nothing new to add to requirements.txt).
 
-It creates and manages exactly TWO database files, side by side in one folder:
+It creates and manages exactly THREE database files, side by side in one folder:
 
     users.db          WHO can sign in
         users             one row per account: credentials + login bookkeeping
@@ -11,14 +11,20 @@ It creates and manages exactly TWO database files, side by side in one folder:
     translations.db   WHAT each signed-in user translated
         languages         lookup table: every language name is stored once
         translations      one row per translation attempt, pointing at languages
+                          (identical back-to-back results are merged: see repeat_count)
 
-HOW THE TWO FILES RELATE
+    username_index.db HOW FAST we can tell whether a username is taken (an index / cache)
+        username_index    one row per account: HMAC-SHA256 hash of the username + users.id
+
+HOW THE FILES RELATE
     translations.user_id  ->  users.id        (one user has many translations)
+    username_index.user_id -> users.id        (one index row per user)
     translations.source_language_id / target_language_id  ->  languages.id
 
-    SQLite cannot enforce a foreign key between two different files, so that one link is kept
+    SQLite cannot enforce a foreign key between two different files, so those links are kept
     honest in code instead:  start_translation() refuses an unknown user, delete_user() removes
-    the user's translations too, and purge_orphaned_translations() cleans up anything left over.
+    the user's translations and index row too, purge_orphaned_translations() cleans up anything
+    left over, and sync_username_index() (run at start-up) repairs the index from users.db.
     users.id uses AUTOINCREMENT so an id is never handed out twice - a deleted account's id can
     never accidentally "inherit" someone else's history.
 
@@ -35,6 +41,24 @@ NORMALIZATION (why the tables look like this)
     completed?" and "did it error?" are derived from it, so the two can never contradict each
     other. CHECK constraints below make the database itself reject impossible rows.
 
+USERNAME INDEX (username_index.db)
+    Lets the sign-up form answer "is this username taken?" while the person is still typing,
+    with one primary-key lookup instead of a click on "Create account".
+      - Only a keyed hash is stored, never the readable username. The hash is
+        HMAC-SHA256(secret pepper, lower-cased username), so the file alone cannot be turned
+        back into usernames (and cannot be dictionary-guessed without the pepper, which lives in
+        users.db / the USERNAME_INDEX_KEY environment variable - a different place).
+      - users.db stays the single source of truth. The index is a disposable cache: if it is
+        lost or drifts, sync_username_index() rebuilds it. Even if the index were wrong, the
+        UNIQUE constraint on users.username still stops a real duplicate account.
+
+REPEATED TRANSLATIONS (translations.repeat_count)
+    When an attempt finishes (completed OR failed) and the same user's PREVIOUS history entry
+    (only the most recent one) has the same source language, target language, source code,
+    status and result (the translated code, or the same error stage + message for a failure),
+    no new row is written: that entry's repeat_count goes up by one. Any different entry in
+    between breaks the chain, so the next identical one starts a new row.
+
 LIFE OF A TRANSLATION ROW
     start_translation()  -> status 'pending'
     complete_translation()-> status 'completed' (target_code filled)        can then be saved
@@ -48,6 +72,8 @@ DEPLOYMENT NOTE
     either use a host with a persistent disk (set DATABASE_DIR to it) or move these same tables
     to a hosted database (Postgres, Turso, ...).
 """
+import hashlib
+import hmac
 import logging
 import os
 import re
@@ -70,7 +96,7 @@ log = logging.getLogger(__name__)
 # --------------------------------------------------------------------------
 # Settings
 # --------------------------------------------------------------------------
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 USERNAME_RE = re.compile(r"[A-Za-z0-9_.\-]{3,30}")
 EMAIL_RE = re.compile(r"[^@\s]+@[^@\s]+\.[^@\s]+")
@@ -137,6 +163,7 @@ def _pick_data_dir():
 DATA_DIR = _pick_data_dir()
 USERS_DB = os.path.join(DATA_DIR, "users.db")
 TRANSLATIONS_DB = os.path.join(DATA_DIR, "translations.db")
+USERNAME_INDEX_DB = os.path.join(DATA_DIR, "username_index.db")
 
 
 # --------------------------------------------------------------------------
@@ -186,6 +213,8 @@ CREATE TABLE IF NOT EXISTS translations (
     saved_at            TEXT,
     created_at          TEXT NOT NULL,
     finished_at         TEXT,                                  -- set when completed OR failed
+    repeat_count        INTEGER NOT NULL DEFAULT 1             -- identical back-to-back runs
+                             CHECK (repeat_count >= 1),
 
     -- the table can only hold sensible states:
     CHECK ((status = 'failed') = (error_stage IS NOT NULL)),   -- failed <=> has an error
@@ -205,6 +234,15 @@ CREATE INDEX IF NOT EXISTS idx_translations_user_saved
 -- cleanup of stuck rows: a small index holding only the pending rows
 CREATE INDEX IF NOT EXISTS idx_translations_pending
     ON translations (created_at) WHERE status = 'pending';
+"""
+
+# The username index: hash -> user id. WITHOUT ROWID makes the hash itself the table's
+# B-tree key, so a lookup is a single index search.
+USERNAME_INDEX_SCHEMA = """
+CREATE TABLE IF NOT EXISTS username_index (
+    username_hash  TEXT PRIMARY KEY,                 -- HMAC-SHA256 hex of the lower-cased name
+    user_id        INTEGER NOT NULL UNIQUE           -- -> users.db users.id (see top)
+) WITHOUT ROWID;
 """
 
 
@@ -249,20 +287,33 @@ def _minutes_from_now(minutes):
     return moment.strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
-def _migrate(conn, schema):
-    """Create what is missing. Future schema changes: add `if version < 2: ...` steps here."""
+def _upgrade_translations(conn):
+    """Databases made before schema 2 have no repeat_count column: add it (existing rows = 1)."""
+    columns = {row[1] for row in conn.execute("PRAGMA table_info(translations)")}
+    if "repeat_count" not in columns:
+        conn.execute("ALTER TABLE translations "
+                     "ADD COLUMN repeat_count INTEGER NOT NULL DEFAULT 1 CHECK (repeat_count >= 1)")
+
+
+def _migrate(conn, schema, upgrade=None):
+    """Create what is missing, then bring older files up to date (upgrade steps are idempotent)."""
     conn.executescript(schema)
+    if upgrade:
+        upgrade(conn)
     version = conn.execute("PRAGMA user_version").fetchone()[0]
     if version < SCHEMA_VERSION:
         conn.execute(f"PRAGMA user_version = {int(SCHEMA_VERSION)}")
 
 
 def init_db():
-    """Create users.db and translations.db (and their tables) if they do not exist yet."""
+    """Create users.db, translations.db and username_index.db (and their tables) if missing."""
     with _connect(USERS_DB) as conn:
         _migrate(conn, USERS_SCHEMA)
     with _connect(TRANSLATIONS_DB) as conn:
-        _migrate(conn, TRANSLATIONS_SCHEMA)
+        _migrate(conn, TRANSLATIONS_SCHEMA, _upgrade_translations)
+    with _connect(USERNAME_INDEX_DB) as conn:
+        _migrate(conn, USERNAME_INDEX_SCHEMA)
+    sync_username_index()
 
 
 def get_secret_key():
@@ -277,6 +328,95 @@ def get_secret_key():
         conn.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('secret_key', ?)",
                      (secrets.token_hex(32),))
         return conn.execute("SELECT value FROM settings WHERE key = 'secret_key'").fetchone()[0]
+
+
+# --------------------------------------------------------------------------
+# USERNAME INDEX  -  fast "is this username taken?" (username_index.db)
+# --------------------------------------------------------------------------
+_pepper_cache = None
+
+
+def _index_pepper():
+    """
+    Secret that keys the username hash. USERNAME_INDEX_KEY (environment) wins; otherwise a random
+    one is generated once and kept in users.db - deliberately NOT in username_index.db, so
+    someone who only gets the index file cannot test guessed usernames against it.
+    """
+    global _pepper_cache
+    if _pepper_cache is None:
+        from_env = os.environ.get("USERNAME_INDEX_KEY")
+        if from_env:
+            _pepper_cache = from_env.encode("utf-8")
+        else:
+            with _connect(USERS_DB, write=True) as conn:
+                conn.execute("INSERT OR IGNORE INTO settings (key, value) "
+                             "VALUES ('username_index_pepper', ?)", (secrets.token_hex(32),))
+                value = conn.execute("SELECT value FROM settings "
+                                     "WHERE key = 'username_index_pepper'").fetchone()[0]
+            _pepper_cache = value.encode("utf-8")
+    return _pepper_cache
+
+
+def _username_hash(username):
+    """Keyed one-way hash of a username. Case-insensitive, like users.username itself."""
+    return hmac.new(_index_pepper(), username.strip().lower().encode("utf-8"),
+                    hashlib.sha256).hexdigest()
+
+
+def _index_add(user_id, username):
+    with _connect(USERNAME_INDEX_DB, write=True) as conn:
+        conn.execute("DELETE FROM username_index WHERE user_id = ?", (user_id,))
+        conn.execute("INSERT OR REPLACE INTO username_index (username_hash, user_id) VALUES (?, ?)",
+                     (_username_hash(username), user_id))
+
+
+def _index_remove(user_id):
+    with _connect(USERNAME_INDEX_DB, write=True) as conn:
+        conn.execute("DELETE FROM username_index WHERE user_id = ?", (user_id,))
+
+
+def _index_add_quietly(user_id, username):
+    """The index is only a cache: if writing to it fails, log it and let the next sync repair it."""
+    try:
+        _index_add(user_id, username)
+    except Exception:
+        log.exception("Could not update the username index; sync_username_index() will repair it.")
+
+
+def check_username(value):
+    """
+    Live sign-up check. Returns {"valid": bool, "available": bool, "message": str}.
+    The answer comes from username_index.db (one primary-key lookup), not from users.db.
+    """
+    value = value.strip() if isinstance(value, str) else ""
+    if not USERNAME_RE.fullmatch(value):
+        return {"valid": False, "available": False,
+                "message": "Username must be 3-30 characters: letters, numbers, . _ -"}
+    with _connect(USERNAME_INDEX_DB) as conn:
+        taken = conn.execute("SELECT 1 FROM username_index WHERE username_hash = ?",
+                             (_username_hash(value),)).fetchone() is not None
+    return {"valid": True, "available": not taken,
+            "message": "That username is already taken." if taken else "Username is available."}
+
+
+def sync_username_index():
+    """
+    Make username_index.db match users.db: add missing accounts, drop rows of deleted ones.
+    Runs at start-up (cheap when nothing differs) and can be called any time. Returns
+    (added, removed).
+    """
+    with _connect(USERS_DB) as conn:
+        users = {row["id"]: row["username"] for row in conn.execute("SELECT id, username FROM users")}
+    with _connect(USERNAME_INDEX_DB, write=True) as conn:
+        indexed = {row[0] for row in conn.execute("SELECT user_id FROM username_index")}
+        stale = indexed - users.keys()
+        missing = users.keys() - indexed
+        for user_id in stale:
+            conn.execute("DELETE FROM username_index WHERE user_id = ?", (user_id,))
+        for user_id in missing:
+            conn.execute("INSERT OR REPLACE INTO username_index (username_hash, user_id) "
+                         "VALUES (?, ?)", (_username_hash(users[user_id]), user_id))
+    return len(missing), len(stale)
 
 
 # --------------------------------------------------------------------------
@@ -327,9 +467,18 @@ def register_user(username, email, password):
         if "users.email" in text:
             raise DuplicateError("An account with this email already exists.", "email") from None
         if "users.username" in text:
+            sync_username_index_quietly()      # the index missed this name: repair it now
             raise DuplicateError("That username is already taken.", "username") from None
         raise
+    _index_add_quietly(user_id, username)       # keep the fast-lookup index in step
     return {"id": user_id, "username": username, "email": email, "created_at": now}
+
+
+def sync_username_index_quietly():
+    try:
+        sync_username_index()
+    except Exception:
+        log.exception("Could not repair the username index.")
 
 
 _BAD_LOGIN = "Incorrect username/email or password."
@@ -402,6 +551,10 @@ def delete_user(user_id, password):
         conn.execute("DELETE FROM users WHERE id = ?", (user_id,))
     with _connect(TRANSLATIONS_DB, write=True) as conn:
         conn.execute("DELETE FROM translations WHERE user_id = ?", (user_id,))
+    try:
+        _index_remove(user_id)                  # free the username in the index too
+    except Exception:
+        log.exception("Could not remove the user from the username index.")
 
 
 def purge_orphaned_translations():
@@ -471,32 +624,93 @@ def start_translation(user_id, source_language, target_language, source_code):
         return {"id": cursor.lastrowid, "created_at": now}
 
 
+def _previous_entry(conn, user_id, translation_id):
+    """The same user's most recent entry before this one (and only that one), or None."""
+    return conn.execute(
+        "SELECT id, created_at, repeat_count, status, error_stage, error_message, "
+        "source_language_id, target_language_id, source_code, target_code "
+        "FROM translations WHERE user_id = ? AND id < ? ORDER BY id DESC LIMIT 1",
+        (user_id, translation_id)).fetchone()
+
+
+def _same_request(previous, current):
+    """Same user (already guaranteed by the query), same languages, same source code."""
+    return (previous is not None
+            and previous["source_language_id"] == current["source_language_id"]
+            and previous["target_language_id"] == current["target_language_id"]
+            and previous["source_code"] == current["source_code"])
+
+
+def _merge_into(conn, previous, translation_id):
+    """Count one more repeat on the earlier entry and drop the duplicate pending row."""
+    conn.execute("UPDATE translations SET repeat_count = repeat_count + 1 WHERE id = ?",
+                 (previous["id"],))
+    conn.execute("DELETE FROM translations WHERE id = ?", (translation_id,))
+    return {"id": previous["id"], "created_at": previous["created_at"],
+            "repeat_count": previous["repeat_count"] + 1, "merged": True}
+
+
+def _pending_row(conn, translation_id, user_id):
+    return conn.execute(
+        "SELECT id, created_at, source_language_id, target_language_id, source_code "
+        "FROM translations WHERE id = ? AND user_id = ? AND status = 'pending'",
+        (translation_id, user_id)).fetchone()
+
+
 def complete_translation(translation_id, user_id, target_code):
-    """pending -> completed. Returns True if the row was updated."""
+    """
+    pending -> completed.
+
+    If the user's previous entry is a completed translation with the same languages, the same
+    source code AND the same result, nothing new is stored: that entry's repeat_count goes up by
+    one and the pending row is dropped. Otherwise the row is completed normally.
+
+    Returns None if the row could not be completed, otherwise
+        {"id", "created_at", "repeat_count", "merged"}
+    where id/created_at belong to the row to show (the earlier one when merged).
+    """
     if not isinstance(target_code, str) or not target_code.strip():
         raise ValidationError("There is no translated code to record.", "target_code")
     with _connect(TRANSLATIONS_DB, write=True) as conn:
-        cursor = conn.execute(
+        current = _pending_row(conn, translation_id, user_id)
+        if current is None:
+            return None
+        previous = _previous_entry(conn, user_id, translation_id)
+        if (_same_request(previous, current) and previous["status"] == "completed"
+                and previous["target_code"] == target_code):
+            return _merge_into(conn, previous, translation_id)
+
+        conn.execute(
             "UPDATE translations SET status = 'completed', target_code = ?, finished_at = ? "
-            "WHERE id = ? AND user_id = ? AND status = 'pending'",
-            (target_code, _now(), translation_id, user_id))
-        if cursor.rowcount != 1:
-            return False
+            "WHERE id = ?", (target_code, _now(), translation_id))
         _prune_history(conn, user_id)
-        return True
+        return {"id": translation_id, "created_at": current["created_at"],
+                "repeat_count": 1, "merged": False}
 
 
 def fail_translation(translation_id, user_id, stage, message):
-    """pending -> failed, remembering which step failed and why. Returns True if updated."""
+    """
+    pending -> failed, remembering which step failed and why. Returns True if handled.
+    Like complete_translation: if the user's previous entry is the same request (languages and
+    source code) that failed at the same stage with the same message, that entry's repeat_count
+    goes up by one instead of a new failed row being kept.
+    """
     if stage not in ERROR_STAGES:
         raise ValueError(f"stage must be one of {ERROR_STAGES}")
     message = (message or "Unknown error.").strip()[:MAX_ERROR_CHARS] or "Unknown error."
     with _connect(TRANSLATIONS_DB, write=True) as conn:
-        cursor = conn.execute(
+        current = _pending_row(conn, translation_id, user_id)
+        if current is None:
+            return False
+        previous = _previous_entry(conn, user_id, translation_id)
+        if (_same_request(previous, current) and previous["status"] == "failed"
+                and previous["error_stage"] == stage and previous["error_message"] == message):
+            _merge_into(conn, previous, translation_id)
+            return True
+        conn.execute(
             "UPDATE translations SET status = 'failed', error_stage = ?, error_message = ?, "
-            "finished_at = ? WHERE id = ? AND user_id = ? AND status = 'pending'",
-            (stage, message, _now(), translation_id, user_id))
-        return cursor.rowcount == 1
+            "finished_at = ? WHERE id = ?", (stage, message, _now(), translation_id))
+        return True
 
 
 def set_saved(translation_id, user_id, saved=True):
@@ -535,7 +749,8 @@ def delete_translation(translation_id, user_id):
 
 _COLUMNS = """
     t.id, t.status, t.error_stage, t.error_message, t.is_saved, t.saved_at,
-    t.created_at, t.finished_at, sl.name AS source_language, tl.name AS target_language"""
+    t.created_at, t.finished_at, t.repeat_count,
+    sl.name AS source_language, tl.name AS target_language"""
 _FROM = """
     FROM translations t
     JOIN languages tl ON tl.id = t.target_language_id
@@ -557,6 +772,7 @@ def _translation_dict(row):
         "created_at": row["created_at"],
         "finished_at": row["finished_at"],
         "saved_at": row["saved_at"],
+        "repeat_count": row["repeat_count"],
     }
     for key in ("source_preview", "target_preview", "source_code", "target_code"):
         if key in keys:

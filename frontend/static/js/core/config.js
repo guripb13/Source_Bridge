@@ -11,6 +11,7 @@ export const endpoints = {
   // Account + history routes (backend/main.py).
   me: "/me",
   signup: "/signup",
+  usernameAvailable: "/username-available",
   login: "/login",
   logout: "/logout",
   account: "/account",

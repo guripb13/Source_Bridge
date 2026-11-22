@@ -8,10 +8,11 @@
  *  - the login cookie is HttpOnly + SameSite, so this script cannot read or leak it
  */
 import { $ } from "../core/dom.js";
-import { AUTH_RULES } from "../core/config.js";
+import { AUTH_RULES, endpoints } from "../core/config.js";
 import { state } from "../core/state.js";
 import { notify } from "../core/feedback.js";
 import { signIn, signUp, signOut, deleteAccount } from "./session.js";
+import { api } from "./api.js";
 
 const MODES = {
   login: {
@@ -60,6 +61,75 @@ function showMessage(id, message) {
 function clearErrors() {
   Object.keys(FIELDS).forEach((name) => showFieldError(name, ""));
   showMessage("authMessage", "");
+  resetUsernameCheck();
+}
+
+/* ------------------------------------------------------------------ live username check
+ * While someone types a new username, ask the server (it answers from username_index.db) and
+ * show "available" / "taken" straight away. This is only a convenience: the server checks again
+ * when the account is really created, so a stale answer can never create a duplicate. */
+const USERNAME_CHECK_DELAY = 300;     // ms of silence after typing before we ask
+let usernameTimer = 0;
+let usernameRequest = null;           // AbortController of the request in flight
+let usernameResult = null;            // { value, available } of the last answer for the current text
+
+function usernameStatusEl() {
+  let el = $("statusUsername");
+  if (!el) {                                    // created once, right under the username field
+    el = document.createElement("small");
+    el.id = "statusUsername";
+    el.className = "field-status";
+    el.setAttribute("aria-live", "polite");
+    el.hidden = true;
+    $(FIELDS.username.error).after(el);
+  }
+  return el;
+}
+
+function showUsernameStatus(message, kind) {
+  const el = usernameStatusEl();
+  el.textContent = message || "";
+  el.hidden = !message;
+  el.dataset.kind = kind || "";
+}
+
+function resetUsernameCheck() {
+  clearTimeout(usernameTimer);
+  if (usernameRequest) { usernameRequest.abort(); usernameRequest = null; }
+  usernameResult = null;
+  showUsernameStatus("", "");
+}
+
+function onUsernameTyping() {
+  resetUsernameCheck();
+  if (mode !== "signup") return;
+  const value = input("username").value.trim();
+  if (!value) return;
+  if (!/^[A-Za-z0-9_.\-]*$/.test(value) || value.length > 30) {
+    showUsernameStatus("Only letters, numbers, . _ - (max 30 characters).", "bad");
+    return;
+  }
+  if (!AUTH_RULES.usernamePattern.test(value)) return;     // still too short: stay quiet
+  showUsernameStatus("Checking…", "wait");
+  usernameTimer = setTimeout(() => checkUsername(value), USERNAME_CHECK_DELAY);
+}
+
+async function checkUsername(value) {
+  const controller = new AbortController();
+  usernameRequest = controller;
+  try {
+    const url = `${endpoints.usernameAvailable}?username=${encodeURIComponent(value)}`;
+    const data = await api("GET", url, undefined, { signal: controller.signal, credentialsCheck: true });
+    if (controller.signal.aborted || input("username").value.trim() !== value) return;
+    usernameResult = { value, available: Boolean(data.available) };
+    if (data.available) showUsernameStatus("Username is available.", "ok");
+    else { showUsernameStatus("", ""); showFieldError("username", "That username is already taken."); }
+  } catch (error) {
+    if (error?.name === "AbortError") return;
+    showUsernameStatus("", "");                 // couldn't check: the real sign-up still checks
+  } finally {
+    if (usernameRequest === controller) usernameRequest = null;
+  }
 }
 
 function values() {
@@ -146,6 +216,7 @@ function validate() {
     return errors;
   }
   if (!AUTH_RULES.usernamePattern.test(v.username)) errors.username = "Username must be 3-30 characters: letters, numbers, . _ -";
+  else if (usernameResult && usernameResult.value === v.username && !usernameResult.available) errors.username = "That username is already taken.";
   if (v.email.length > AUTH_RULES.emailMax || !AUTH_RULES.emailPattern.test(v.email)) errors.email = "Please enter a valid email address.";
   if (v.password.length < AUTH_RULES.passwordMin || v.password.length > AUTH_RULES.passwordMax) {
     errors.password = `Password must be ${AUTH_RULES.passwordMin}-${AUTH_RULES.passwordMax} characters long.`;
@@ -318,6 +389,7 @@ export function initAuth() {
   Object.keys(FIELDS).forEach((name) => {
     if (name !== "password") input(name).addEventListener("input", () => { showFieldError(name, ""); showMessage("authMessage", ""); });
   });
+  input("username").addEventListener("input", onUsernameTyping);
   $("authDialog").addEventListener("close", resetAuthDialog);
 
   // Account dialog
