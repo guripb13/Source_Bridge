@@ -209,7 +209,14 @@
   .language-pair { flex: 1; max-width: 210px; gap: 12px; }
   .language-pair .language-control { max-width: none; }
 }
-@media (max-width: 560px) { .term-send { min-width: 64px; padding: 0 12px; } .term-stop { padding: 0 12px; } .term-btn-text { display: none; } .term-btn { width: 34px; padding: 0; } .term-btn.term-rerun { width: auto; padding: 0 5px; } .term-bar { gap: 8px; } .term-row { padding: 10px; gap: 6px; } }
+@media (max-width: 560px) {
+  .term-send { min-width: 64px; padding: 0 12px; }
+  .term-stop { padding: 0 12px; }
+  .term-btn-text { display: none; }
+  .term-btn, .term-btn.term-rerun { width: auto; min-width: 44px; min-height: 44px; padding: 0 14px; }
+  .term-bar { gap: 8px; }
+  .term-row { padding: 10px; gap: 6px; }
+}
 @media (max-width: 380px) { .language-pair { max-width: 158px; } .run-button span { display: none; } }
 @media (prefers-reduced-motion: reduce) {
   .term-status::before { animation: none; }

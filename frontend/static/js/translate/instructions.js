@@ -29,6 +29,22 @@ export function initInstructions() {
     }
   }
 
+  /* Phones: the same controls (same elements, so nothing is lost) live in a bottom sheet that the
+   * "Personalize" button opens. Wider screens keep them in the sliding panel. */
+  const content = $("personalizeContent");
+  const phone = window.matchMedia("(max-width: 600px)");
+  function placeContent() {
+    if (phone.matches) {
+      $("personalizeSheetSlot").append(content);
+    } else {
+      const sheet = $("personalizeDialog");
+      if (sheet.open) sheet.close();
+      $("personalizeInlineSlot").append(content);
+    }
+  }
+  phone.addEventListener("change", placeContent);
+  placeContent();
+
   toggle.addEventListener("click", () => setOpen(!personalize.classList.contains("is-open")));
   setOpen(false);
 
@@ -37,6 +53,8 @@ export function initInstructions() {
     $("instructionsCount").textContent = `${text.length} / ${MAX_INSTRUCTIONS}`;
     $("instructionsClear").hidden = !text.trim();
     $("personalizeState").hidden = !text.trim();
+    $("personalizeDot").hidden = !text.trim();            // phone button: a dot when instructions are set
+    $("personalizeOpen").classList.toggle("is-active", Boolean(text.trim()));
     chips.forEach((chip) => chip.setAttribute("aria-pressed", String(text.includes(chip.dataset.text))));
   }
 

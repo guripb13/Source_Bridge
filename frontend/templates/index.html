@@ -41,6 +41,8 @@
     <symbol id="i-home" viewBox="0 0 24 24"><path d="m3 10 9-8 9 8M5 9v12h5v-7h4v7h5V9"/></symbol>
     <symbol id="i-bookmark" viewBox="0 0 24 24"><path d="M6 3h12a1 1 0 0 1 1 1v18l-7-5-7 5V4a1 1 0 0 1 1-1Z"/></symbol>
     <symbol id="i-settings" viewBox="0 0 24 24"><path d="m9 3 .7-1h4.6l.7 3 2 .9 2.8-.9 2.2 3.8-2.1 2.1v2.2l2.1 2.1-2.2 3.8-2.8-.9-2 .9-.7 3H9.7l-.7-3-2-.9-2.8.9L2 15.2l2.1-2.1v-2.2L2 8.8 2.2 8.4 4.2 5 7 5.9l2-.9V3Z"/><circle cx="12" cy="12" r="3"/></symbol>
+    <symbol id="i-swap" viewBox="0 0 24 24"><path d="m17 3 4 4-4 4M21 7H7M7 21l-4-4 4-4M3 17h14"/></symbol>
+    <symbol id="i-tune" viewBox="0 0 24 24"><path d="M4 7h1.6M10.4 7H20M4 12h9.6M18.4 12H20M4 17h3.6M12.4 17H20"/><circle cx="8" cy="7" r="2.4"/><circle cx="16" cy="12" r="2.4"/><circle cx="10" cy="17" r="2.4"/></symbol>
     <symbol id="i-reset" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8M3 3v5h5"/></symbol>
     <symbol id="i-bulb" viewBox="0 0 24 24"><path d="M9 18h6m-5 4h4M8 14a7 7 0 1 1 8 0c-1 .8-1 2-1 4H9c0-2 0-3.2-1-4Z"/></symbol>
     <symbol id="i-moon" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z"/></symbol>
@@ -225,7 +227,11 @@
             <div class="language-summary" role="group" aria-labelledby="languagePairLabel">
               <span id="sourceLanguageLabel">Source</span><svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg><span class="sr-only">to</span><span id="targetLanguageLabel">Target</span>
             </div>
-            <button type="button" class="text-button change-languages" id="changeLanguages">Change languages</button>
+            <div class="language-links">
+              <button type="button" class="text-button change-languages" id="changeLanguages" aria-label="Change languages"><svg class="icon cl-icon" aria-hidden="true"><use href="#i-swap"/></svg><span class="cl-text">Change languages</span><span class="tile-caption" aria-hidden="true">Change</span></button>
+              <!-- Phones only: opens the Personalize sheet (the inline panel below is hidden there). -->
+              <button type="button" class="personalize-open" id="personalizeOpen" data-dialog="personalizeDialog" aria-haspopup="dialog"><svg class="icon" aria-hidden="true"><use href="#i-tune"/></svg><span class="tile-caption">Personalize</span><span class="personalize-dot" id="personalizeDot" hidden></span></button>
+            </div>
             <!-- The languages picked on the selection screen are kept in these selects, so /send
                  still receives source_language and language exactly as before. -->
             <div hidden>
@@ -283,11 +289,13 @@
           </button>
           <div class="personalize-panel" id="personalizePanel" role="region" aria-labelledby="personalizeTitle" inert>
             <div class="personalize-clip">
-              <div class="personalize-body">
+              <div class="personalize-body" id="personalizeInlineSlot">
+                <div class="personalize-content" id="personalizeContent">
                 <p class="personalize-label" id="instructionsLabel">Tell the translator how you want the result to look. Pick a suggestion or write your own.</p>
                 <div class="suggestion-chips" role="group" aria-labelledby="instructionsLabel"><button type="button" class="suggestion-chip" data-text="Add clear comments explaining each step." aria-pressed="false"><svg class="chip-tick" viewBox="0 0 24 24" aria-hidden="true"><path pathLength="1" d="m5 12.5 4.5 4.5L19 7"/></svg>Explain with comments</button><button type="button" class="suggestion-chip" data-text="Keep the code simple and beginner friendly." aria-pressed="false"><svg class="chip-tick" viewBox="0 0 24 24" aria-hidden="true"><path pathLength="1" d="m5 12.5 4.5 4.5L19 7"/></svg>Beginner friendly</button><button type="button" class="suggestion-chip" data-text="Use descriptive variable and function names." aria-pressed="false"><svg class="chip-tick" viewBox="0 0 24 24" aria-hidden="true"><path pathLength="1" d="m5 12.5 4.5 4.5L19 7"/></svg>Descriptive names</button><button type="button" class="suggestion-chip" data-text="Follow the idiomatic style and naming conventions of the target language." aria-pressed="false"><svg class="chip-tick" viewBox="0 0 24 24" aria-hidden="true"><path pathLength="1" d="m5 12.5 4.5 4.5L19 7"/></svg>Idiomatic style</button><button type="button" class="suggestion-chip" data-text="Keep the original comments." aria-pressed="false"><svg class="chip-tick" viewBox="0 0 24 24" aria-hidden="true"><path pathLength="1" d="m5 12.5 4.5 4.5L19 7"/></svg>Keep my comments</button><button type="button" class="suggestion-chip" data-text="Add input validation and error handling." aria-pressed="false"><svg class="chip-tick" viewBox="0 0 24 24" aria-hidden="true"><path pathLength="1" d="m5 12.5 4.5 4.5L19 7"/></svg>Error handling</button><button type="button" class="suggestion-chip" data-text="Optimize for performance where possible." aria-pressed="false"><svg class="chip-tick" viewBox="0 0 24 24" aria-hidden="true"><path pathLength="1" d="m5 12.5 4.5 4.5L19 7"/></svg>Optimize</button><button type="button" class="suggestion-chip" data-text="Include a main function / entry point so it can run." aria-pressed="false"><svg class="chip-tick" viewBox="0 0 24 24" aria-hidden="true"><path pathLength="1" d="m5 12.5 4.5 4.5L19 7"/></svg>Add a main entry</button></div>
                 <textarea id="instructions" maxlength="500" rows="3" aria-labelledby="instructionsLabel" placeholder="For example: add comments, use camelCase names, avoid external libraries…" spellcheck="true"></textarea>
                 <div class="personalize-footer"><button type="button" class="personalize-clear" id="instructionsClear" hidden><svg class="icon" aria-hidden="true"><use href="#i-reset"/></svg>Reset instructions</button><span class="personalize-count" id="instructionsCount" aria-hidden="true">0 / 500</span></div>
+                </div>
               </div>
             </div>
           </div>
@@ -340,6 +348,14 @@
     <label class="setting-row" for="themeSetting"><span>Appearance</span><select id="themeSetting"><option value="light">Light</option><option value="dark">Dark</option><option value="system">System</option></select></label>
     <label class="setting-row" for="fontSizeSetting"><span>Code text size</span><select id="fontSizeSetting"><option value="13">13 px</option><option value="14">14 px</option><option value="15" selected>15 px</option><option value="16">16 px</option><option value="18">18 px</option></select></label>
     <label class="setting-row" for="lineNumbersSetting"><span>Show line numbers</span><input type="checkbox" id="lineNumbersSetting" checked></label>
+  </dialog>
+
+  <!-- Phones: the personalization controls move into this bottom sheet (see js/translate/instructions.js). -->
+  <dialog class="app-dialog personalize-dialog" id="personalizeDialog" aria-labelledby="personalizeSheetTitle">
+    <div class="dialog-drag-handle" aria-hidden="true"></div>
+    <div class="dialog-heading"><h2 id="personalizeSheetTitle">Personalize translation</h2><button type="button" class="icon-button" data-close-dialog aria-label="Close personalization"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></button></div>
+    <div id="personalizeSheetSlot"></div>
+    <button type="button" class="pill-button dialog-primary personalize-apply" data-close-dialog><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg><span>Apply</span></button>
   </dialog>
 
   <!-- Sign in / create account. One form, two modes (switched by the tabs, see js/account/auth-dialog.js).
