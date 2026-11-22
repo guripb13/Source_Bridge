@@ -23,8 +23,8 @@ export function initInstructions() {
     panel.inert = !open;
     clearTimeout(scrollTimer);
     if (open) {
-      // Once it has finished sliding open, make sure the text box is on screen.
-      scrollTimer = setTimeout(() => box.scrollIntoView({ behavior: "smooth", block: "nearest" }),
+      // Once it has finished sliding open, make sure the whole panel (chips, text box, counter) is on screen.
+      scrollTimer = setTimeout(() => personalize.scrollIntoView({ behavior: "smooth", block: "nearest" }),
         reduceMotion.matches ? 0 : 460);
     }
   }

@@ -302,32 +302,32 @@
   /* --- Topbar: tight but all buttons are 44px tap targets --- */
   .topbar { padding: 0 10px 0 6px; gap: 2px; }
   .brand-group { gap: 6px; }
-  .brand { gap: 8px; font-size: 19px; letter-spacing: -.6px; }
-  .brand-mark { width: 34px; height: 34px; font-size: 18px; }
+  .brand { gap: clamp(5px, 2vw, 8px); font-size: clamp(15px, 5vw, 19px); letter-spacing: -.6px; }
+  .brand-mark { width: clamp(28px, 8.7vw, 34px); height: clamp(28px, 8.7vw, 34px); font-size: clamp(15px, 4.6vw, 18px); }
 
   /* Sidebar toggle: 44px tap target */
-  .sidebar-toggle { width: 44px; height: 44px; padding: 10px; border-radius: 10px; }
+  .sidebar-toggle { width: clamp(38px, 11.5vw, 44px); height: clamp(38px, 11.5vw, 44px); padding: clamp(8px, 2.6vw, 10px); border-radius: 10px; }
 
   .header-actions { gap: 2px; }
 
   /* Tips: icon-only but full 44px tap target */
   .tips-button {
-    width: 44px; height: 44px;
-    padding: 10px;
+    width: clamp(38px, 11.5vw, 44px); height: clamp(38px, 11.5vw, 44px);
+    padding: clamp(8px, 2.6vw, 10px);
     border-radius: 10px;
     gap: 0;
   }
   .tips-button > span { display: none; }
   .tips-button .icon { width: 22px; height: 22px; }
 
-  /* Theme toggle: 44px circular */
-  .theme-button { width: 44px; height: 44px; border-radius: 50%; }
+  /* Theme toggle: circular, scales down a little on the narrowest phones */
+  .theme-button { width: clamp(38px, 11.5vw, 44px); height: clamp(38px, 11.5vw, 44px); border-radius: 50%; }
   .theme-button .icon { width: 22px; height: 22px; }
 
   /* Sign-in: icon-only pill on phone, 44px */
   .sign-in-button {
-    min-width: 44px; min-height: 44px;
-    padding: 10px;
+    min-width: clamp(38px, 11.5vw, 44px); min-height: clamp(38px, 11.5vw, 44px);
+    padding: clamp(8px, 2.6vw, 10px);
     border-radius: 50%;
     gap: 0;
   }
@@ -559,9 +559,9 @@
    VERY SMALL PHONES (≤380px)
 ========================================= */
 @media (max-width: 380px) {
-  .brand { font-size: 17px; gap: 5px; }
-  .brand-mark { width: 30px; height: 30px; font-size: 16px; }
+  .brand { gap: 5px; }
   .header-actions { gap: 0; }
+  .topbar { padding-right: 6px; }
   .main-content,
   body.sidebar-collapsed .main-content { padding-left: 10px; padding-right: 10px; }
   .language-control { max-width: 148px; }
@@ -600,7 +600,6 @@
   .main-content { padding-top: 20px; }
   .page-intro { margin-bottom: 18px; }
   .page-intro h1 { font-size: 32px; margin-bottom: 6px; }
-  .conversion-controls { padding-top: 26px; gap: 14px; }
   .code-surface { height: 280px; }
   .sidebar-footer { padding-bottom: 105px; }
   .sidebar-footer p { font-size: 25px; }
@@ -613,7 +612,6 @@
   .page-intro h1 { font-size: clamp(29px, 3vw, 38px); margin-bottom: 8px; }
   .page-intro > p { font-size: clamp(15px, 1.5vw, 19px); }
   .code-surface { height: max(200px, min(300px, calc(100dvh - var(--header-height) - 456px))); }
-  .conversion-controls { padding-top: 40px; gap: 20px; }
 }
 
 @media (max-height: 740px) and (min-width: 901px) {
