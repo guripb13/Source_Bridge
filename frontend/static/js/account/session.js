@@ -18,11 +18,34 @@ function setUser(user) {
   document.dispatchEvent(new CustomEvent("sb:auth", { detail: { user: state.user, previous } }));
 }
 
+/* "Keep me signed in" was unticked: remember that in this tab, so that the next page load (a refresh)
+ * can end the login by itself. sessionStorage survives a refresh but not a closed tab. */
+const NO_REMEMBER_KEY = "sb:signedInWithoutRemember";
+
+function markRemember(remember) {
+  try {
+    if (remember) sessionStorage.removeItem(NO_REMEMBER_KEY);
+    else sessionStorage.setItem(NO_REMEMBER_KEY, "1");
+  } catch (_) { /* storage blocked: the server-side rule still applies */ }
+}
+
+function wasSignedInWithoutRemember() {
+  try { return sessionStorage.getItem(NO_REMEMBER_KEY) === "1"; } catch (_) { return false; }
+}
+
 /* Ask the server who we are (page load, and after a result that was not recorded). */
 export async function loadSession() {
   try {
     const data = await api("GET", endpoints.me);
-    setUser(data.authenticated ? data.user : null);
+    if (data.authenticated && (data.remember === false || wasSignedInWithoutRemember())) {
+      // A sign-in without "Keep me signed in" never survives a page load: drop the cookie on the
+      // server (the login cookie is HttpOnly, so only the server can remove it) and show signed out.
+      try { await api("POST", endpoints.logout, {}, { credentialsCheck: true }); } catch (_) { /* still show signed out */ }
+      markRemember(true);
+      setUser(null);
+    } else {
+      setUser(data.authenticated ? data.user : null);
+    }
   } catch (_) {
     // Offline or server down: stay in "visitor" mode. Translating still works.
     setUser(null);
@@ -31,14 +54,18 @@ export async function loadSession() {
   }
 }
 
-export async function signIn(identifier, password) {
-  const data = await api("POST", endpoints.login, { identifier, password }, { credentialsCheck: true });
+/* `remember` = "Keep me signed in on this device": true -> stays signed in for 30 days,
+ * false -> signed out when the browser is closed. */
+export async function signIn(identifier, password, remember = true) {
+  const data = await api("POST", endpoints.login, { identifier, password, remember }, { credentialsCheck: true });
+  markRemember(remember);
   setUser(data.user);
   return data.user;
 }
 
-export async function signUp({ username, email, password }) {
-  const data = await api("POST", endpoints.signup, { username, email, password }, { credentialsCheck: true });
+export async function signUp({ username, email, password, remember = true }) {
+  const data = await api("POST", endpoints.signup, { username, email, password, remember }, { credentialsCheck: true });
+  markRemember(remember);
   setUser(data.user);
   return data.user;
 }
@@ -46,6 +73,7 @@ export async function signUp({ username, email, password }) {
 /* If the request fails the cookie is still valid, so we must NOT pretend to be signed out. */
 export async function signOut() {
   await api("POST", endpoints.logout, {}, { credentialsCheck: true });
+  markRemember(true);
   setUser(null);
 }
 

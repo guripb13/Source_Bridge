@@ -5,7 +5,7 @@ Files that must sit next to this one:  compiler.py, convertibility.py, database.
 
 ACCOUNTS (database.py -> users.db)
     GET  /username-available?username=NAME   live "is it taken?" check (username_index.db)
-    POST /signup   create an account and sign in        {username, email, password}
+    POST /signup   create an account and sign in        {username, email, password, remember?}
     POST /login    sign in with username OR email       {identifier, password}
     POST /logout   sign out
     GET  /me       who is signed in?                    -> {authenticated, user}
@@ -234,11 +234,25 @@ def current_user():
     return g.user
 
 
-def start_session(user):
+def start_session(user, remember=True):
+    """
+    remember=True  -> "Keep me signed in": a long-lived cookie (PERMANENT_SESSION_LIFETIME, 30 days,
+                      renewed on every visit) that survives closing the browser.
+    remember=False -> not remembered: the browser drops the cookie when it closes, AND the server
+                      ends the session whenever the page is loaded or refreshed (see home()),
+                      so the person has to sign in again.
+    The cookie lives in one browser on one device, so each phone/computer/browser keeps its own choice.
+    """
     session.clear()                                # fresh cookie on every sign-in
     session["uid"] = user["id"]
-    session.permanent = True
+    session.permanent = bool(remember)
+    session["remember"] = bool(remember)
     g.user = user
+
+
+def wants_remember(data):
+    """Only an explicit `false` from the page turns "keep me signed in" off."""
+    return data.get("remember") is not False
 
 
 def login_required(view):
@@ -507,6 +521,10 @@ def check_source_code(text, source_language):
 # --------------------------------------------------------------------------
 @app.route("/")
 def home():
+    # "Keep me signed in" was unticked: that sign-in only lasts for the page the person is on.
+    # Loading or refreshing the page (which is what reaches this route) signs them out.
+    if session.get("remember") is False:
+        session.clear()
     return render_template("index.html")
 
 
@@ -516,7 +534,9 @@ def home():
 @app.route("/me", methods=["GET"])
 def me():
     user = current_user()
-    return reply({"authenticated": user is not None, "user": user})
+    # `remember` lets the page enforce "Keep me signed in = off" on its own side too.
+    return reply({"authenticated": user is not None, "user": user,
+                  "remember": session.get("remember", True) is not False})
 
 
 @app.route("/username-available", methods=["GET"])
@@ -533,7 +553,7 @@ def signup():
     if data is None:
         return reply({"error": "Send the request as JSON."}, 415)
     user = db.register_user(data.get("username"), data.get("email"), data.get("password"))
-    start_session(user)                            # a new account is signed in straight away
+    start_session(user, wants_remember(data))      # a new account is signed in straight away
     return reply({"authenticated": True, "user": user}, 201)
 
 
@@ -545,7 +565,7 @@ def login():
         return reply({"error": "Send the request as JSON."}, 415)
     identifier = data.get("identifier") or data.get("username") or data.get("email")
     user = db.authenticate(identifier, data.get("password"))
-    start_session(user)
+    start_session(user, wants_remember(data))
     return reply({"authenticated": True, "user": user})
 
 

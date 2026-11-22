@@ -262,11 +262,12 @@ async function submitAuth(event) {
 
   const v = values();
   const creating = mode === "signup";
+  const remember = $("authRemember").checked;     // "Keep me signed in on this device"
   setBusy(true);
   try {
     const user = creating
-      ? await signUp({ username: v.username, email: v.email, password: v.password })
-      : await signIn(v.identifier, v.password);
+      ? await signUp({ username: v.username, email: v.email, password: v.password, remember })
+      : await signIn(v.identifier, v.password, remember);
     $("authDialog").close();                       // the close handler empties every field
     notify(creating ? `Account created. Welcome, ${user.username}!` : `Welcome back, ${user.username}.`);
   } catch (error) {
