@@ -272,7 +272,7 @@
 
   /* ---- Suggestion chips ---- */
   .suggestion-chip { padding: 9px 16px; min-height: 40px; font-size: 14px; }
-  .personalize > summary { padding: 14px 16px; min-height: 52px; }
+  .personalize-toggle { padding: 10px 16px 10px 14px; min-height: 56px; }
 
   /* ---- Dialogs ---- */
   .app-dialog {
@@ -475,9 +475,10 @@
   }
 
   /* --- Personalize section --- */
-  .personalize > summary { padding: 12px 14px; font-size: 15px; }
+  .personalize-toggle { padding: 10px 12px; }
+  .personalize-title { font-size: 15px; }
   .personalize-optional { display: none; }
-  .personalize-body { padding: 2px 14px 14px; }
+  .personalize-body { padding: 4px 14px 14px; }
   .suggestion-chip { padding: 9px 14px; font-size: 13.5px; min-height: 40px; }
 
   /* --- File chip --- */

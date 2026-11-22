@@ -1,29 +1,74 @@
-/* "Personalize the translation" box with suggestion chips */
-.personalize { grid-area: instructions; min-width: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 16px; box-shadow: var(--shadow); }
-.personalize > summary { display: flex; align-items: center; gap: 12px; padding: 9px 18px; min-height: 46px; border-radius: 16px; list-style: none; cursor: pointer; font-size: 16px; font-weight: 600; }
-.personalize > summary::-webkit-details-marker { display: none; }
-.personalize > summary:hover { background: var(--gutter); }
-.personalize > summary:focus-visible { outline-offset: -2px; }
-.personalize > summary > .icon { width: 22px; height: 22px; color: var(--green); }
-.personalize-optional { font-weight: 400; color: var(--muted); font-size: 14px; }
-.personalize-state { margin-left: auto; padding: 2px 9px; border-radius: 99px; background: var(--green-soft); font-size: 12px; font-weight: 600; }
+/* "Personalize the translation" panel: a card that matches the rest of the workspace (same radius,
+ * border, green accents and pill chips) and slides open/closed with a CSS height transition. */
+.personalize { grid-area: instructions; min-width: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 16px; box-shadow: var(--shadow); transition: border-color .25s var(--ease-soft), box-shadow .25s var(--ease-soft); }
+.personalize.is-open { border-color: var(--green-edge); }
+
+/* --- Header row (the button that opens and closes the panel) --- */
+.personalize-toggle { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 50px; padding: 8px 14px 8px 12px; border: 0; border-radius: 16px; background: transparent; color: inherit; text-align: left; cursor: pointer; transition: background .18s; }
+.personalize-toggle:hover { background: var(--gutter); }
+.personalize-toggle:focus-visible { outline-offset: -2px; }
+.personalize-badge { --badge-bg: var(--green-soft); display: grid; place-items: center; flex-shrink: 0; width: 34px; height: 34px; border: 1px solid var(--green-edge); border-radius: 11px; background: var(--badge-bg); color: var(--green); transition: background .25s var(--ease-soft), border-color .25s var(--ease-soft), color .25s var(--ease-soft); }
+.personalize-badge .icon { width: 19px; height: 19px; }
+.personalize.is-open .personalize-badge { --badge-bg: var(--green); border-color: var(--green); color: var(--surface); }
+/* Three sliders: the knobs glide to new positions on hover and while the panel is open. */
+.personalize-tune { width: 20px; height: 20px; }
+.tune-knob { fill: var(--badge-bg); transition: transform .45s var(--ease-soft), fill .25s var(--ease-soft); }
+.personalize-toggle:hover .k1, .personalize.is-open .k1 { transform: translateX(7px); }
+.personalize-toggle:hover .k2, .personalize.is-open .k2 { transform: translateX(-7px); }
+.personalize-toggle:hover .k3, .personalize.is-open .k3 { transform: translateX(6px); }
+.personalize-heading { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 10px; min-width: 0; }
+.personalize-title { font-size: 16px; font-weight: 600; line-height: 1.3; }
+.personalize-optional { padding: 2px 9px; border: 1px solid var(--border); border-radius: 99px; color: var(--muted); font-size: 12px; font-weight: 600; line-height: 1.4; }
+.personalize-state { display: inline-flex; align-items: center; gap: 5px; margin-left: auto; padding: 3px 11px 3px 8px; border: 1px solid var(--green-edge); border-radius: 99px; background: var(--green-soft); color: var(--green); font-size: 12px; font-weight: 600; line-height: 1.4; animation: personalize-pop .3s var(--ease-soft); }
+.personalize-state .icon { width: 13px; height: 13px; stroke-width: 2.4; }
 .personalize-state[hidden] { display: none; }
-.personalize-chevron { width: 18px; height: 18px; color: var(--muted); transition: transform .25s var(--ease-soft); }
-.personalize[open] .personalize-chevron { transform: rotate(180deg); }
-.personalize.is-closing .personalize-chevron { transform: rotate(0); }
-.personalize-body { display: grid; gap: 12px; padding: 2px 18px 18px; }
+.personalize-state + .personalize-chevron { margin-left: 0; }
+.personalize-chevron { display: grid; place-items: center; flex-shrink: 0; width: 30px; height: 30px; margin-left: auto; border-radius: 50%; color: var(--muted); transition: transform .4s var(--ease-soft), background .18s, color .18s; }
+.personalize-chevron .icon { width: 18px; height: 18px; }
+.personalize-toggle:hover .personalize-chevron { background: var(--green-soft); color: var(--green); }
+.personalize.is-open .personalize-chevron { transform: rotate(180deg); color: var(--green); }
+
+/* --- Sliding panel: grid-template-rows goes 0fr <-> 1fr, so it animates to the content's real height --- */
+.personalize-panel { display: grid; grid-template-rows: 0fr; visibility: hidden; transition: grid-template-rows .45s var(--ease-soft), visibility 0s linear .45s; }
+.personalize.is-open .personalize-panel { grid-template-rows: 1fr; visibility: visible; transition: grid-template-rows .45s var(--ease-soft), visibility 0s; }
+.personalize-clip { min-height: 0; overflow: hidden; }
+.personalize-body { display: grid; gap: 14px; padding: 6px 18px 18px; border-top: 1px solid transparent; opacity: 0; transform: translateY(-8px); transition: opacity .25s ease, transform .4s var(--ease-soft); }
+.personalize.is-open .personalize-body { opacity: 1; transform: none; transition: opacity .35s ease .08s, transform .45s var(--ease-soft) .05s; }
 .personalize-label { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.5; }
-.personalize textarea { display: block; width: 100%; min-height: 78px; max-height: 240px; padding: 12px 14px; border: 1px solid var(--editor-border); border-radius: 10px; resize: vertical; background: var(--surface); color: var(--ink); font-size: 15px; line-height: 1.55; transition: border-color .18s, box-shadow .18s; }
-.personalize textarea::placeholder { color: var(--muted); opacity: .85; }
-.personalize textarea:focus { outline: none; border-color: var(--focus); box-shadow: 0 0 0 2px color-mix(in srgb, var(--focus) 12%, transparent); }
-.personalize textarea:disabled { opacity: .6; }
+
+/* --- Suggestion chips (same look as the filter chips in History) --- */
 .suggestion-chips { display: flex; flex-wrap: wrap; gap: 8px; }
-.suggestion-chip { padding: 6px 13px; border: 1px solid var(--green-edge); border-radius: 99px; background: transparent; font-size: 13.5px; line-height: 1.4; transition: background .18s, border-color .18s, transform .18s; }
+.suggestion-chip { display: inline-flex; align-items: center; padding: 7px 15px; border: 1px solid var(--green-edge); border-radius: 99px; background: transparent; font-size: 13.5px; line-height: 1.4; transition: background .18s, border-color .18s, transform .18s; }
 .suggestion-chip:hover:not(:disabled) { background: var(--green-soft); transform: translateY(-1px); }
 .suggestion-chip[aria-pressed="true"] { background: var(--green-soft); border-color: var(--green); font-weight: 600; }
+/* The tick is an inline SVG: it makes room for itself and its stroke is drawn in (and un-drawn) with plain transitions. */
+.chip-tick { flex-shrink: 0; width: 0; height: 13px; margin-right: 0; fill: none; stroke: var(--green); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; opacity: 0; transition: width .28s var(--ease-soft), margin-right .28s var(--ease-soft), opacity .2s ease; }
+.chip-tick path { stroke-dasharray: 1; stroke-dashoffset: 1; transition: stroke-dashoffset .3s ease; }
+.suggestion-chip[aria-pressed="true"] .chip-tick { width: 13px; margin-right: 7px; opacity: 1; }
+.suggestion-chip[aria-pressed="true"] .chip-tick path { stroke-dashoffset: 0; transition-delay: .12s; }
 .suggestion-chip:disabled { opacity: .55; }
-.personalize-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 24px; }
-.personalize-count { color: var(--muted); font-size: 12px; }
-.personalize-clear { padding: 4px 8px; font-size: 13px; color: var(--green); font-weight: 600; }
+
+/* --- Text box --- */
+.personalize textarea { display: block; width: 100%; min-height: 84px; max-height: 240px; padding: 12px 14px; border: 1px solid var(--editor-border); border-radius: 12px; resize: vertical; background: var(--surface); color: var(--ink); font-size: 15px; line-height: 1.55; transition: border-color .18s, box-shadow .18s; }
+.personalize textarea::placeholder { color: var(--muted); opacity: .85; }
+.personalize textarea:focus { outline: none; border-color: var(--focus); box-shadow: 0 0 0 2px color-mix(in srgb, var(--focus) 14%, transparent); }
+.personalize textarea:disabled { opacity: .6; }
+
+/* --- Footer: reset button (left) and character count (right) --- */
+.personalize-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 32px; }
+.personalize-count { margin-left: auto; color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.personalize-clear { display: inline-flex; align-items: center; gap: 7px; padding: 6px 13px; border: 1px solid var(--green-edge); border-radius: 99px; background: transparent; color: var(--green); font-size: 13px; font-weight: 600; line-height: 1.4; cursor: pointer; transition: background .18s, transform .18s; }
+.personalize-clear .icon { width: 15px; height: 15px; transition: transform .4s var(--ease-soft); }
+.personalize-clear:hover { background: var(--green-soft); }
+.personalize-clear:hover .icon { transform: rotate(-180deg); }
 .personalize-clear[hidden] { display: none; }
-@media (max-width: 600px) { .personalize > summary { padding: 12px 14px; font-size: 15px; } .personalize-optional { display: none; } .personalize-body { padding: 2px 14px 14px; } }
+
+@keyframes personalize-pop { from { opacity: 0; transform: scale(.7); } to { opacity: 1; transform: none; } }
+@media (max-width: 600px) {
+  .personalize-toggle { padding: 10px 12px; }
+  .personalize-optional { display: none; }
+  .personalize-body { padding: 4px 14px 14px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .personalize, .personalize-panel, .personalize-body, .personalize-chevron, .personalize-badge, .personalize-state, .tune-knob, .chip-tick, .chip-tick path { transition: none !important; animation: none !important; }
+}
