@@ -7,12 +7,12 @@
 .personalize-toggle { display: flex; align-items: center; gap: clamp(8px, 1vw, 12px); width: 100%; min-height: clamp(42px, 6.2dvh, 50px); padding: clamp(5px, 1dvh, 8px) 14px clamp(5px, 1dvh, 8px) 12px; border: 0; border-radius: 16px; background: transparent; color: inherit; text-align: left; cursor: pointer; transition: background .18s; }
 .personalize-toggle:hover { background: var(--gutter); }
 .personalize-toggle:focus-visible { outline-offset: -2px; }
-.personalize-badge { --badge-bg: var(--green-soft); display: grid; place-items: center; flex-shrink: 0; width: 34px; height: 34px; border: 1px solid var(--green-edge); border-radius: 11px; background: var(--badge-bg); color: var(--green); transition: background .25s var(--ease-soft), border-color .25s var(--ease-soft), color .25s var(--ease-soft); }
+.personalize-badge { --badge-bg: transparent; --knob-bg: var(--surface); display: grid; place-items: center; flex-shrink: 0; width: 34px; height: 34px; border: 1px solid transparent; border-radius: 11px; background: var(--badge-bg); color: var(--green); transition: background .25s var(--ease-soft), border-color .25s var(--ease-soft), color .25s var(--ease-soft); }
 .personalize-badge .icon { width: 19px; height: 19px; }
-.personalize.is-open .personalize-badge { --badge-bg: var(--green); border-color: var(--green); color: var(--surface); }
+.personalize.is-open .personalize-badge { --badge-bg: var(--green); --knob-bg: var(--green); border-color: var(--green); color: var(--surface); }
 /* Three sliders: the knobs glide to new positions on hover and while the panel is open. */
 .personalize-tune { width: 20px; height: 20px; }
-.tune-knob { fill: var(--badge-bg); transition: transform .45s var(--ease-soft), fill .25s var(--ease-soft); }
+.tune-knob { fill: var(--knob-bg); transition: transform .45s var(--ease-soft), fill .25s var(--ease-soft); }
 .personalize-toggle:hover .k1, .personalize.is-open .k1 { transform: translateX(7px); }
 .personalize-toggle:hover .k2, .personalize.is-open .k2 { transform: translateX(-7px); }
 .personalize-toggle:hover .k3, .personalize.is-open .k3 { transform: translateX(6px); }
