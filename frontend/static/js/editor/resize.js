@@ -10,12 +10,15 @@ import { $, dom } from "../core/dom.js";
 import { keys } from "../core/config.js";
 import { readStorage, writeStorage } from "../core/storage.js";
 
-const FALLBACK_MIN = 180;
+const FALLBACK_MIN = 140;
 const MAX_EXTENSION = 2.2;
 const STEP = 20;
 const EDGE = 70;          // px from the top/bottom of the screen where dragging starts auto-scrolling the page
 const SETTLE_MS = 280;    // release / keyboard / reset animation
 const RUBBER = 140;       // how far (px) the rubber band can be pulled past a limit, at most
+const FIT_MIN = 150;      // desktop auto-fit: smallest editor height before the whole workspace is scaled down instead
+const FIT_MAX = 520;      // desktop auto-fit: largest editor height when the screen is tall
+const ZOOM_MIN = 0.72;    // desktop auto-fit: never scale the workspace below this
 const OFFSET_EASE = 0.82; // per-frame decay of the gap between the two editors while dragging
 
 const easeOut = (t) => 1 - Math.pow(1 - t, 3);
@@ -152,8 +155,54 @@ export function initEditorResize() {
   let hasInitializedHeight = false;
   const visibilityObserver = new MutationObserver(initializeHeight);
 
+  // ---- Desktop auto-fit: the whole workspace (down to the Personalize row) must be visible without scrolling ----
+  // 1) the editors grow or shrink to use exactly the free height; 2) if they hit FIT_MIN and it still does not
+  // fit, the workspace is scaled down (CSS zoom). Skipped on phones/tablets and once the user sets their own height.
+  const main = document.querySelector(".main-content");
+  const personalize = $("personalize");
+  const desktopQuery = window.matchMedia("(min-width: 901px)");
+  function clearFit() {
+    grid.classList.remove("has-fit-height");
+    grid.style.removeProperty("--fit-height");
+    translateView.style.removeProperty("zoom");
+  }
+  function fit() {
+    if (translateView.hidden || !main) return;
+    if (!desktopQuery.matches) { clearFit(); return; }
+    if (hasCustom() || document.body.classList.contains("is-resizing-editor")) return;
+    const avail = window.innerHeight;
+    const tail = document.querySelector(".workspace-bottom") || personalize;
+    const pad = parseFloat(getComputedStyle(main).paddingBottom) || 0;
+    // Real bottom of the content (not the page's min-height), plus the padding under it.
+    const need = () => tail.getBoundingClientRect().bottom + window.scrollY + pad;
+    grid.classList.add("is-measuring-editor-height"); // no height transition while measuring
+    clearFit();
+    const natural = surface.getBoundingClientRect().height;
+    const target = Math.round(Math.min(FIT_MAX, Math.max(FIT_MIN, natural + avail - need())));
+    grid.style.setProperty("--fit-height", `${target}px`);
+    grid.classList.add("has-fit-height");
+    for (let i = 0; i < 3 && need() > avail + 0.5; i++) {
+      const top = translateView.getBoundingClientRect().top + window.scrollY;
+      const current = parseFloat(translateView.style.zoom) || 1;
+      const next = Math.max(ZOOM_MIN, current * ((avail - top) / (need() - top)));
+      if (next >= current - 0.001) break;
+      translateView.style.zoom = next.toFixed(3);
+    }
+    grid.classList.remove("is-measuring-editor-height");
+  }
+  let fitFrame = 0;
+  window.addEventListener("resize", () => {
+    cancelAnimationFrame(fitFrame);
+    fitFrame = requestAnimationFrame(() => {
+      if (anim) return;
+      fit();
+      if (hasInitializedHeight && !hasCustom()) { updateHeightLimits(); sync(surface.getBoundingClientRect().height); }
+    });
+  });
+
   function initializeHeight() {
     if (hasInitializedHeight || translateView.hidden) return;
+    fit();
     updateHeightLimits();
     const height = surface.getBoundingClientRect().height;
     if (height <= 0) return;

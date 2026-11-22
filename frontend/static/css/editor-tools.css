@@ -56,3 +56,7 @@ body.hide-line-numbers .translate-progress { left: 20px; }
 body.is-translating #translatedCode::placeholder { color: transparent; }
 @media (max-width: 900px) { .translate-progress { left: 56px; } }
 @media (prefers-reduced-motion: reduce) { .translate-progress-dot, .translate-progress-text.is-swapping { animation: none; } }
+/* Desktop auto-fit height (set by resize.js): the editors use exactly the free screen height. */
+@media (min-width: 901px) {
+  .workspace-grid.has-fit-height:not(.has-custom-height) .code-surface { height: var(--fit-height); }
+}
