@@ -26,17 +26,21 @@ frontend/
       personalize.css             "Personalize the translation" box + suggestion chips
       status-feedback.css         friendly error layout
       sidebar-peek.css            hover-to-open collapsed sidebar
+      account.css                 account and sign-in dialogs
+      history.css                 history cards, filters, and status chips
       selection.css               which text is unselectable
     js/                         ES modules; main.js wires them together
       main.js                     entry point + folder map
       core/                       state, config, storage, DOM helpers, toast/status line
       ui/                         sidebar, theme, dialogs, navigation, button states, scrollbar
+      account/                    sign-in, sign-up, session, and account actions
       editor/                     line numbers, auto-close brackets/quotes, height handle, source input
       languages/                  language selection screen, logos
       translate/                  request + streaming, progress text, friendly errors, personalize box
       files/                      upload (+ remove), copy/download
       run/                        terminal, panel animation
       saved/                      saved translations (store, view, save/unsave toggle)
+      history/                    signed-in translation history
     fonts/                      Inter (Latin subset, .woff) + its licence
     icon*.webp / icon*.png      logos
 ```
@@ -54,9 +58,7 @@ frontend/
 
 ## Limitations (frontend only)
 
-- **Personalize box:** the text is sent as one extra form field named `instructions` (only when the box is not
-  empty; otherwise the request is identical to before). The current `backend/main.py` ignores unknown fields, so it
-  has no effect on the result until the server reads that field.
+- **Personalize box:** selected suggestions and up to 100 characters of custom design preferences are sent as the
+  optional `instructions` field to `/send` and included in the translation prompt.
 - **Progress messages** are illustrative stages on a timer; the server does not report real progress.
 - **Language logos** load from the Devicon CDN (as before) and are simply hidden if it can't be reached.
-- The "secure API call / new routing" item is server work and is not part of this folder.

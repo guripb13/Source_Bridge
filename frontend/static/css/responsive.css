@@ -142,11 +142,8 @@
     padding: 18px 23px;
     min-height: 60px; /* comfortable tap target */
   }
-  body.sidebar-collapsed .nav-label,
-  body.sidebar-collapsed .sidebar-footer { display: block; }
+  body.sidebar-collapsed .nav-label { display: block; }
   body.sidebar-collapsed .saved-count:not([hidden]) { display: inline; }
-  .sidebar-footer { padding-bottom: 140px; }
-  .sidebar-footer p { font-size: 28px; }
 
   /* --- Main content --- */
   .main-content,
@@ -601,8 +598,6 @@
   .page-intro { margin-bottom: 18px; }
   .page-intro h1 { font-size: 32px; margin-bottom: 6px; }
   .code-surface { height: 280px; }
-  .sidebar-footer { padding-bottom: 105px; }
-  .sidebar-footer p { font-size: 25px; }
   .sidebar-landscape { height: 100px; }
 }
 
