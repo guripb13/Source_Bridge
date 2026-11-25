@@ -20,6 +20,9 @@ const FIT_MIN = 150;      // desktop auto-fit: smallest editor height before the
 const FIT_MAX = 520;      // desktop auto-fit: largest editor height when the screen is tall
 const ZOOM_MIN = 0.72;    // desktop auto-fit: never scale the workspace below this
 const OFFSET_EASE = 0.82; // per-frame decay of the gap between the two editors while dragging
+const DRAG_THRESHOLD = 3;
+const DOUBLE_TAP_MS = 500;
+const DOUBLE_TAP_DISTANCE = 24;
 
 const easeOut = (t) => 1 - Math.pow(1 - t, 3);
 const motionOK = () => !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -149,6 +152,11 @@ export function initEditorResize() {
       writeStorage(keys.editorHeight, null);
     });
   }
+  function resetFromCurrent() {
+    shownSrc = surface.getBoundingClientRect().height;
+    shownOut = outSurface.getBoundingClientRect().height;
+    reset();
+  }
 
   // ---- initial height ----
   const translateView = $("translateView");
@@ -227,27 +235,36 @@ export function initEditorResize() {
     return raw;
   }
 
+  let lastTap = null;
   handles.forEach((handle) => {
     handle.addEventListener("pointerdown", (event) => {
       if (event.button !== undefined && event.button !== 0) return;
       event.preventDefault();
-      stopAnim();
       handle.focus({ preventScroll: true });
       if (!hasInitializedHeight) initializeHeight();
-      shownSrc = surface.getBoundingClientRect().height;
-      shownOut = outSurface.getBoundingClientRect().height;
       const startY = event.clientY;
-      const startHeight = shownSrc;
-      let gap = shownOut - shownSrc; // output minus source; eased to 0 while dragging
-      let raw = startHeight;
+      let startHeight = 0;
+      let gap = 0; // output minus source; eased to 0 while dragging
+      let raw = 0;
       try { handle.setPointerCapture(event.pointerId); } catch (_) { /* pointer already gone */ }
-      document.body.classList.add("is-resizing-editor");
-      beginLive();
-
       let pointerY = startY;
-      const scrollStart = window.scrollY;
+      let scrollStart = 0;
       let frame = 0;
-      let dragging = true;
+      let dragging = false;
+      const beginDrag = () => {
+        dragging = true;
+        lastTap = null;
+        stopAnim();
+        shownSrc = surface.getBoundingClientRect().height;
+        shownOut = outSurface.getBoundingClientRect().height;
+        startHeight = shownSrc;
+        gap = shownOut - shownSrc;
+        raw = startHeight;
+        scrollStart = window.scrollY;
+        document.body.classList.add("is-resizing-editor");
+        beginLive();
+        frame = requestAnimationFrame(update);
+      };
       const update = () => {
         frame = 0;
         if (!dragging) return;
@@ -265,22 +282,40 @@ export function initEditorResize() {
       };
       const move = (e) => {
         pointerY = e.clientY;
+        if (!dragging && Math.abs(pointerY - startY) < DRAG_THRESHOLD) return;
+        if (!dragging) beginDrag();
         if (!frame) frame = requestAnimationFrame(update);
       };
-      const end = () => {
-        dragging = false;
-        cancelAnimationFrame(frame);
-        frame = 0;
+      const end = (e) => {
         handle.removeEventListener("pointermove", move);
         handle.removeEventListener("pointerup", end);
         handle.removeEventListener("pointercancel", end);
-        document.body.classList.remove("is-resizing-editor");
-        settleTo(raw); // springs back from the rubber band, or eases the last pixels into place
+        if (dragging) {
+          raw = startHeight + (pointerY - startY) + (window.scrollY - scrollStart);
+          dragging = false;
+          cancelAnimationFrame(frame);
+          frame = 0;
+          document.body.classList.remove("is-resizing-editor");
+          settleTo(raw); // springs back from the rubber band, or eases the last pixels into place
+        } else if (e.type === "pointerup") {
+          const now = performance.now();
+          const closeToLastTap = lastTap
+            && lastTap.handle === handle
+            && now - lastTap.time <= DOUBLE_TAP_MS
+            && Math.hypot(e.clientX - lastTap.x, e.clientY - lastTap.y) <= DOUBLE_TAP_DISTANCE;
+          if (closeToLastTap) {
+            lastTap = null;
+            resetFromCurrent();
+          } else {
+            lastTap = { handle, time: now, x: e.clientX, y: e.clientY };
+          }
+        } else {
+          lastTap = null;
+        }
       };
       handle.addEventListener("pointermove", move);
       handle.addEventListener("pointerup", end);
       handle.addEventListener("pointercancel", end);
-      frame = requestAnimationFrame(update); // start easing the gap immediately
     });
 
     handle.addEventListener("keydown", (event) => {
@@ -298,6 +333,5 @@ export function initEditorResize() {
       settleTo(next);
     });
     handle.addEventListener("focus", () => sync(surface.getBoundingClientRect().height));
-    handle.addEventListener("dblclick", () => { shownSrc = surface.getBoundingClientRect().height; shownOut = outSurface.getBoundingClientRect().height; reset(); });
   });
 }
