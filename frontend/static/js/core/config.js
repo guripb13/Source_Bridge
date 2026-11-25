@@ -57,9 +57,8 @@ export const logoUrl = (language) => {
   return slug ? `https://cdn.jsdelivr.net/gh/devicons/devicon/icons/${slug}/${slug}-original.svg` : "";
 };
 
-// Personalization: the text is sent as this extra form field, only when the box is not empty.
-// The current server ignores unknown fields, so it has no effect until the server reads it.
+// Personalization: sent as an extra form field only when the box is not empty.
 export const INSTRUCTIONS_FIELD = "instructions";
-export const MAX_INSTRUCTIONS = 500;
+export const MAX_INSTRUCTIONS = 100;
 
 export const MAX_SAVED = 30;
