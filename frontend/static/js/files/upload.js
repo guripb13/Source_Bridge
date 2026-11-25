@@ -1,10 +1,11 @@
 /* File upload: code files only (.py .java .c .h .cpp .cc .cxx .hpp .hh .hxx), shown as a chip with a remove button. */
 import { $, dom } from "../core/dom.js";
-import { MAX_UPLOAD_BYTES, uploadExtensions } from "../core/config.js";
+import { MAX_LINES, MAX_UPLOAD_BYTES, uploadExtensions } from "../core/config.js";
 import { state } from "../core/state.js";
 import { notify, setStatus } from "../core/feedback.js";
 import { refreshButtons } from "../ui/buttons.js";
 import { updateLines } from "../editor/line-numbers.js";
+import { countLines, enforceLimits, SOURCE_LIMIT_MESSAGE } from "../editor/source-limits.js";
 
 const { source, sourceLanguage } = dom;
 const SUPPORTED_TEXT = ".py, .java, .c or .cpp";
@@ -44,16 +45,19 @@ async function loadFile(file) {
     const text = await file.text();
     if (version !== state.fileReadVersion || state.activeController) return;
     if (text.includes("\u0000")) { notify("This file isn't plain text. Please upload a source code file."); return; }
-    source.value = text.replace(/^\uFEFF/, "");
+    const limited = enforceLimits(text.replace(/^\uFEFF/, ""));
+    source.value = limited.text;
     state.uploadedText = source.value;
     state.sourceFileName = file.name;
     source.scrollTop = 0;
     updateFileLabel();
     updateLines(source, $("sourceLines"));
+    $("sourceLineCounter").textContent = `Lines ${countLines(source.value)}/${MAX_LINES}`;
     refreshButtons();
     source.focus();
     const fileLanguage = uploadExtensions[extension];
-    if (!source.value.trim()) setStatus("This file is empty.");
+    if (limited.cut) setStatus(SOURCE_LIMIT_MESSAGE, true);
+    else if (!source.value.trim()) setStatus("This file is empty.");
     else if (state.languagesConfirmed && sourceLanguage.value.toLowerCase() !== fileLanguage.toLowerCase()) {
       setStatus(`File loaded. It looks like ${fileLanguage} code, but the source language is ${sourceLanguage.value}. Use Change languages if that's not what you want.`);
     } else setStatus("File loaded. Choose a language and translate.");
@@ -71,6 +75,7 @@ function removeFile() {
     source.value = "";
     source.scrollTop = 0;
     updateLines(source, $("sourceLines"));
+    $("sourceLineCounter").textContent = `Lines ${countLines(source.value)}/${MAX_LINES}`;
   }
   updateFileLabel();
   refreshButtons();

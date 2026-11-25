@@ -31,6 +31,8 @@ export const AUTH_RULES = {
 
 export const HISTORY_PAGE_SIZE = 20;
 export const GUEST_ACTION_LIMIT = 3;
+export const MAX_LINES = 50;
+export const MAX_LINE_CHARS = 120;
 
 // Languages compiler.py can build and run -> the name /execute expects.
 export const executableLanguages = { python: "python", java: "java", c: "c", "c++": "cpp" };

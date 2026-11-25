@@ -2,6 +2,7 @@
 import { $, dom } from "../core/dom.js";
 import { state } from "../core/state.js";
 import { isSaved } from "../saved/store.js";
+import { enforceLimits } from "../editor/source-limits.js";
 
 const { source, output, language, sourceLanguage, translateButton } = dom;
 
@@ -9,7 +10,7 @@ export function targetLanguage() { return language.value.trim(); }
 
 export function refreshButtons() {
   const loading = Boolean(state.activeController);
-  translateButton.disabled = !loading && (!source.value.trim() || !targetLanguage());
+  translateButton.disabled = !loading && (!source.value.trim() || !targetLanguage() || enforceLimits(source.value).cut);
   $("copySource").disabled = !source.value;
   $("runSource").disabled = loading || !source.value.trim();
   $("runOutput").disabled = loading || !output.value.trim();

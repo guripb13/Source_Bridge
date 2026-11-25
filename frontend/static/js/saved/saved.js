@@ -11,6 +11,8 @@ import { addSaved, findSaved, isFull, removeSavedById } from "./store.js";
 import { fetchTranslation, refreshCloudSaved, setCloudSaved, syncOpenTranslation } from "./cloud.js";
 import { refreshButtons } from "../ui/buttons.js";
 import { updateLines } from "../editor/line-numbers.js";
+import { countLines, enforceLimits, SOURCE_LIMIT_MESSAGE } from "../editor/source-limits.js";
+import { MAX_LINES } from "../core/config.js";
 import { showView } from "../ui/navigation.js";
 import { updateTargetLanguageOptions, languageChanged } from "../languages/selection.js";
 import { explainTranslationError } from "../translate/errors.js";
@@ -114,21 +116,25 @@ export function renderSaved() {
 export function loadIntoWorkspace(entry, statusText) {
   if (state.activeController) { notify("Stop the current translation before opening another one."); return false; }
   state.fileReadVersion += 1;
-  source.value = entry.source;
+  const limited = enforceLimits(entry.source);
+  const workspaceEntry = { ...entry, source: limited.text };
+  source.value = limited.text;
   output.value = entry.output;
   state.sourceFileName = typeof entry.fileName === "string" ? entry.fileName : "";
-  state.uploadedText = state.sourceFileName ? entry.source : "";
+  state.uploadedText = state.sourceFileName ? source.value : "";
   const hasOption = (select, value) => Array.from(select.options).some((option) => option.value === value);
   if (typeof entry.sourceLanguage === "string" && hasOption(sourceLanguage, entry.sourceLanguage)) sourceLanguage.value = entry.sourceLanguage;
   updateTargetLanguageOptions();
   language.value = hasOption(language, entry.language) ? entry.language : "Python";
   // Only a finished translation can be run, downloaded or bookmarked.
-  state.completedTranslation = entry.output ? { ...entry, fileName: state.sourceFileName } : null;
+  state.completedTranslation = entry.output ? { ...workspaceEntry, fileName: state.sourceFileName } : null;
   state.languagesConfirmed = true;
   source.scrollTop = 0; output.scrollTop = 0;
   languageChanged();
   updateLines(source, $("sourceLines")); updateLines(output, $("outputLines"));
+  $("sourceLineCounter").textContent = `Lines ${countLines(source.value)}/${MAX_LINES}`;
   showView("translate");
+  if (limited.cut) notify(SOURCE_LIMIT_MESSAGE);
   if (statusText) setStatus(statusText);
   return true;
 }

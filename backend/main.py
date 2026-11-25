@@ -172,9 +172,20 @@ def _is_api_side_error(exc):
         return exc.code == 400 and any(h in str(exc).lower() for h in KEY_PROBLEM_HINTS)
     return isinstance(exc, httpx.TransportError)      # connection failed / timed out
 
-MAX_SOURCE_CHARS = compiler.MAX_CODE_CHARS
+MAX_LINES, MAX_LINE_CHARS = 50, 120
+MAX_SOURCE_CHARS = MAX_LINES * MAX_LINE_CHARS + MAX_LINES - 1
+SOURCE_LIMIT_ERROR = (
+    f"Code must be at most {MAX_LINES} lines of {MAX_LINE_CHARS} characters each.")
 MAX_INSTRUCTIONS_CHARS = 100
 GATE_TIMEOUT = compiler.COMPILE_TIMEOUT + compiler.RUN_TIMEOUT + 10
+
+
+def _source_exceeds_limits(code):
+    normalized = code.replace("\r\n", "\n").replace("\r", "\n").replace("\u2028", "\n").replace("\u2029", "\n")
+    lines = normalized.split("\n")
+    return (len(normalized) > MAX_SOURCE_CHARS or len(lines) > MAX_LINES
+            or any(len(line) > MAX_LINE_CHARS for line in lines))
+
 
 def _run_code(code, lang, stdin_text, eof=False):
     """Execute code directly with compiler.py (no Docker)."""
@@ -757,7 +768,8 @@ def stream_translation(text, language, instructions=""):
 @app.route("/send", methods=["POST"])
 @limit("15 per minute")       # reduced from 20 — protects Gemini API quota
 def send():
-    text = request.form.get("message", "").strip()
+    submitted_text = request.form.get("message", "")
+    text = submitted_text.strip()
     language = clean_language(request.form.get("language"), default="Java")
     source_language = clean_language(
         request.form.get("source_language") or request.form.get("sourceLanguage")
@@ -790,8 +802,8 @@ def send():
 
     if not text:
         return failure_response("Please provide some source code.")
-    if len(text) > MAX_SOURCE_CHARS:
-        return failure_response("The source code is too large.")
+    if _source_exceeds_limits(submitted_text):
+        return failure_response(SOURCE_LIMIT_ERROR, 400)
     if len(instructions) > MAX_INSTRUCTIONS_CHARS:
         return failure_response(
             f"Code design preferences must be {MAX_INSTRUCTIONS_CHARS} characters or fewer.")
@@ -928,8 +940,8 @@ def execute_code():
     code = data["code"]
     if not code.strip():
         return jsonify(error="There is no code to run."), 400
-    if len(code) > MAX_SOURCE_CHARS:
-        return jsonify(error="The code is too large."), 413
+    if _source_exceeds_limits(code):
+        return jsonify(error=SOURCE_LIMIT_ERROR), 400
 
     stdin_text, problem = read_answers(data)
     if problem:
