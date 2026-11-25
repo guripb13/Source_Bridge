@@ -3,7 +3,6 @@
 This document describes the application that is currently served from this repository.
 
 ## 1. What the website does
-
 Source Bridge is a browser workspace for translating source code and reviewing the result. A user
 chooses source and target languages, edits or uploads source text, optionally adds design
 instructions, and sends a translation request to the Python backend. The backend checks the
