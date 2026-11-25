@@ -13,7 +13,6 @@ import { refreshButtons } from "../ui/buttons.js";
 import { updateLines } from "../editor/line-numbers.js";
 import { showView } from "../ui/navigation.js";
 import { updateTargetLanguageOptions, languageChanged } from "../languages/selection.js";
-import { updateFileLabel } from "../files/upload.js";
 import { explainTranslationError } from "../translate/errors.js";
 
 const { source, output, language, sourceLanguage } = dom;
@@ -127,7 +126,7 @@ export function loadIntoWorkspace(entry, statusText) {
   state.completedTranslation = entry.output ? { ...entry, fileName: state.sourceFileName } : null;
   state.languagesConfirmed = true;
   source.scrollTop = 0; output.scrollTop = 0;
-  languageChanged(); updateFileLabel();
+  languageChanged();
   updateLines(source, $("sourceLines")); updateLines(output, $("outputLines"));
   showView("translate");
   if (statusText) setStatus(statusText);

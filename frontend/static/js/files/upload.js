@@ -8,12 +8,20 @@ import { updateLines } from "../editor/line-numbers.js";
 
 const { source, sourceLanguage } = dom;
 const SUPPORTED_TEXT = ".py, .java, .c or .cpp";
+const SUPPORTED_TEXT_BY_LANGUAGE = {
+  Python: ".py",
+  Java: ".java",
+  C: ".c and .h",
+  "C++": ".cpp, .cc, .cxx, .hpp, .hh and .hxx"
+};
 
 const extensionOf = (name) => (/\.([^./\\]+)$/.exec(name || "")?.[1] || "").toLowerCase();
 
 // Shows either the hint text or the uploaded file's name with its remove button.
 export function updateFileLabel() {
   const has = Boolean(state.sourceFileName);
+  const extensions = state.languagesConfirmed ? SUPPORTED_TEXT_BY_LANGUAGE[sourceLanguage.value] : "";
+  $("fileHelp").textContent = `Supports ${extensions || SUPPORTED_TEXT} files`;
   $("fileHelp").hidden = has;
   $("fileChip").hidden = !has;
   $("fileName").textContent = state.sourceFileName;

@@ -31,7 +31,7 @@ import { initEditorResize } from "./editor/resize.js";
 import { initLanguages, languageChanged, renderLanguageChoices } from "./languages/selection.js";
 import { initTranslate } from "./translate/translate.js";
 import { initInstructions } from "./translate/instructions.js";
-import { initUpload, updateFileLabel } from "./files/upload.js";
+import { initUpload } from "./files/upload.js";
 import { initExport } from "./files/export.js";
 import { initRun } from "./run/terminal.js";
 import { initSaved, renderSaved } from "./saved/saved.js";
@@ -62,7 +62,6 @@ updateSidebar();
 languageChanged();
 renderLanguageChoices();
 renderSaved();
-updateFileLabel();
 refreshButtons();
 
 initPageScrollbar();

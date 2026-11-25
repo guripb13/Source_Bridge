@@ -32,7 +32,9 @@
     stroke: #fff;
 }
 
-.nav-item.home.animate .icon {
+.nav-item.home.animate .icon,
+.nav-item.saved.animate .icon,
+.nav-item.history.animate .icon {
     animation: nav-home-bounce .6s ease;
 }
 
@@ -45,7 +47,7 @@
     stroke-width: 1.8;
     stroke-linecap: round;
     stroke-linejoin: round;
-    transition: fill .35s ease, stroke .35s ease;
+    transition: fill .5s ease-in-out, stroke .5s ease-in-out;
 }
 
 .saved.active .bookmark-path {
@@ -53,15 +55,28 @@
     stroke: var(--green);
 }
 
-.nav-item.saved.animate .icon {
-    animation: nav-bookmark-pop .6s cubic-bezier(.3, 1.6, .5, 1);
+/* HISTORY ICON */
+
+.history .history-arc,
+.history .history-hands {
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    transition: stroke .5s ease-in-out;
 }
 
+.history.active .history-arc,
+.history.active .history-hands {
+    stroke: var(--green);
+}
 
 /* EXIT ANIMATION FOR PREVIOUS ICON */
 
 .nav-item.home.leave .icon,
-.nav-item.saved.leave .icon {
+.nav-item.saved.leave .icon,
+.nav-item.history.leave .icon {
     animation: nav-icon-shrink .4s ease;
 }
 
@@ -89,25 +104,6 @@
 
     100% {
         transform: translateY(0) scale(1);
-    }
-}
-
-
-@keyframes nav-bookmark-pop {
-    0% {
-        transform: scale(1);
-    }
-
-    40% {
-        transform: scale(1.35) rotate(-8deg);
-    }
-
-    70% {
-        transform: scale(.92) rotate(4deg);
-    }
-
-    100% {
-        transform: scale(1) rotate(0);
     }
 }
 
@@ -202,8 +198,10 @@
 @media (prefers-reduced-motion: reduce) {
   .nav-item.home.animate .icon,
   .nav-item.saved.animate .icon,
+  .nav-item.history.animate .icon,
   .nav-item.home.leave .icon,
   .nav-item.saved.leave .icon,
+  .nav-item.history.leave .icon,
   .view-exit-up,
   .view-exit-down,
   .view-enter-from-bottom,

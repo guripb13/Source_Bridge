@@ -9,6 +9,7 @@ import { updateLines } from "../editor/line-numbers.js";
 import { setHeadingLogo } from "./logos.js";
 import { liveStops } from "../run/terminal.js";
 import { cancelPanelAnim } from "../run/panel-animation.js";
+import { updateFileLabel } from "../files/upload.js";
 
 const { source, output, language, sourceLanguage } = dom;
 
@@ -29,6 +30,7 @@ export function updateTargetLanguageOptions() {
 export function languageChanged() {
   updateTargetLanguageOptions();
   updateLanguageLabels();
+  updateFileLabel();
   refreshButtons();
 }
 
