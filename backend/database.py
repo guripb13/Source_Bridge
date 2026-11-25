@@ -565,34 +565,46 @@ def authenticate(identifier, password):
     if not identifier or not isinstance(password, str) or len(password) > PASSWORD_MAX:
         raise AuthError(_BAD_LOGIN)
 
-    with _connect(USERS_DB, write=True) as conn:
+    with _connect(USERS_DB) as conn:
         row = conn.execute("SELECT * FROM users WHERE username = ? OR email = ?",
                            (identifier, identifier)).fetchone()
-        if row is None:
-            _burn_time(password)
+    if row is None:
+        _burn_time(password)
+        raise AuthError(_BAD_LOGIN)
+
+    now = _now()
+    if row["locked_until"] and row["locked_until"] > now:
+        raise AuthError("Too many failed attempts. Try again in a few minutes.")
+
+    password_matches = check_password_hash(row["password_hash"], password)
+
+    with _connect(USERS_DB, write=True) as conn:
+        current = conn.execute("SELECT * FROM users WHERE id = ?", (row["id"],)).fetchone()
+        if current is None:
             raise AuthError(_BAD_LOGIN)
 
         now = _now()
-        if row["locked_until"] and row["locked_until"] > now:
+        if current["locked_until"] and current["locked_until"] > now:
             raise AuthError("Too many failed attempts. Try again in a few minutes.")
+        if current["password_hash"] != row["password_hash"]:
+            raise AuthError(_BAD_LOGIN)
 
-        if not check_password_hash(row["password_hash"], password):
-            failures = row["failed_logins"] + 1
+        if not password_matches:
+            failures = current["failed_logins"] + 1
             if failures >= MAX_FAILED_LOGINS:
                 conn.execute("UPDATE users SET failed_logins = 0, locked_until = ? WHERE id = ?",
                              (_minutes_from_now(LOCK_MINUTES), row["id"]))
             else:
                 conn.execute("UPDATE users SET failed_logins = ? WHERE id = ?",
                              (failures, row["id"]))
-            conn.commit()                 # keep the counter even though we raise below
-            raise AuthError(_BAD_LOGIN)
+        else:
+            if not current["is_active"]:
+                raise AuthError("This account has been disabled.")
+            conn.execute("UPDATE users SET failed_logins = 0, locked_until = NULL, last_login_at = ? "
+                         "WHERE id = ?", (now, row["id"]))
+            return _public_user(current)
 
-        if not row["is_active"]:
-            raise AuthError("This account has been disabled.")
-
-        conn.execute("UPDATE users SET failed_logins = 0, locked_until = NULL, last_login_at = ? "
-                     "WHERE id = ?", (now, row["id"]))
-        return _public_user(row)
+    raise AuthError(_BAD_LOGIN)
 
 
 def get_user(user_id):

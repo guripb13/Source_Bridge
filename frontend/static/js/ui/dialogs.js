@@ -3,19 +3,50 @@ import { $ } from "../core/dom.js";
 import { state } from "../core/state.js";
 import { closeSidebar } from "./sidebar.js";
 
-export function initDialogs() {
-  const isPhone = window.matchMedia("(max-width: 600px)");
+const isPhone = window.matchMedia("(max-width: 600px)");
+const mobileDialogs = new Set();
+let lockedScrollY = 0;
 
+function lockMobileScroll(dialog) {
+  if (!isPhone.matches) return;
+  if (mobileDialogs.size === 0) {
+    lockedScrollY = window.scrollY;
+    document.body.style.setProperty("--dialog-scroll-top", `${-lockedScrollY}px`);
+    document.body.classList.add("dialog-scroll-locked");
+  }
+  mobileDialogs.add(dialog);
+}
+
+function unlockMobileScroll(dialog) {
+  if (!mobileDialogs.delete(dialog) || mobileDialogs.size > 0) return;
+  document.body.classList.remove("dialog-scroll-locked");
+  document.body.style.removeProperty("--dialog-scroll-top");
+  window.scrollTo(0, lockedScrollY);
+}
+
+export function showAppDialog(dialog) {
+  if (dialog.open) return;
+  lockMobileScroll(dialog);
+  try {
+    dialog.showModal();
+  } catch (error) {
+    unlockMobileScroll(dialog);
+    throw error;
+  }
+}
+
+export function initDialogs() {
   document.querySelectorAll("[data-dialog]").forEach((button) => {
     button.addEventListener("click", () => {
       if (state.mobileOpen) closeSidebar(true);
-      $(button.dataset.dialog).showModal();
+      showAppDialog($(button.dataset.dialog));
     });
   });
   document.querySelectorAll("[data-close-dialog]").forEach((button) => {
     button.addEventListener("click", () => button.closest("dialog").close());
   });
   document.querySelectorAll("dialog").forEach((dialog) => {
+    dialog.addEventListener("close", () => unlockMobileScroll(dialog));
     const handle = dialog.querySelector(".dialog-drag-handle");
     if (handle) {
       let pointerId = null;

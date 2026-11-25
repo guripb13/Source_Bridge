@@ -13,6 +13,7 @@ import { state } from "../core/state.js";
 import { notify } from "../core/feedback.js";
 import { signIn, signUp, signOut, deleteAccount } from "./session.js";
 import { api } from "./api.js";
+import { showAppDialog } from "../ui/dialogs.js";
 
 const MODES = {
   login: {
@@ -100,10 +101,28 @@ function resetUsernameCheck() {
   showUsernameStatus("", "");
 }
 
+function normalizeLowercaseInput(field) {
+  const original = field.value;
+  const normalized = original.toLowerCase();
+  if (original === normalized) return;
+
+  const start = field.type === "email" ? null : field.selectionStart;
+  const end = field.type === "email" ? null : field.selectionEnd;
+  field.value = normalized;
+  if (start !== null && end !== null) {
+    field.setSelectionRange(
+      original.slice(0, start).toLowerCase().length,
+      original.slice(0, end).toLowerCase().length
+    );
+  }
+}
+
 function onUsernameTyping() {
+  const usernameInput = input("username");
+  normalizeLowercaseInput(usernameInput);
   resetUsernameCheck();
   if (mode !== "signup") return;
-  const value = input("username").value.trim();
+  const value = usernameInput.value.trim();
   if (!value) return;
   if (!/^[A-Za-z0-9_.\-]*$/.test(value) || value.length > 30) {
     showUsernameStatus("Only letters, numbers, . _ - (max 30 characters).", "bad");
@@ -134,9 +153,9 @@ async function checkUsername(value) {
 
 function values() {
   return {
-    username: input("username").value.trim(),
-    identifier: input("identifier").value.trim(),
-    email: input("email").value.trim(),
+    username: input("username").value.trim().toLowerCase(),
+    identifier: input("identifier").value.trim().toLowerCase(),
+    email: input("email").value.trim().toLowerCase(),
     password: input("password").value,        // never trimmed: spaces may be part of a password
     confirm: input("confirm").value
   };
@@ -187,7 +206,9 @@ function setMode(next) {
     tab.tabIndex = active ? 0 : -1;
   });
   Object.entries(FIELDS).forEach(([name, field]) => { $(field.wrap).hidden = !config.fields.includes(name); });
+  input("identifier").autocomplete = mode === "login" ? "username" : "off";
   input("password").autocomplete = config.autocomplete;
+  input("confirm").autocomplete = "off";
   input("password").placeholder = config.passwordHint;
   clearErrors();
   renderStrength();
@@ -202,7 +223,7 @@ export function openAuthDialog(next = "login") {
   if (state.user) { openAccountDialog(); return; }
   const dialog = $("authDialog");
   setMode(next);
-  if (!dialog.open) dialog.showModal();
+  showAppDialog(dialog);
   focusFirstField();
 }
 
@@ -300,9 +321,14 @@ function togglePasswordVisibility(show) {
 function renderAccountButton() {
   const user = state.user;
   const button = $("accountButton");
-  const label = user ? `Account: ${user.username}` : "Sign in or create an account";
+  const username = user?.username || "";
+  const displayName = username
+    ? username[0].toUpperCase() + username.slice(1).toLowerCase()
+    : "";
+  const label = user ? `Account: ${displayName}` : "Sign in or create an account";
   button.classList.toggle("is-signed-in", Boolean(user));
-  $("accountLabel").textContent = user ? user.username : "Sign In";
+  $("accountInitial").textContent = displayName[0] || "";
+  $("accountLabel").textContent = user ? displayName : "Sign In";
   button.setAttribute("aria-label", label);
   button.title = label;
 }
@@ -317,7 +343,7 @@ function openAccountDialog() {
   $("accountSince").textContent = Number.isNaN(joined.getTime()) ? "" : `Member since ${joined.toLocaleDateString(undefined, { month: "long", year: "numeric" })}`;
   resetAccountDialog();
   const dialog = $("accountDialog");
-  if (!dialog.open) dialog.showModal();
+  showAppDialog(dialog);
 }
 
 function resetAccountDialog() {
@@ -388,7 +414,11 @@ export function initAuth() {
   $("authShowPassword").addEventListener("change", (event) => togglePasswordVisibility(event.target.checked));
   input("password").addEventListener("input", () => { renderStrength(); showFieldError("password", ""); showFieldError("confirm", ""); });
   Object.keys(FIELDS).forEach((name) => {
-    if (name !== "password") input(name).addEventListener("input", () => { showFieldError(name, ""); showMessage("authMessage", ""); });
+    if (name !== "password") input(name).addEventListener("input", () => {
+      if (name === "identifier" || name === "email") normalizeLowercaseInput(input(name));
+      showFieldError(name, "");
+      showMessage("authMessage", "");
+    });
   });
   input("username").addEventListener("input", onUsernameTyping);
   $("authDialog").addEventListener("close", resetAuthDialog);

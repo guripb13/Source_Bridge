@@ -5,7 +5,24 @@
 /* ---- Header button: filled once someone is signed in ---- */
 .sign-in-button.is-signed-in { background: var(--green-soft); }
 .sign-in-button.is-signed-in:hover { background: color-mix(in srgb, var(--green-soft) 75%, var(--green) 25%); }
-#accountLabel { max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sign-in-button.is-signed-in .icon { display: none; }
+.account-initial { display: none; }
+#accountLabel { white-space: nowrap; }
+@media (min-width: 601px) {
+  #accountButton.is-signed-in > #accountInitial { display: none; }
+  #accountButton.is-signed-in > #accountLabel { display: inline; }
+}
+@media (max-width: 600px) {
+  #accountButton:not(.is-signed-in) > #accountLabel { display: none; }
+  #accountButton.is-signed-in > #accountInitial {
+    display: grid;
+    place-items: center;
+    font-size: 16px;
+    font-weight: 700;
+    line-height: 1;
+  }
+  #accountButton.is-signed-in > #accountLabel { display: none; }
+}
 
 /* ---- Shared link-style button (switch mode, delete account, retry) ---- */
 .link-button { display: inline; padding: 2px 4px; border: 0; border-radius: 6px; background: transparent; color: var(--green); font: inherit; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; transition: color .18s; }

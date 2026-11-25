@@ -69,3 +69,5 @@ initLanguageDropdown();
 
 // Last: ask the server who is signed in. The page works as a visitor until it answers.
 loadSession();
+
+document.dispatchEvent(new Event("sb:app-ready"));
