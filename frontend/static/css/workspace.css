@@ -78,7 +78,10 @@ body.drag-mode .code-surface { border-style: dashed; border-color: var(--green);
 .noscript-message { color: var(--error); }
 
 @media (prefers-reduced-motion: reduce) { .code-surface { transition: border-color .18s; } }
-@media (min-width: 901px) { .translate-button { transform: scale(1.5); transform-origin: center; } }
+@media (min-width: 901px) {
+  .translate-button { gap: clamp(9px, 2.4dvh, 24px); font-size: clamp(22.5px, 3.3dvh, 28.5px); }
+  .translate-circle { width: clamp(87px, 13.5dvh, 129px); height: clamp(87px, 13.5dvh, 129px); }
+}
 @media (max-width: 900px) { .translate-button { pointer-events: none; opacity: .5; transition: opacity .2s ease; } }
 
 @keyframes run-hint-morph-in {

@@ -59,7 +59,9 @@ from flask import Flask, Response, g, jsonify, render_template, request, session
 from flask_limiter import Limiter                     # hard import — must be in requirements.txt
 from flask_limiter.util import get_remote_address
 from werkzeug.middleware.proxy_fix import ProxyFix   # correct client-IP detection behind proxies
+import httpx
 from google import genai
+from google.genai import errors as genai_errors
 from google.genai import types
 
 import compiler                                   # step 1: compile + run
@@ -139,6 +141,34 @@ if not API_KEY:
 
 MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.5-flash-lite")
 client = genai.Client(api_key=API_KEY)
+
+# BACKUP translation API (optional). Exactly the same call as the main one, just a second
+# key/client. It is used ONLY when the main API fails on the provider's side (busy, quota,
+# unavailable, timeout). Set GEMINI_API_KEY_2 to enable it; leave it unset to disable.
+# Popped from the environment for the same reason as the main key.
+BACKUP_API_KEY = os.environ.pop("GEMINI_API_KEY_2", "").strip()
+BACKUP_MODEL = os.environ.get("GEMINI_MODEL_2", MODEL)
+backup_client = genai.Client(api_key=BACKUP_API_KEY) if BACKUP_API_KEY else None
+
+# HTTP codes meaning "the API side has a problem" (not the user's/our request):
+# 408 timeout, 429 busy/quota, 500 internal, 502/503 unavailable, 504 gateway timeout.
+BACKUP_STATUS_CODES = {408, 429, 500, 502, 503, 504}
+
+
+# Key problems on the main API (invalid / expired / blocked key): the backup key can still work.
+KEY_PROBLEM_CODES = {401, 403}
+KEY_PROBLEM_HINTS = ("api key not valid", "api_key_invalid", "api key expired", "permission_denied")
+
+
+def _is_api_side_error(exc):
+    """True when the MAIN API cannot serve the request (busy / unavailable / quota / bad key),
+    so trying the backup API makes sense. A normal bad request (e.g. invalid prompt) is not one."""
+    if isinstance(exc, genai_errors.APIError):
+        if exc.code in BACKUP_STATUS_CODES or exc.code in KEY_PROBLEM_CODES:
+            return True
+        # Google reports an invalid API key as HTTP 400, so check the message too.
+        return exc.code == 400 and any(h in str(exc).lower() for h in KEY_PROBLEM_HINTS)
+    return isinstance(exc, httpx.TransportError)      # connection failed / timed out
 
 MAX_SOURCE_CHARS = compiler.MAX_CODE_CHARS
 GATE_TIMEOUT = compiler.COMPILE_TIMEOUT + compiler.RUN_TIMEOUT + 10
@@ -631,6 +661,36 @@ def delete_translation(translation_id):
     return reply({"id": translation_id, "deleted": True})
 
 
+def stream_translation(text, language):
+    """
+    Yield the translated text chunk by chunk.
+    Main API first. The backup API (same call, same model settings) is tried ONLY if the main
+    one fails with an API-side error (busy / unavailable / quota / timeout) BEFORE any text was
+    sent to the user - so the user never gets duplicated or mixed output.
+    """
+    apis = [("main", client, MODEL)]
+    if backup_client is not None:
+        apis.append(("backup", backup_client, BACKUP_MODEL))
+
+    for number, (name, api, model) in enumerate(apis):
+        started = False
+        try:
+            for chunk in api.models.generate_content_stream(
+                model=model,
+                contents=text,
+                config=types.GenerateContentConfig(system_instruction=build_task(language)),
+            ):
+                if chunk.text:
+                    started = True
+                    yield chunk.text
+            return
+        except Exception as exc:
+            is_last = number == len(apis) - 1
+            if started or is_last or not _is_api_side_error(exc):
+                raise
+            app.logger.warning("Gemini %s API failed (%s); switching to the backup API.", name, exc)
+
+
 # --------------------------------------------------------------------------
 # /send  -  compiler -> convertibility -> translation API  (+ history for signed-in users)
 # --------------------------------------------------------------------------
@@ -689,14 +749,9 @@ def send():
             # ---- STEP 3: translation API (only reached when 1 and 2 passed)
             chunks = []
             try:
-                for chunk in client.models.generate_content_stream(
-                    model=MODEL,
-                    contents=text,
-                    config=types.GenerateContentConfig(system_instruction=build_task(language)),
-                ):
-                    if chunk.text:
-                        chunks.append(chunk.text)
-                        yield event("chunk", text=chunk.text) if use_events else chunk.text
+                for piece in stream_translation(text, language):
+                    chunks.append(piece)
+                    yield event("chunk", text=piece) if use_events else piece
             except Exception:
                 # Real error goes to the server log; the user gets a safe message.
                 app.logger.exception("Gemini request failed")
