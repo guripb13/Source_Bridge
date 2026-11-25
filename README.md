@@ -1,179 +1,167 @@
 # Source Bridge
 
-Source Bridge is a browser-based workspace for translating code between Python, Java, C, and
-C++. It combines an AI translation flow with source and output editors, compiler feedback, and
-tools for saving, reviewing, and running code.
+Source Bridge is a browser-based workspace for translating code between programming languages.
+It combines a Flask/Python backend, a plain HTML/CSS/JavaScript frontend, Google's Gemini API,
+and optional compiler tools installed on the host.
 
-## What the website provides
+The main application is served from `backend/main.py`. The frontend has no Node.js build step.
 
-- **Translate code:** choose a source and target language, edit or upload source code, and receive
-  the translation as it streams into the output editor.
-- **Personalize the result:** choose common and target-language-specific design suggestions or
-  enter up to 100 characters of custom preferences. Preferences guide the generated code.
-- **Edit comfortably:** use line numbers, automatic bracket and quote pairing, Tab indentation,
-  resizable editors, and a responsive layout.
-- **Compile and run:** run either editor's code, view compiler output, and respond to interactive
-  program input without losing the run context.
-- **Guest limits:** unsigned visitors can make up to three translation requests and three
-  compile/run requests per signed browser session. The server enforces the separate limits; signing
-  in removes the guest caps. Each `/execute` request counts, including a request that resumes an
-  interactive program.
-- **Manage results:** copy or download translations. Save results in this browser as a guest, or
-  sign in to keep saved translations and translation history with your account.
-- **Review history:** signed-in users can filter, reopen, bookmark, and delete past completed or
-  failed translation attempts.
-- **Personalize the workspace:** switch light/dark themes and adjust editor preferences.
+## What you can do
+
+- **Translate code:** choose source and target languages, enter or upload code, and stream a
+  Gemini-generated translation into the result editor. Known incompatible language families are
+  rejected before the AI request.
+- **Guide the result:** select design suggestions or add up to 100 characters of custom
+  instructions.
+- **Edit and export:** use editor conveniences, copy or download results, and switch between light
+  and dark themes.
+- **Compile and run:** run Python, Java, C, or C++ code. Programs can request input interactively.
+- **Work as a guest:** translate and run code without creating an account. Guests have separate
+  server-enforced limits of three translation requests and three compile/run requests per browser
+  session.
+- **Keep work:** guest bookmarks are kept in the browser. Signed-in users can access translation
+  history, including failed attempts, and save completed translations to their account.
+
+> **Code execution warning:** the server runs supported source code during translation preflight
+> and when a user selects Run. The compiler applies time, output, and (where supported) resource
+> limits, but it is not a complete security sandbox. Do not expose this service to untrusted users
+> without isolating code execution in a restricted container or separate service.
 
 ## How translation works
 
-1. Select the source and target languages in the browser.
-2. Paste or type code into the source editor, or upload a supported source file.
-3. Optionally add code-design preferences.
-4. The server validates the request, checks source code and language convertibility, then requests
-   a translation from Google Gemini.
-5. The result streams into the output editor. You can review it, run it, copy it, download it, or
-   save it.
+1. Select the source and target languages and enter code in the workspace.
+2. Optionally upload a supported source file or add design instructions.
+3. The server validates the request. When the source is recognized as Python, Java, C, or C++,
+   it compiles and runs that source as a preflight check. Code that fails this check is not sent to
+   Gemini.
+4. The server checks known language-family compatibility and requests a translation from Gemini.
+5. The response streams to the browser. Signed-in attempts are recorded in History; guests'
+   translations are not stored on the server.
 
-Signed-in translation attempts are recorded in History, including failures and their failure
-stage. Guest translations are not added to server-side history.
+The preflight can execute source code even when the user has not pressed Run. Review the code
+execution warning above before deploying the application publicly.
 
-## Project structure
+## Run locally
 
-```text
-Source_Bridge/
-├── backend/
-│   ├── main.py                 Flask app, translation stream, accounts, history, and run API
-│   ├── compiler.py             Compile/run support for C, C++, Python, and Java
-│   ├── convertibility.py       Source/target language compatibility checks
-│   ├── database.py             SQLite accounts, saved translations, and history
-│   ├── requirements.txt        Backend dependency list
-│   ├── data/                   Runtime SQLite data (created automatically)
-│   └── Demo tseting/           Older chat-demo prototype; not the main app
-├── frontend/
-│   ├── templates/
-│   │   └── index.html          Main page, editors, dialogs, and navigation
-│   ├── static/
-│   │   ├── css/                Layout, themes, responsive styles, dialogs, and animations
-│   │   ├── js/
-│   │   │   ├── main.js         Frontend entry point and module initialization
-│   │   │   ├── account/        Authentication and session handling
-│   │   │   ├── core/           Shared state, config, storage, and feedback
-│   │   │   ├── editor/         Source editor behavior and resizing
-│   │   │   ├── files/          Upload, copy, and download
-│   │   │   ├── history/        Translation history UI
-│   │   │   ├── languages/      Language selection and logos
-│   │   │   ├── run/            Compiler terminal and interactive input
-│   │   │   ├── saved/          Local and account-backed saved translations
-│   │   │   ├── translate/      Translation, streaming, and personalization
-│   │   │   └── ui/             Navigation, themes, dialogs, and buttons
-│   │   ├── fonts/              Bundled Inter font files and license
-│   │   └── icon*.webp/png      App icons
-│   ├── Demo testing/           Older chat-demo UI; not served by the main app
-│   └── README.md               Frontend module notes
-├── env.example                 Environment-variable template
-├── requirements.txt            Pinned dependencies for the main app
-├── vercel.json                 Vercel Python entry point and route configuration
-├── SIGN_IN_CHANGES.md          Account/history implementation notes
-├── explaination.md             Notes for an earlier prototype
-└── README.md                   Project overview and setup
-```
-
-The current application entry point is `backend/main.py`. It serves
-`frontend/templates/index.html` and the files under `frontend/static/`; there is no frontend
-build step or Node.js package setup.
-
-## Requirements
+Requirements:
 
 - Python 3.9 or newer
-- A Google Gemini API key
-- Python, a Java JDK, and C/C++ compilers on the host for the corresponding compile/run features
+- The pinned packages in `requirements.txt`
+- A Gemini API key
+- Python, a Java JDK, and C/C++ toolchains for the corresponding compile/run features and
+  translation preflight checks
 
-Install the project's pinned dependencies from the repository root:
+### Windows PowerShell
 
 ```powershell
-python -m venv .venv
+py -m venv .venv
 .\.venv\Scripts\Activate.ps1
-python -m pip install -r requirements.txt
-```
-
-Set the required key and start the Flask app:
-
-```powershell
+py -m pip install -r requirements.txt
 $env:GEMINI_API_KEY = "your-gemini-api-key"
 $env:COOKIE_SECURE = "0"
-python .\backend\main.py
+py .\backend\main.py
 ```
 
-Then open <http://127.0.0.1:5000>.
+### macOS or Linux
 
-`COOKIE_SECURE=0` is for local HTTP development so the browser will accept the sign-in cookie.
-Do not use it in production. The application defaults to secure cookies. Generate and set a
-persistent `SECRET_KEY` for deployments:
-
-```powershell
-$env:SECRET_KEY = (python -c "import secrets; print(secrets.token_hex(32))")
+```sh
+python3 -m venv .venv
+. .venv/bin/activate
+python -m pip install -r requirements.txt
+export GEMINI_API_KEY="your-gemini-api-key"
+export COOKIE_SECURE=0
+python backend/main.py
 ```
 
-`env.example` documents the available settings; it is a template and is not loaded automatically.
-Set the variables in your shell or hosting provider.
+Open <http://127.0.0.1:5000>. `COOKIE_SECURE=0` is only for local HTTP development; production
+should use HTTPS and the default secure-cookie setting. Set a persistent, randomly generated
+`SECRET_KEY` for deployments:
+
+```sh
+python -c "import secrets; print(secrets.token_hex(32))"
+```
+
+`env.example` lists supported environment variables. It is a reference file and is not loaded
+automatically.
 
 ## Configuration
 
 | Variable | Purpose |
 | --- | --- |
-| `GEMINI_API_KEY` | Required for translation requests. |
-| `GEMINI_API_KEY_2` | Optional backup key, used for eligible provider-side failures. |
-| `GEMINI_MODEL` | Optional main model name; defaults to `gemini-3.5-flash-lite`. |
+| `GEMINI_API_KEY` | Required main Gemini API key. |
+| `GEMINI_API_KEY_2` | Optional backup key for eligible provider-side failures. |
+| `GEMINI_MODEL` | Optional main model; defaults to `gemini-3.5-flash-lite` in the current backend. |
 | `GEMINI_MODEL_2` | Optional backup model; defaults to the main model. |
-| `SECRET_KEY` | Recommended persistent Flask session-signing key. |
-| `COOKIE_SECURE` | Defaults to secure cookies; set to `0` only for local HTTP testing. |
-| `DATABASE_DIR` | Optional persistent directory for the three SQLite databases. Defaults to `backend/data`. |
-| `LIMITER_STORAGE_URI` | Rate-limit storage URI; defaults to in-memory storage. Use shared storage such as Redis for multi-worker deployments. |
-| `ALLOWED_HOSTS` | Optional comma-separated host allowlist for deployments behind a proxy that rewrites the host. |
+| `SECRET_KEY` | Recommended persistent Flask session-signing key. If unset, the backend obtains a key from its database. |
+| `COOKIE_SECURE` | Defaults to secure cookies. Set to `0` only for local HTTP development. |
+| `DATABASE_DIR` | Optional directory for the SQLite databases; defaults to `backend/data`. |
+| `LIMITER_STORAGE_URI` | Flask-Limiter storage URI; defaults to in-memory storage. Use shared storage for a multi-worker deployment. |
+| `ALLOWED_HOSTS` | Optional comma-separated public hosts for deployments where a proxy rewrites the host. |
 | `USERNAME_INDEX_KEY` | Optional separate secret for the keyed username lookup index. |
 
-## Application endpoints
+## Main endpoints
 
-### Translation and code execution
+| Method and path | Purpose |
+| --- | --- |
+| `GET /` | Serve the application. |
+| `GET /me` | Return the current authentication state and, for guests, usage counts. |
+| `GET /username-available?username=...` | Check username validity and availability during sign-up. |
+| `POST /signup`, `POST /login`, `POST /logout` | Create an account, sign in, and sign out. |
+| `DELETE /account` | Delete the signed-in account after password confirmation. |
+| `POST /send` | Translate submitted source code; the frontend requests an NDJSON event stream. |
+| `POST /execute` | Compile and run Python, Java, C, or C++ code. |
+| `GET /translations` | List a signed-in user's history; supports pagination and saved-only results. |
+| `GET /translations/<id>` | Read one owned translation with its full source and result. |
+| `POST /translations/<id>/save` | Save or unsave a completed translation. |
+| `DELETE /translations/<id>` | Delete an owned history entry. |
 
-- `GET /` - serves the Source Bridge application.
-- `POST /send` - accepts multipart form fields `message`, `source_language`, and `language`, plus
-  optional `instructions`. If the request accepts `application/x-ndjson`, the response streams
-  `chunk`, `error`, and `complete` events; other callers receive plain text.
-- `POST /execute` - accepts JSON containing `code`, `language`, and optional interactive `inputs`
-  and `eof`; returns run status, standard output/error, and input-request information.
+Account and history routes require the appropriate authenticated session. See
+[SIGN_IN.md](./SIGN_IN.md) for the account flow and storage details.
 
-### Account and translation history
+## Repository map
 
-- `GET /me` - returns the current sign-in state.
-- For guests, `/me` also returns server-authoritative `guest_usage` counters for translations and
-  compile/run requests.
-- `GET /username-available?username=...` - checks username validity and availability.
-- `POST /signup`, `POST /login`, `POST /logout` - account and session actions.
-- `DELETE /account` - deletes the signed-in account and its server-side history.
-- `GET /translations` - lists the signed-in user's history; supports saved-only and pagination
-  query options.
-- `GET /translations/<id>` - reads one history entry.
-- `POST /translations/<id>/save` - bookmarks or un-bookmarks a completed translation.
-- `DELETE /translations/<id>` - deletes a history entry.
+```text
+backend/
+  main.py                 Flask app, API routes, translation stream, and account/session flow
+  compiler.py             Compile/run and source-code preflight helpers
+  convertibility.py       Language-family compatibility checks
+  database.py             SQLite accounts, guest usage, saved translations, and history
+  requirements.txt        Backend dependency list
+frontend/
+  templates/index.html    Main page, editors, dialogs, and navigation
+  static/css/             Layout, responsive styles, themes, and components
+  static/js/main.js       Frontend entry point
+  static/js/account/      Authentication and account dialogs
+  static/js/core/         Shared configuration, state, storage, and feedback
+  static/js/editor/       Editor behavior and resizing
+  static/js/files/        Upload, copy, and download
+  static/js/history/      Translation history
+  static/js/languages/    Language selection and presentation
+  static/js/run/          Compiler terminal and interactive input
+  static/js/saved/        Browser and account-backed saved results
+  static/js/translate/    Translation requests, streaming, and personalization
+  static/js/ui/           Navigation, themes, dialogs, and buttons
+requirements.txt          Pinned application dependencies
+env.example               Environment variable reference
+vercel.json               Vercel routing configuration
+explaination.md           Detailed project explanation
+SIGN_IN.md                Sign-in and account behavior
+```
 
-History endpoints require sign-in. Guest bookmarks remain in the browser; account bookmarks and
-history use SQLite on the server.
+## Data and deployment
 
-## Data and deployment notes
+- The backend creates `users.db`, `translations.db`, and `username_index.db` under
+  `DATABASE_DIR` (or `backend/data`) on startup.
+- Guest counters are server-authoritative; the browser's local-storage counter is only a display
+  mirror. Clearing the guest cookie can create a new guest session.
+- Keep the database directory on persistent storage if accounts and history must survive restarts.
+  Vercel's local filesystem is temporary, so the default SQLite setup is not durable there.
+- `SECRET_KEY` should remain stable across restarts and private. Do not commit credentials,
+  database files, or `.env` files.
+- The default rate-limit storage is in memory. Multi-worker deployments need shared storage such
+  as Redis so limits are consistent between workers.
+- Password reset and email verification are not implemented.
 
-- SQLite databases are created automatically under `backend/data/` unless `DATABASE_DIR` points
-  elsewhere. Back up this directory if it contains data you need to keep.
-- Guest counters are stored server-side using a hash of the signed guest-session identifier.
-  `localStorage` only mirrors the counts for the interface and is never trusted to enforce the
-  limit. The guest quota is per browser session, not a verified person: clearing the browser
-  cookie can create a new guest identity. Existing IP-based rate limits provide an additional,
-  short-window safeguard.
-- The included `vercel.json` routes requests to the Python app, but serverless disks are temporary.
-  Do not rely on local SQLite files for persistent accounts or history on Vercel; use persistent
-  storage or a hosted database.
-- **Code execution warning:** the translation preflight and `/execute` run submitted programs on
-  the server. The compiler applies time, output, and resource limits, but it is not a complete
-  security sandbox. Do not expose this service to untrusted users without isolating code execution
-  in an appropriately restricted container or service.
-- Password reset and email verification are not currently provided.
+For a fuller walkthrough of the application flow and components, read
+[explaination.md](./explaination.md). For account-specific behavior, read
+[SIGN_IN.md](./SIGN_IN.md).
