@@ -26,7 +26,6 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/personalize.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/status-feedback.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/sidebar-peek.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/credits.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/selection.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/account.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/history.css') }}">
@@ -62,7 +61,6 @@
     <symbol id="i-code" viewBox="0 0 24 24"><path d="m7 6-6 6 6 6m10-12 6 6-6 6m-4-15-2 18"/></symbol>
     <symbol id="i-play" viewBox="0 0 24 24"><path d="M6 4.5v15a1 1 0 0 0 1.53.85l12-7.5a1 1 0 0 0 0-1.7l-12-7.5A1 1 0 0 0 6 4.5Z"/></symbol>
     <symbol id="i-stop" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2"/></symbol>
-    <symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M16 5.2a3.2 3.2 0 0 1 0 5.6M18 14.3c1.8.8 3 2.6 3 4.7"/></symbol>
     <symbol id="i-python" viewBox="0 0 32 32">
       <path fill="#3776AB" stroke="none" d="M16 2C8 2 8 5 8 5v6h9v2H5s-5 0-5 7 5 7 5 7h3v-5s0-5 5-5h9s5 0 5-5V7s0-5-11-5Z" transform="translate(2 0) scale(.9)"/>
       <path fill="#FFD343" stroke="none" d="M16 30c8 0 8-3 8-3v-6h-9v-2h12s5 0 5-7-5-7-5-7h-3v5s0 5-5 5h-9s-5 0-5 5v5s0 5 11 5Z" transform="translate(2 3) scale(.9)"/>
@@ -141,9 +139,6 @@
       </button><div class="sidebar-divider"></div>
       <button type="button" class="nav-item" data-dialog="settingsDialog" title="Settings">
         <svg class="icon" aria-hidden="true"><use href="#i-settings"/></svg><span class="nav-label">Settings</span>
-      </button>
-      <button type="button" class="nav-item" data-dialog="creditsDialog" title="Credits">
-        <svg class="icon" aria-hidden="true"><use href="#i-users"/></svg><span class="nav-label">Credits</span>
       </button>
     </nav>
     <div class="sidebar-footer" aria-hidden="true"><p>Code<br>Without<br><span>Borders</span></p></div>
@@ -433,21 +428,6 @@
         <button type="submit" class="pill-button danger-button" id="deleteSubmit">Delete account</button>
       </form>
     </div>
-  </dialog>
-  <dialog class="app-dialog" id="creditsDialog" aria-labelledby="creditsTitle">
-    <div class="dialog-drag-handle" aria-hidden="true"></div>
-    <div class="dialog-heading"><h2 id="creditsTitle">Made by</h2><button type="button" class="icon-button" data-close-dialog aria-label="Close credits"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></button></div>
-    <!-- TODO: replace the team name and member names below with your own. -->
-    <div class="credits-team">
-      <h3>Your Team Name</h3>
-      <p>The group behind Source Bridge.</p>
-      <ul class="credits-members">
-        <li><span>Member name</span><small>Role</small></li>
-        <li><span>Member name</span><small>Role</small></li>
-        <li><span>Member name</span><small>Role</small></li>
-      </ul>
-    </div>
-    <p class="credits-footnote">Source Bridge translates code between Python, Java, C and C++. Interface font: Inter (SIL Open Font License). Language logos: Devicon (MIT).</p>
   </dialog>
     <script type="module" src="{{ url_for('static', filename='js/mobile-touch.js') }}"></script>
   <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>

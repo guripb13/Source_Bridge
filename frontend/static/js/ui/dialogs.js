@@ -1,4 +1,4 @@
-/* Dialog open / close wiring (Tips, Settings, Credits, Sign in). */
+/* Dialog open / close wiring (Tips, Settings, Sign in). */
 import { $ } from "../core/dom.js";
 import { state } from "../core/state.js";
 import { closeSidebar } from "./sidebar.js";

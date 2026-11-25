@@ -26,7 +26,6 @@ frontend/
       personalize.css             "Personalize the translation" box + suggestion chips
       status-feedback.css         friendly error layout
       sidebar-peek.css            hover-to-open collapsed sidebar
-      credits.css                 credits dialog
       selection.css               which text is unselectable
     js/                         ES modules; main.js wires them together
       main.js                     entry point + folder map
@@ -51,7 +50,6 @@ frontend/
 | Allowed upload types, file size, the extra form field name | `js/core/config.js` |
 | Auto-closing pairs | `js/editor/auto-close.js` |
 | Suggestion chips | the `.suggestion-chip` buttons in `index.html` |
-| Credits (team name, members) | `#creditsDialog` in `index.html` |
 | Colours / theme tokens | `css/base.css` |
 
 ## Limitations (frontend only)
