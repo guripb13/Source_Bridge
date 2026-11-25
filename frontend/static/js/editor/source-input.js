@@ -25,6 +25,12 @@ export function initSourceInput() {
   });
   initAutoClose(source);
   source.addEventListener("keydown", (event) => {
+    if (event.key === "Tab" && !event.shiftKey && !event.ctrlKey && !event.metaKey && !event.altKey) {
+      event.preventDefault();
+      source.setRangeText("    ", source.selectionStart, source.selectionEnd, "end");
+      source.dispatchEvent(new Event("input", { bubbles: true }));
+      return;
+    }
     if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
       event.preventDefault();
       if (!state.activeController) form.requestSubmit();

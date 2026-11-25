@@ -78,6 +78,7 @@ body.drag-mode .code-surface { border-style: dashed; border-color: var(--green);
 .noscript-message { color: var(--error); }
 
 @media (prefers-reduced-motion: reduce) { .code-surface { transition: border-color .18s; } }
+@media (min-width: 901px) { .translate-button { transform: scale(1.5); transform-origin: center; } }
 
 @keyframes run-hint-morph-in {
   from { opacity: 0; transform: translate(-50%, -4px) scale(.86); border-radius: 12px 12px 4px 4px; }
