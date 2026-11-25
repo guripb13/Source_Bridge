@@ -32,6 +32,9 @@ export function languageChanged() {
   updateLanguageLabels();
   updateFileLabel();
   refreshButtons();
+  document.dispatchEvent(new CustomEvent("sb:language-changed", {
+    detail: { targetLanguage: state.languagesConfirmed ? language.value : "" }
+  }));
 }
 
 // Shows the confirmed pair in the workspace: centre column, panel badges and placeholders.

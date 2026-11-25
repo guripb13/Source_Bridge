@@ -14,6 +14,9 @@ function fromServerMessage(raw) {
   const message = String(raw || "").trim().replace(/^Error:\s*/i, "");
   const lower = message.toLowerCase();
 
+  if (/^guest translation limit reached/i.test(message)) {
+    return { title: "Guest translation limit reached", text: message, tip: "Sign in or create an account to continue translating." };
+  }
   if (/^please provide some source code/i.test(message)) {
     return { title: "There's no code to translate", text: "The editor was empty when the request reached the server.", tip: "Paste your code or upload a file, then press Translate." };
   }
@@ -117,6 +120,7 @@ export const STOPPED_INFO = {
 /* One readable sentence for the terminal (Run) panel. */
 export function runErrorMessage(error) {
   if (error?.status === 401) return "The server asked for a sign-in before running code. Running code doesn't need an account, so please refresh the page and try again.";
+  if (/^guest compilation limit reached/i.test(error?.message || "")) return "Guest compile/run limit reached. Sign in or create an account to continue.";
   if (error?.status === 429) return "Too many runs in a short time. Wait a few seconds and try again.";
   if (error instanceof TypeError) return "Can't reach the server. Check your connection and try Run again.";
   if (error?.status >= 500) return `The server had a problem while running your code (code ${error.status}). Wait a moment and try Run again.`;

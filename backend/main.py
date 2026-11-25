@@ -10,9 +10,9 @@ ACCOUNTS (database.py -> users.db)
     POST /logout   sign out
     GET  /me       who is signed in?                    -> {authenticated, user}
     DELETE /account  delete the account + its history   {password}
-    Signing in puts the user id in a signed, HttpOnly cookie (no server-side session storage,
-    so it also works on serverless hosting). Visitors who are NOT signed in use the app exactly
-    as before and nothing about them is stored.
+    Signing in puts the user id in a signed, HttpOnly cookie (no server-side login session
+    storage, so it also works on serverless hosting). Guests get a signed browser session and
+    server-side per-action usage counters keyed by a one-way hash; guest code is not stored.
 
 HISTORY (database.py -> translations.db)  - signed-in users only
     GET    /translations              list (add ?saved=1 for bookmarked only, ?before_id= to page)
@@ -47,9 +47,11 @@ SANDBOX NOTE
     is no full network/filesystem isolation.
 """
 import functools
+import hashlib
 import json
 import os
 import re
+import secrets
 import sqlite3
 from concurrent.futures import TimeoutError as FutureTimeoutError
 from datetime import timedelta
@@ -265,6 +267,29 @@ def current_user():
     return g.user
 
 
+def _guest_key_hash():
+    guest_id = session.get("guest_id")
+    if not isinstance(guest_id, str) or len(guest_id) < 32:
+        guest_id = secrets.token_urlsafe(32)
+        session["guest_id"] = guest_id
+    return hashlib.sha256(guest_id.encode("utf-8")).hexdigest()
+
+
+def _guest_usage():
+    return db.get_guest_usage(_guest_key_hash())
+
+
+def _consume_guest_action(action):
+    return db.consume_guest_action(_guest_key_hash(), action)
+
+
+def _clear_session_preserving_guest():
+    guest_id = session.get("guest_id")
+    session.clear()
+    if isinstance(guest_id, str):
+        session["guest_id"] = guest_id
+
+
 def start_session(user, remember=True):
     """
     remember=True  -> "Keep me signed in": a long-lived cookie (PERMANENT_SESSION_LIFETIME, 30 days,
@@ -274,7 +299,10 @@ def start_session(user, remember=True):
                       so the person has to sign in again.
     The cookie lives in one browser on one device, so each phone/computer/browser keeps its own choice.
     """
+    guest_id = session.get("guest_id")
     session.clear()                                # fresh cookie on every sign-in
+    if isinstance(guest_id, str):
+        session["guest_id"] = guest_id
     session["uid"] = user["id"]
     session.permanent = bool(remember)
     session["remember"] = bool(remember)
@@ -569,7 +597,7 @@ def home():
     # "Keep me signed in" was unticked: that sign-in only lasts for the page the person is on.
     # Loading or refreshing the page (which is what reaches this route) signs them out.
     if session.get("remember") is False:
-        session.clear()
+        _clear_session_preserving_guest()
     return render_template("index.html")
 
 
@@ -579,9 +607,15 @@ def home():
 @app.route("/me", methods=["GET"])
 def me():
     user = current_user()
+    try:
+        guest_usage = None if user is not None else _guest_usage()
+    except Exception:
+        app.logger.exception("Could not read guest usage.")
+        return reply({"error": "Guest usage could not be verified."}, 503)
     # `remember` lets the page enforce "Keep me signed in = off" on its own side too.
     return reply({"authenticated": user is not None, "user": user,
-                  "remember": session.get("remember", True) is not False})
+                  "remember": session.get("remember", True) is not False,
+                  "guest_usage": guest_usage})
 
 
 @app.route("/username-available", methods=["GET"])
@@ -616,9 +650,14 @@ def login():
 
 @app.route("/logout", methods=["POST"])
 def logout():
-    session.clear()
+    _clear_session_preserving_guest()
     g.user = None
-    return reply({"authenticated": False, "user": None})
+    try:
+        guest_usage = _guest_usage()
+    except Exception:
+        app.logger.exception("Could not read guest usage after sign-out.")
+        return reply({"error": "Guest usage could not be verified."}, 503)
+    return reply({"authenticated": False, "user": None, "guest_usage": guest_usage})
 
 
 @app.route("/account", methods=["DELETE"])
@@ -629,9 +668,15 @@ def delete_account():
     if data is None:
         return reply({"error": "Send the request as JSON."}, 415)
     db.delete_user(current_user()["id"], data.get("password"))
-    session.clear()
+    _clear_session_preserving_guest()
     g.user = None
-    return reply({"authenticated": False, "user": None, "deleted": True})
+    try:
+        guest_usage = _guest_usage()
+    except Exception:
+        app.logger.exception("Could not read guest usage after account deletion.")
+        return reply({"error": "Guest usage could not be verified."}, 503)
+    return reply({"authenticated": False, "user": None, "deleted": True,
+                  "guest_usage": guest_usage})
 
 
 # --------------------------------------------------------------------------
@@ -727,30 +772,55 @@ def send():
     def event(kind, **data):
         return json.dumps({"type": kind, **data}, ensure_ascii=True) + "\n"
 
+    def failure_response(message, status=200, guest_usage=None):
+        if use_events:
+            extra = {"guest_usage": guest_usage} if guest_usage is not None else {}
+            body = event("error", message=message, **extra)
+        else:
+            body = message
+        response = Response(body, mimetype="application/x-ndjson" if use_events else "text/plain")
+        response.status_code = status
+        response.headers["Cache-Control"] = "no-store"
+        if use_events:
+            response.headers["X-Accel-Buffering"] = "no"
+        return response
+
     def fail(message):
         return event("error", message=message) if use_events else message
 
-    def generate():
-        # ---- input checks (nothing is recorded for these) ----------------
-        if not text:
-            yield fail("Please provide some source code.")
-            return
-        if len(text) > MAX_SOURCE_CHARS:
-            yield fail("The source code is too large.")
-            return
-        if len(instructions) > MAX_INSTRUCTIONS_CHARS:
-            yield fail(f"Code design preferences must be {MAX_INSTRUCTIONS_CHARS} characters or fewer.")
-            return
-        if language is None:
-            yield fail("Unrecognised target language. Please select from the dropdown.")
-            return
-        if source_language is None and request.form.get("source_language"):
-            # source_language was supplied but not in the allowlist
-            yield fail("Unrecognised source language.")
-            return
+    if not text:
+        return failure_response("Please provide some source code.")
+    if len(text) > MAX_SOURCE_CHARS:
+        return failure_response("The source code is too large.")
+    if len(instructions) > MAX_INSTRUCTIONS_CHARS:
+        return failure_response(
+            f"Code design preferences must be {MAX_INSTRUCTIONS_CHARS} characters or fewer.")
+    if language is None:
+        return failure_response("Unrecognised target language. Please select from the dropdown.")
+    if source_language is None and request.form.get("source_language"):
+        return failure_response("Unrecognised source language.")
 
+    guest_usage = None
+    if user_id is None:
+        try:
+            quota = _consume_guest_action("translation")
+        except Exception:
+            app.logger.exception("Could not verify or consume guest translation quota.")
+            return failure_response("Guest usage could not be verified. Please try again.", 503)
+        guest_usage = quota["usage"]
+        if not quota["allowed"]:
+            return failure_response(
+                f"Guest translation limit reached ({db.GUEST_ACTION_LIMIT}). "
+                "Sign in to continue.",
+                429,
+                guest_usage,
+            )
+
+    def generate():
         attempt = Attempt(user_id, source_language, language, text)   # row: 'pending'
         try:
+            if use_events and guest_usage is not None:
+                yield event("usage", guest_usage=guest_usage)
             # ---- STEP 1: compiler gate  (AI is NOT called on failure) ----
             problem = check_source_code(text, source_language)
             if problem:
@@ -803,8 +873,8 @@ def send():
             attempt.fail("interrupted", "The translation was stopped before it finished.")
 
     response = Response(generate(), mimetype="application/x-ndjson" if use_events else "text/plain")
+    response.headers["Cache-Control"] = "no-store"
     if use_events:
-        response.headers["Cache-Control"] = "no-store"
         response.headers["X-Accel-Buffering"] = "no"
     return response
 
@@ -870,11 +940,29 @@ def execute_code():
     if lang is None:
         return jsonify(error="Only C, C++, Python and Java can be compiled and run right now."), 400
 
+    guest_usage = None
+    if current_user() is None:
+        try:
+            quota = _consume_guest_action("compilation")
+        except Exception:
+            app.logger.exception("Could not verify or consume guest compilation quota.")
+            return reply({"error": "Guest usage could not be verified. Please try again."}, 503)
+        guest_usage = quota["usage"]
+        if not quota["allowed"]:
+            return reply({
+                "error": f"Guest compilation limit reached ({db.GUEST_ACTION_LIMIT}). "
+                         "Sign in to continue.",
+                "guest_usage": guest_usage,
+            }, 429)
+
     try:
         result = _run_code(code, lang, stdin_text, eof)
     except Exception:
         app.logger.exception("Run request failed.")
-        return jsonify(error="The compiler failed. Please try again."), 500
+        return reply({
+            "error": "The compiler failed. Please try again.",
+            "guest_usage": guest_usage,
+        }, 500)
 
     status = result["status"]
     tool = result["compiler"] or lang
@@ -917,6 +1005,7 @@ def execute_code():
         exit_code=result["exit_code"],
         language=result["language"],
         duration_ms=result["duration_ms"],
+        guest_usage=guest_usage,
     )
     response.headers["Cache-Control"] = "no-store"
     return response

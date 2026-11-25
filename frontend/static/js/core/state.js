@@ -20,6 +20,7 @@ export const state = {
   // The login itself lives in an HttpOnly cookie that JavaScript cannot read.
   user: null,
   authReady: false,              // true once the first GET /me has answered
+  guestUsage: null,              // server-authoritative counters mirrored to localStorage
   cloudSaved: [],                // bookmarked translations of the signed-in user (server copy)
   history: {
     items: [],                   // rows loaded so far (newest first)

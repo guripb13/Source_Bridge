@@ -9,6 +9,7 @@ import { explainTranslationError, STOPPED_INFO } from "./errors.js";
 import { startProgress, stopProgress } from "./progress.js";
 import { getInstructions } from "./instructions.js";
 import { loadSession } from "../account/session.js";
+import { ensureGuestActionAllowed, setGuestUsage } from "../core/guest-usage.js";
 
 const { form, source, output, sourceLanguage } = dom;
 
@@ -48,6 +49,7 @@ export function initTranslate() {
     if (!source.value.trim()) { setRichStatus({ title: "There's no code to translate", tip: "Paste your code or upload a file first." }); source.focus(); return; }
     const target = targetLanguage();
     if (!target) { setRichStatus({ title: "No target language chosen", tip: "Use Change languages to pick one." }); return; }
+    if (!(await ensureGuestActionAllowed("translations"))) return;
 
     const originalSource = source.value;
     const originalFileName = state.sourceFileName;
@@ -68,7 +70,22 @@ export function initTranslate() {
         method: "POST", body: data, signal: controller.signal, credentials: "same-origin",
         headers: { Accept: "application/x-ndjson" }
       });
-      if (!response.ok) throw httpError(response.status);
+      if (!response.ok) {
+        const body = await response.text();
+        if (response.headers.get("content-type")?.includes("application/x-ndjson")) {
+          for (const line of body.split("\n")) {
+            if (!line.trim()) continue;
+            try {
+              const item = JSON.parse(line);
+              if (item.guest_usage) setGuestUsage(item.guest_usage);
+              if (item.type === "error" && item.message) throw kindError(item.message, "server");
+            } catch (error) {
+              if (error.kind) throw error;
+            }
+          }
+        }
+        throw httpError(response.status);
+      }
       if (response.headers.get("content-type")?.includes("text/html")) throw kindError("The server returned a page instead of code.", "html");
       // NDJSON: one JSON event per line. Falls back to plain text if the server ignores Accept.
       const events = response.headers.get("content-type")?.includes("application/x-ndjson");
@@ -81,7 +98,11 @@ export function initTranslate() {
         try { item = JSON.parse(line); }
         catch (_) { throw kindError("The translation stream was interrupted.", "stream"); }
         if (item.type === "chunk" && typeof item.text === "string") appendOutput(item.text);
-        else if (item.type === "error") throw kindError(item.message || "Translation failed.", "server");
+        else if (item.type === "usage") setGuestUsage(item.guest_usage);
+        else if (item.type === "error") {
+          if (item.guest_usage) setGuestUsage(item.guest_usage);
+          throw kindError(item.message || "Translation failed.", "server");
+        }
         else if (item.type === "complete") { completed = true; recorded = item; }
       }
       function consumeText(text) {

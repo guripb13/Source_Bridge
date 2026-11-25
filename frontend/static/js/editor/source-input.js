@@ -7,12 +7,18 @@ import { updateLines } from "./line-numbers.js";
 import { initAutoClose } from "./auto-close.js";
 
 const { form, source, output } = dom;
+let dragMode = false;
 
 // Retain the original Alt-drag convenience without rendering code as HTML.
+function refreshDragAvailability() {
+  source.draggable = dragMode && Boolean(source.value) && !state.activeController;
+  output.draggable = dragMode && Boolean(output.value);
+}
+
 function setDragMode(on) {
-  document.body.classList.toggle("drag-mode", on);
-  source.draggable = on && Boolean(source.value) && !state.activeController;
-  output.draggable = on && Boolean(output.value);
+  dragMode = on;
+  document.body.classList.toggle("drag-mode", dragMode);
+  refreshDragAvailability();
 }
 
 export function initSourceInput() {
@@ -20,6 +26,7 @@ export function initSourceInput() {
     state.fileReadVersion += 1;
     updateLines(source, $("sourceLines"));
     refreshButtons();
+    refreshDragAvailability();
     if (state.completedTranslation) setStatus("Source updated. Translate again to refresh the result.");
     else setStatus("");
   });
@@ -38,14 +45,28 @@ export function initSourceInput() {
   });
   if (/Mac|iPhone|iPad/.test(navigator.platform)) $("shortcutModifier").textContent = "⌘";
 
-  document.addEventListener("keydown", (event) => { if (event.key === "Alt") setDragMode(true); });
+  document.addEventListener("keydown", (event) => {
+    if (event.key !== "Alt") return;
+    if (event.target === source || event.target === output) event.preventDefault();
+    setDragMode(true);
+  });
   document.addEventListener("keyup", (event) => { if (event.key === "Alt") setDragMode(false); });
   window.addEventListener("blur", () => setDragMode(false));
   [source, output].forEach((editor) => {
+    editor.addEventListener("pointerdown", (event) => {
+      if (event.altKey) setDragMode(true);
+      else refreshDragAvailability();
+    });
     editor.addEventListener("dragstart", (event) => {
-      if (!document.body.classList.contains("drag-mode")) return;
-      event.dataTransfer.setData("text/plain", editor.value);
+      if (!dragMode) return;
+      if (!event.dataTransfer) { event.preventDefault(); return; }
+      const start = editor.selectionStart;
+      const end = editor.selectionEnd;
+      const selectedText = start !== end ? editor.value.slice(start, end) : editor.value;
+      if (!selectedText) { event.preventDefault(); return; }
+      event.dataTransfer.setData("text/plain", selectedText);
       event.dataTransfer.effectAllowed = "copy";
     });
+    editor.addEventListener("dragend", refreshDragAvailability);
   });
 }

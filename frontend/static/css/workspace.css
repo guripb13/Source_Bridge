@@ -17,6 +17,8 @@
 .run-shortcut-hint { position: absolute; top: calc(100% + 7px); left: 50%; z-index: 2; padding: 4px 7px; color: var(--ink); font-size: 11px; line-height: 1; white-space: nowrap; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; box-shadow: 0 2px 7px rgb(0 0 0 / 12%); transform-origin: top center; visibility: hidden; pointer-events: none; animation: run-hint-morph-out .22s var(--ease-soft) both; transition: visibility 0s linear .22s; }
 .run-button:not(:disabled):hover + .run-shortcut-hint, .run-button:not(:disabled):focus-visible + .run-shortcut-hint,
 .term-btn:not(:disabled):hover + .run-shortcut-hint, .term-btn:not(:disabled):focus-visible + .run-shortcut-hint { visibility: visible; animation: run-hint-morph-in .3s var(--ease-soft) both; transition: visibility 0s; }
+body:not(.is-translating) .translate-button:not(:disabled):hover + .run-shortcut-hint,
+body:not(.is-translating) .translate-button:not(:disabled):focus-visible + .run-shortcut-hint { visibility: visible; animation: run-hint-morph-in .3s var(--ease-soft) both; transition: visibility 0s; }
 .run-shortcut-hint::before, .run-shortcut-hint::after { position: absolute; left: 50%; width: 0; height: 0; border-right: 7px solid transparent; border-bottom: 7px solid var(--border); border-left: 7px solid transparent; content: ""; transform: translateX(-50%); }
 .run-shortcut-hint::before { top: -7px; }
 .run-shortcut-hint::after { top: -6px; border-right-width: 6px; border-bottom-width: 6px; border-left-width: 6px; border-bottom-color: var(--surface); }
@@ -82,7 +84,10 @@ body.drag-mode .code-surface { border-style: dashed; border-color: var(--green);
   .translate-button { gap: clamp(9px, 2.4dvh, 24px); font-size: clamp(22.5px, 3.3dvh, 28.5px); }
   .translate-circle { width: clamp(87px, 13.5dvh, 129px); height: clamp(87px, 13.5dvh, 129px); }
 }
-@media (max-width: 900px) { .translate-button { pointer-events: none; opacity: .5; transition: opacity .2s ease; } }
+@media (max-width: 900px) {
+  .translate-button { pointer-events: none; opacity: .5; transition: opacity .2s ease; }
+  .translate-action .run-shortcut-hint { display: none; }
+}
 
 @keyframes run-hint-morph-in {
   from { opacity: 0; transform: translate(-50%, -4px) scale(.86); border-radius: 12px 12px 4px 4px; }

@@ -40,6 +40,7 @@
 /* --- Suggestion chips (same look as the filter chips in History) --- */
 .suggestion-chips { display: flex; flex-wrap: wrap; gap: clamp(5px, 1dvh, 8px) clamp(5px, .6vw, 8px); }
 .suggestion-chip { display: inline-flex; align-items: center; padding: clamp(4px, .9dvh, 7px) clamp(9px, 1.1vw, 15px); border: 1px solid var(--green-edge); border-radius: 99px; background: transparent; font-size: clamp(12px, .35vw + 8px, 13.5px); line-height: 1.4; transition: background .18s, border-color .18s, transform .18s; }
+.suggestion-chip[hidden] { display: none; }
 .suggestion-chip:hover:not(:disabled) { background: var(--green-soft); transform: translateY(-1px); }
 .suggestion-chip[aria-pressed="true"] { background: var(--green-soft); border-color: var(--green); font-weight: 600; }
 /* The tick is an inline SVG: it makes room for itself and its stroke is drawn in (and un-drawn) with plain transitions. */

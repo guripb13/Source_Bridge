@@ -7,6 +7,7 @@ It creates and manages exactly THREE database files, side by side in one folder:
     users.db          WHO can sign in
         users             one row per account: credentials + login bookkeeping
         settings          tiny key/value table (holds the secret that signs login cookies)
+        guest_usage      server-side translation and compile quotas per guest session
 
     translations.db   WHAT each signed-in user translated
         languages         lookup table: every language name is stored once
@@ -96,7 +97,7 @@ log = logging.getLogger(__name__)
 # --------------------------------------------------------------------------
 # Settings
 # --------------------------------------------------------------------------
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 
 USERNAME_RE = re.compile(r"[A-Za-z0-9_.\-]{3,30}")
 EMAIL_RE = re.compile(r"[^@\s]+@[^@\s]+\.[^@\s]+")
@@ -108,6 +109,11 @@ STALE_PENDING_MINUTES = 10
 MAX_HISTORY_PER_USER = 500                      # newest unsaved translations kept per user
 MAX_SAVED_PER_USER = 100                        # saved translations are never auto-deleted
 MAX_ERROR_CHARS = 2000
+GUEST_ACTION_LIMIT = 3
+_GUEST_ACTION_COLUMNS = {
+    "translation": "translations",
+    "compilation": "compilations",
+}
 
 ERROR_STAGES = ("compiler", "convertibility", "translation", "interrupted")
 
@@ -188,6 +194,13 @@ CREATE TABLE IF NOT EXISTS settings (
     key    TEXT PRIMARY KEY,
     value  TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS guest_usage (
+    guest_key_hash  TEXT PRIMARY KEY,
+    translations    INTEGER NOT NULL DEFAULT 0 CHECK (translations BETWEEN 0 AND 3),
+    compilations    INTEGER NOT NULL DEFAULT 0 CHECK (compilations BETWEEN 0 AND 3),
+    updated_at      TEXT NOT NULL
+);
 """
 
 TRANSLATIONS_SCHEMA = """
@@ -255,7 +268,7 @@ def _connect(path, write=False):
     One short-lived connection per operation (cheap for SQLite, safe with several workers).
     write=True takes the write lock up front, so "check, then change" cannot be interleaved
     with another request. Commits on success, rolls back on any error.
-    Default journal mode is kept on purpose: it leaves exactly two .db files on disk.
+    Default journal mode is kept on purpose: it leaves exactly three .db files on disk.
     """
     conn = sqlite3.connect(path, timeout=10)
     conn.row_factory = sqlite3.Row
@@ -314,6 +327,56 @@ def init_db():
     with _connect(USERNAME_INDEX_DB) as conn:
         _migrate(conn, USERNAME_INDEX_SCHEMA)
     sync_username_index()
+
+
+def _guest_usage_payload(row=None):
+    return {
+        "translations": row["translations"] if row is not None else 0,
+        "compilations": row["compilations"] if row is not None else 0,
+        "limit": GUEST_ACTION_LIMIT,
+    }
+
+
+def get_guest_usage(guest_key_hash):
+    """Return server-side guest counters without creating a row for a new visitor."""
+    if not isinstance(guest_key_hash, str) or not re.fullmatch(r"[a-f0-9]{64}", guest_key_hash):
+        raise ValidationError("Invalid guest session.")
+    with _connect(USERS_DB) as conn:
+        row = conn.execute(
+            "SELECT translations, compilations FROM guest_usage WHERE guest_key_hash = ?",
+            (guest_key_hash,),
+        ).fetchone()
+    return _guest_usage_payload(row)
+
+
+def consume_guest_action(guest_key_hash, action):
+    """Atomically consume one guest translation or compile request, enforcing its separate cap."""
+    column = _GUEST_ACTION_COLUMNS.get(action)
+    if column is None:
+        raise ValidationError("Invalid guest action.")
+    if not isinstance(guest_key_hash, str) or not re.fullmatch(r"[a-f0-9]{64}", guest_key_hash):
+        raise ValidationError("Invalid guest session.")
+
+    with _connect(USERS_DB, write=True) as conn:
+        conn.execute(
+            "INSERT OR IGNORE INTO guest_usage (guest_key_hash, updated_at) VALUES (?, ?)",
+            (guest_key_hash, _now()),
+        )
+        row = conn.execute(
+            "SELECT translations, compilations FROM guest_usage WHERE guest_key_hash = ?",
+            (guest_key_hash,),
+        ).fetchone()
+        usage = _guest_usage_payload(row)
+        if usage[column] >= GUEST_ACTION_LIMIT:
+            return {"allowed": False, "usage": usage}
+
+        conn.execute(
+            f"UPDATE guest_usage SET {column} = {column} + 1, updated_at = ? "
+            "WHERE guest_key_hash = ?",
+            (_now(), guest_key_hash),
+        )
+        usage[column] += 1
+        return {"allowed": True, "usage": usage}
 
 
 def get_secret_key():

@@ -8,12 +8,16 @@ tools for saving, reviewing, and running code.
 
 - **Translate code:** choose a source and target language, edit or upload source code, and receive
   the translation as it streams into the output editor.
-- **Personalize the result:** select design suggestions or enter up to 100 characters of custom
-  preferences. Preferences are sent with the translation request and guide the generated code.
+- **Personalize the result:** choose common and target-language-specific design suggestions or
+  enter up to 100 characters of custom preferences. Preferences guide the generated code.
 - **Edit comfortably:** use line numbers, automatic bracket and quote pairing, Tab indentation,
   resizable editors, and a responsive layout.
 - **Compile and run:** run either editor's code, view compiler output, and respond to interactive
   program input without losing the run context.
+- **Guest limits:** unsigned visitors can make up to three translation requests and three
+  compile/run requests per signed browser session. The server enforces the separate limits; signing
+  in removes the guest caps. Each `/execute` request counts, including a request that resumes an
+  interactive program.
 - **Manage results:** copy or download translations. Save results in this browser as a guest, or
   sign in to keep saved translations and translation history with your account.
 - **Review history:** signed-in users can filter, reopen, bookmark, and delete past completed or
@@ -142,6 +146,8 @@ Set the variables in your shell or hosting provider.
 ### Account and translation history
 
 - `GET /me` - returns the current sign-in state.
+- For guests, `/me` also returns server-authoritative `guest_usage` counters for translations and
+  compile/run requests.
 - `GET /username-available?username=...` - checks username validity and availability.
 - `POST /signup`, `POST /login`, `POST /logout` - account and session actions.
 - `DELETE /account` - deletes the signed-in account and its server-side history.
@@ -158,6 +164,11 @@ history use SQLite on the server.
 
 - SQLite databases are created automatically under `backend/data/` unless `DATABASE_DIR` points
   elsewhere. Back up this directory if it contains data you need to keep.
+- Guest counters are stored server-side using a hash of the signed guest-session identifier.
+  `localStorage` only mirrors the counts for the interface and is never trusted to enforce the
+  limit. The guest quota is per browser session, not a verified person: clearing the browser
+  cookie can create a new guest identity. Existing IP-based rate limits provide an additional,
+  short-window safeguard.
 - The included `vercel.json` routes requests to the Python app, but serverless disks are temporary.
   Do not rely on local SQLite files for persistent accounts or history on Vercel; use persistent
   storage or a hosted database.

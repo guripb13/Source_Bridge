@@ -3,7 +3,8 @@ export const keys = {
   preferences: "sourceBridge.preferences.v1",
   saved: "sourceBridge.saved.v1",
   sidebar: "sourceBridge.sidebarCollapsed",
-  editorHeight: "sourceBridge.editorHeight"
+  editorHeight: "sourceBridge.editorHeight",
+  guestUsage: "sourceBridge.guestUsage.v1"
 };
 
 export const endpoints = {
@@ -29,6 +30,7 @@ export const AUTH_RULES = {
 };
 
 export const HISTORY_PAGE_SIZE = 20;
+export const GUEST_ACTION_LIMIT = 3;
 
 // Languages compiler.py can build and run -> the name /execute expects.
 export const executableLanguages = { python: "python", java: "java", c: "c", "c++": "cpp" };

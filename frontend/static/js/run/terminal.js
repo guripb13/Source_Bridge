@@ -5,6 +5,7 @@ import { state } from "../core/state.js";
 import { refreshButtons, targetLanguage } from "../ui/buttons.js";
 import { runErrorMessage } from "../translate/errors.js";
 import { panelAnims, stateOf, cancelPanelAnim, openPanel, closePanel, motionAllowed } from "./panel-animation.js";
+import { ensureGuestActionAllowed, guestLimitMessage, setGuestUsage } from "../core/guest-usage.js";
 
 const { source, output, sourceLanguage } = dom;
 
@@ -130,9 +131,11 @@ async function postExecute(payload, signal) {
     error.status = response.status;
     throw error;
   }
+  if (data.guest_usage) setGuestUsage(data.guest_usage);
   if (!response.ok) {
     const error = new Error(data.error || `Request failed (${response.status}). Please try again.`);
     error.status = response.status;
+    error.guestUsage = data.guest_usage;
     throw error;
   }
   return data;
@@ -141,6 +144,7 @@ async function postExecute(payload, signal) {
 
 export async function runCode(code, execLanguage, button, panel) {
   if (!code.trim() || button.disabled) return;
+  if (!(await ensureGuestActionAllowed("compilations"))) return;
 
   const previousStop = liveStops.get(panel);
   if (previousStop) previousStop();
@@ -345,6 +349,10 @@ export async function runCode(code, execLanguage, button, panel) {
   // One run of the whole program with every answer so far. No state is kept on the server.
   async function execute(eof) {
     if (finished) return;
+    if (!(await ensureGuestActionAllowed("compilations"))) {
+      finish(guestLimitMessage("compilations"), true);
+      return;
+    }
     pending = null;
     setBusy(answers.length ? "Running…" : "Compiling…");
     const mine = new AbortController();
@@ -360,6 +368,7 @@ export async function runCode(code, execLanguage, button, panel) {
       else showFinal(data);
     } catch (error) {
       if (error.name === "AbortError" || finished) return;
+      if (error.guestUsage) setGuestUsage(error.guestUsage);
       const message = runErrorMessage(error);
       finish((answers.length ? withAnswers(lastStdout, answers) + "\n" : "") + message, true);
     }

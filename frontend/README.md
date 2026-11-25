@@ -58,6 +58,7 @@ frontend/
 
 ## Limitations (frontend only)
 
+- **Guest usage counters:** the browser stores a display mirror in `localStorage`, but the server is authoritative and enforces the three-translation and three-compile/run limits.
 - **Personalize box:** selected suggestions and up to 100 characters of custom design preferences are sent as the
   optional `instructions` field to `/send` and included in the translation prompt.
 - **Progress messages** are illustrative stages on a timer; the server does not report real progress.

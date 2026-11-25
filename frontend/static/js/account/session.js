@@ -9,11 +9,13 @@
 import { endpoints } from "../core/config.js";
 import { state } from "../core/state.js";
 import { notify } from "../core/feedback.js";
+import { setGuestUsage } from "../core/guest-usage.js";
 import { api, onUnauthorized } from "./api.js";
 
 function setUser(user) {
   const previous = state.user;
   state.user = user || null;
+  if (state.user) setGuestUsage(null);
   if (!state.user) { state.cloudSaved = []; }
   document.dispatchEvent(new CustomEvent("sb:auth", { detail: { user: state.user, previous } }));
 }
@@ -37,20 +39,25 @@ function wasSignedInWithoutRemember() {
 export async function loadSession() {
   try {
     const data = await api("GET", endpoints.me);
+    setGuestUsage(data.guest_usage);
     if (data.authenticated && (data.remember === false || wasSignedInWithoutRemember())) {
       // A sign-in without "Keep me signed in" never survives a page load: drop the cookie on the
       // server (the login cookie is HttpOnly, so only the server can remove it) and show signed out.
-      try { await api("POST", endpoints.logout, {}, { credentialsCheck: true }); } catch (_) { /* still show signed out */ }
+      try {
+        const signedOut = await api("POST", endpoints.logout, {}, { credentialsCheck: true });
+        setGuestUsage(signedOut.guest_usage);
+      } catch (_) { /* still show signed out */ }
       markRemember(true);
       setUser(null);
     } else {
       setUser(data.authenticated ? data.user : null);
     }
   } catch (_) {
-    // Offline or server down: stay in "visitor" mode. Translating still works.
+    // Guest actions remain blocked until the server can confirm their quota.
     setUser(null);
   } finally {
     state.authReady = true;
+    document.dispatchEvent(new Event("sb:auth-ready"));
   }
 }
 
@@ -72,13 +79,15 @@ export async function signUp({ username, email, password, remember = true }) {
 
 /* If the request fails the cookie is still valid, so we must NOT pretend to be signed out. */
 export async function signOut() {
-  await api("POST", endpoints.logout, {}, { credentialsCheck: true });
+  const data = await api("POST", endpoints.logout, {}, { credentialsCheck: true });
+  setGuestUsage(data.guest_usage);
   markRemember(true);
   setUser(null);
 }
 
 export async function deleteAccount(password) {
-  await api("DELETE", endpoints.account, { password }, { credentialsCheck: true });
+  const data = await api("DELETE", endpoints.account, { password }, { credentialsCheck: true });
+  setGuestUsage(data.guest_usage);
   setUser(null);
 }
 
