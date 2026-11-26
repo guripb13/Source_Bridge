@@ -68,10 +68,13 @@ LIFE OF A TRANSLATION ROW
     died mid-stream), so nothing stays "in progress" forever.
 
 DEPLOYMENT NOTE
-    SQLite files are ordinary files. On a normal server / your own PC they persist. On Vercel
-    the disk is temporary: data would be lost when the function restarts. For real deployment
-    either use a host with a persistent disk (set DATABASE_DIR to it) or move these same tables
-    to a hosted database (Postgres, Turso, ...).
+    Two storage modes, chosen automatically:
+      - TURSO_DATABASE_URL + TURSO_AUTH_TOKEN set  ->  all tables live in ONE free hosted Turso
+        database (permanent, survives restarts and redeploys; use this on Hugging Face / Render /
+        Vercel, whose disks are temporary).
+      - not set                                    ->  three local SQLite files as described above
+        (your own PC / a server with a persistent disk; DATABASE_DIR picks the folder).
+    In Turso mode the three "files" are simply three groups of tables in the same database.
 """
 import hashlib
 import hmac
@@ -85,6 +88,8 @@ from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 
 from werkzeug.security import check_password_hash, generate_password_hash
+
+import turso_db                                 # hosted SQLite (Turso) over HTTPS, see turso_db.py
 
 try:                                            # reuse the project's language aliases (py -> python)
     from convertibility import normalize as _normalize_language
@@ -147,7 +152,12 @@ class AuthError(DatabaseError):
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
+USE_TURSO = turso_db.configured()
+
+
 def _pick_data_dir():
+    if USE_TURSO:                               # nothing is stored on local disk in this mode
+        return BASE_DIR
     wanted = os.environ.get("DATABASE_DIR") or os.path.join(BASE_DIR, "data")
     fallback = os.path.join(tempfile.gettempdir(), "source_bridge_data")
     for folder in (wanted, fallback):
@@ -270,10 +280,13 @@ def _connect(path, write=False):
     with another request. Commits on success, rolls back on any error.
     Default journal mode is kept on purpose: it leaves exactly three .db files on disk.
     """
-    conn = sqlite3.connect(path, timeout=10)
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA foreign_keys = ON")
-    conn.execute("PRAGMA busy_timeout = 10000")
+    if USE_TURSO:                               # `path` only names the group of tables
+        conn = turso_db.connect()
+    else:
+        conn = sqlite3.connect(path, timeout=10)
+        conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA foreign_keys = ON")
+        conn.execute("PRAGMA busy_timeout = 10000")
     try:
         if write:
             conn.execute("BEGIN IMMEDIATE")
@@ -302,10 +315,12 @@ def _minutes_from_now(minutes):
 
 def _upgrade_translations(conn):
     """Databases made before schema 2 have no repeat_count column: add it (existing rows = 1)."""
-    columns = {row[1] for row in conn.execute("PRAGMA table_info(translations)")}
-    if "repeat_count" not in columns:
+    try:
         conn.execute("ALTER TABLE translations "
                      "ADD COLUMN repeat_count INTEGER NOT NULL DEFAULT 1 CHECK (repeat_count >= 1)")
+    except sqlite3.OperationalError as exc:
+        if "duplicate column" not in str(exc).lower():      # already there = nothing to do
+            raise
 
 
 def _migrate(conn, schema, upgrade=None):
@@ -313,9 +328,6 @@ def _migrate(conn, schema, upgrade=None):
     conn.executescript(schema)
     if upgrade:
         upgrade(conn)
-    version = conn.execute("PRAGMA user_version").fetchone()[0]
-    if version < SCHEMA_VERSION:
-        conn.execute(f"PRAGMA user_version = {int(SCHEMA_VERSION)}")
 
 
 def init_db():
@@ -326,6 +338,9 @@ def init_db():
         _migrate(conn, TRANSLATIONS_SCHEMA, _upgrade_translations)
     with _connect(USERNAME_INDEX_DB) as conn:
         _migrate(conn, USERNAME_INDEX_SCHEMA)
+    with _connect(USERS_DB, write=True) as conn:        # remember the schema version (works in both modes)
+        conn.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('schema_version', ?)",
+                     (str(SCHEMA_VERSION),))
     sync_username_index()
 
 
@@ -427,10 +442,11 @@ def _username_hash(username):
 
 
 def _index_add(user_id, username):
-    with _connect(USERNAME_INDEX_DB, write=True) as conn:
+    hashed = _username_hash(username)       # BEFORE the write transaction: it may read the pepper
+    with _connect(USERNAME_INDEX_DB, write=True) as conn:       # from the DB (one DB in Turso mode)
         conn.execute("DELETE FROM username_index WHERE user_id = ?", (user_id,))
         conn.execute("INSERT OR REPLACE INTO username_index (username_hash, user_id) VALUES (?, ?)",
-                     (_username_hash(username), user_id))
+                     (hashed, user_id))
 
 
 def _index_remove(user_id):
@@ -470,6 +486,7 @@ def sync_username_index():
     """
     with _connect(USERS_DB) as conn:
         users = {row["id"]: row["username"] for row in conn.execute("SELECT id, username FROM users")}
+    _index_pepper()      # load the pepper BEFORE the write transaction (never nest two write connections)
     with _connect(USERNAME_INDEX_DB, write=True) as conn:
         indexed = {row[0] for row in conn.execute("SELECT user_id FROM username_index")}
         stale = indexed - users.keys()

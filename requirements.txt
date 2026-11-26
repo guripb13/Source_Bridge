@@ -4,3 +4,4 @@ google-genai
 werkzeug
 requests
 httpx
+gunicorn
