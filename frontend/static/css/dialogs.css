@@ -27,6 +27,8 @@
     overlay var(--dur-soft) allow-discrete,
     display var(--dur-soft) allow-discrete;
 }
+.app-dialog::-webkit-scrollbar-thumb,
+.app-dialog::-webkit-scrollbar-thumb:hover { border-top-width: 8px; border-bottom-width: 8px; }
 html:has(.app-dialog[open]),
 body:has(.app-dialog[open]) { overflow: hidden; }
 .app-dialog[open] { opacity: 1; transform: none; }

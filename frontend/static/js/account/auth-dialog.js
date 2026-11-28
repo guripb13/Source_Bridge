@@ -194,6 +194,7 @@ function renderStrength() {
 function setMode(next) {
   mode = next;
   const config = MODES[mode];
+  $("tabLogin").parentElement.classList.toggle("is-signup", mode === "signup");
   $("authTitle").textContent = config.title;
   $("authLead").textContent = config.lead;
   $("authSubmitLabel").textContent = config.submit;
