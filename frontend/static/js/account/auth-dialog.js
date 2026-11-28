@@ -233,6 +233,9 @@ function validate() {
   const errors = {};
   if (mode === "login") {
     if (!v.identifier) errors.identifier = "Enter your username or email.";
+    else if (v.identifier.length > AUTH_RULES.loginIdentifierMax) {
+      errors.identifier = `Username or email must be ${AUTH_RULES.loginIdentifierMax} characters or fewer.`;
+    }
     if (!v.password) errors.password = "Enter your password.";
     return errors;
   }

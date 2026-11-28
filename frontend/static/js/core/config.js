@@ -25,6 +25,7 @@ export const AUTH_RULES = {
   usernamePattern: /^[A-Za-z0-9_.\-]{3,30}$/,
   emailPattern: /^[^@\s]+@[^@\s]+\.[^@\s]+$/,
   emailMax: 254,
+  loginIdentifierMax: 100,
   passwordMin: 8,
   passwordMax: 128
 };
