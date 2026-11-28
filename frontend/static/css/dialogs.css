@@ -27,12 +27,16 @@
     overlay var(--dur-soft) allow-discrete,
     display var(--dur-soft) allow-discrete;
 }
-.app-dialog::-webkit-scrollbar-thumb,
-.app-dialog::-webkit-scrollbar-thumb:hover {
-  border-top-width: 8px; border-bottom-width: 8px;
-  border-radius: 999px;
-  background-clip: padding-box;
-}
+.app-dialog.has-rounded-scrollbar { scrollbar-width: thin; scrollbar-color: transparent transparent; }
+.app-dialog.has-rounded-scrollbar::-webkit-scrollbar { width: var(--sb-size); }
+.app-dialog.has-rounded-scrollbar::-webkit-scrollbar-thumb,
+.app-dialog.has-rounded-scrollbar::-webkit-scrollbar-thumb:hover { background-color: transparent; border-color: transparent; }
+.dialog-scrollbar { position: fixed; z-index: 2; width: var(--sb-size); opacity: 0; visibility: hidden; pointer-events: none; transition: opacity .18s ease, visibility 0s linear .18s; }
+.dialog-scrollbar.is-visible { opacity: 1; visibility: visible; pointer-events: auto; transition: opacity .18s ease, visibility 0s; }
+.dialog-scrollbar-thumb { position: absolute; top: 0; left: var(--sb-gap); right: var(--sb-gap); border-radius: 999px; background: var(--sb-thumb); cursor: pointer; transition: left .22s var(--ease-soft), right .22s var(--ease-soft), background-color .22s; touch-action: none; }
+.dialog-scrollbar:hover .dialog-scrollbar-thumb, .dialog-scrollbar.is-dragging .dialog-scrollbar-thumb { left: var(--sb-gap-hover); right: var(--sb-gap-hover); background: var(--sb-thumb-hover); }
+.dialog-scrollbar.is-dragging .dialog-scrollbar-thumb { background: var(--sb-thumb-active); }
+.app-dialog[data-dragging] .dialog-scrollbar { visibility: hidden; }
 html:has(.app-dialog[open]),
 body:has(.app-dialog[open]) { overflow: hidden; }
 .app-dialog[open] { opacity: 1; transform: none; }

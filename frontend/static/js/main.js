@@ -23,7 +23,7 @@ import { initSidebar, updateSidebar } from "./ui/sidebar.js";
 import { initDialogs } from "./ui/dialogs.js";
 import { initNavigation } from "./ui/navigation.js";
 import { refreshButtons } from "./ui/buttons.js";
-import { initPageScrollbar } from "./ui/scrollbar.js";
+import { initDialogScrollbars, initPageScrollbar } from "./ui/scrollbar.js";
 import { initLanguageDropdown } from "./ui/language-dropdown.js";
 import { initLineNumbers } from "./editor/line-numbers.js";
 import { initSourceInput } from "./editor/source-input.js";
@@ -65,6 +65,7 @@ renderSaved();
 refreshButtons();
 
 initPageScrollbar();
+initDialogScrollbars();
 initLanguageDropdown();
 
 // Last: ask the server who is signed in. The page works as a visitor until it answers.

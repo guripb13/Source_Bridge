@@ -139,3 +139,86 @@ export function initPageScrollbar() {
 
   kick();
 }
+
+export function initDialogScrollbars() {
+  if (!window.matchMedia("(pointer: fine)").matches) return;
+
+  const minThumb = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--sb-min-length")) || 64;
+
+  document.querySelectorAll(".app-dialog").forEach((dialog) => {
+    dialog.classList.add("has-rounded-scrollbar");
+    const track = document.createElement("div");
+    track.className = "dialog-scrollbar";
+    track.setAttribute("aria-hidden", "true");
+    const thumb = document.createElement("div");
+    thumb.className = "dialog-scrollbar-thumb";
+    track.appendChild(thumb);
+    dialog.appendChild(track);
+
+    let trackHeight = 0;
+    let thumbHeight = 0;
+    let scrollRange = 0;
+    let drag = null;
+
+    function sync() {
+      const rect = dialog.getBoundingClientRect();
+      const transformed = getComputedStyle(dialog).transform !== "none";
+      scrollRange = dialog.scrollHeight - dialog.clientHeight;
+      trackHeight = Math.max(0, rect.height - 16);
+      if (!dialog.open || scrollRange <= 1 || trackHeight <= 0 || transformed) {
+        track.classList.remove("is-visible");
+        return;
+      }
+
+      const borderRight = parseFloat(getComputedStyle(dialog).borderRightWidth) || 0;
+      track.style.top = `${rect.top + 8}px`;
+      track.style.left = `${rect.right - borderRight - track.offsetWidth}px`;
+      track.style.height = `${trackHeight}px`;
+      thumbHeight = Math.min(trackHeight, Math.max(minThumb, trackHeight * dialog.clientHeight / dialog.scrollHeight));
+      const free = trackHeight - thumbHeight;
+      const ratio = scrollRange > 0 ? Math.min(1, Math.max(0, dialog.scrollTop / scrollRange)) : 0;
+      thumb.style.height = `${thumbHeight}px`;
+      thumb.style.transform = `translateY(${ratio * free}px)`;
+      track.classList.add("is-visible");
+    }
+
+    function moveThumb(event) {
+      if (!drag || event.pointerId !== drag.pointerId) return;
+      const free = trackHeight - thumbHeight;
+      if (free > 0) dialog.scrollTop = drag.scrollTop + (event.clientY - drag.y) * (scrollRange / free);
+    }
+
+    function endDrag(event) {
+      if (!drag || event.pointerId !== drag.pointerId) return;
+      drag = null;
+      track.classList.remove("is-dragging");
+    }
+
+    thumb.addEventListener("pointerdown", (event) => {
+      if (event.button !== undefined && event.button !== 0) return;
+      event.preventDefault();
+      thumb.setPointerCapture(event.pointerId);
+      drag = { pointerId: event.pointerId, y: event.clientY, scrollTop: dialog.scrollTop };
+      track.classList.add("is-dragging");
+    });
+    thumb.addEventListener("pointermove", moveThumb);
+    thumb.addEventListener("pointerup", endDrag);
+    thumb.addEventListener("pointercancel", endDrag);
+    thumb.addEventListener("lostpointercapture", endDrag);
+    track.addEventListener("pointerdown", (event) => {
+      if (event.target !== track || trackHeight <= thumbHeight) return;
+      event.preventDefault();
+      const ratio = (event.clientY - track.getBoundingClientRect().top - thumbHeight / 2) / (trackHeight - thumbHeight);
+      dialog.scrollTop = Math.min(1, Math.max(0, ratio)) * scrollRange;
+    });
+    dialog.addEventListener("scroll", sync, { passive: true });
+    dialog.addEventListener("transitionend", sync);
+    window.addEventListener("resize", sync);
+    window.visualViewport?.addEventListener("resize", sync);
+    window.visualViewport?.addEventListener("scroll", sync);
+    dialog.addEventListener("close", sync);
+    if ("ResizeObserver" in window) new ResizeObserver(sync).observe(dialog);
+    new MutationObserver(sync).observe(dialog, { childList: true, subtree: true, attributes: true, attributeFilter: ["open", "hidden"] });
+    sync();
+  });
+}
