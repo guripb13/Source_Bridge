@@ -141,8 +141,6 @@ export function initPageScrollbar() {
 }
 
 export function initDialogScrollbars() {
-  if (!window.matchMedia("(pointer: fine)").matches) return;
-
   const minThumb = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--sb-min-length")) || 64;
 
   document.querySelectorAll(".app-dialog").forEach((dialog) => {

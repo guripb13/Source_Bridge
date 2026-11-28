@@ -17,6 +17,9 @@
   #accountButton.is-signed-in > #accountInitial {
     display: grid;
     place-items: center;
+    align-self: stretch;
+    flex: 1;
+    min-width: 0;
     font-size: 16px;
     font-weight: 700;
     line-height: 1;

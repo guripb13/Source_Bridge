@@ -11,7 +11,7 @@ function lockMobileScroll(dialog) {
   if (!isPhone.matches) return;
   if (mobileDialogs.size === 0) {
     lockedScrollY = window.scrollY;
-    document.body.style.setProperty("--dialog-scroll-top", `${-lockedScrollY}px`);
+    document.body.style.setProperty("--dialog-scroll-top", `${document.body.getBoundingClientRect().top}px`);
     document.body.classList.add("dialog-scroll-locked");
   }
   mobileDialogs.add(dialog);
