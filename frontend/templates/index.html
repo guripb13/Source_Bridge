@@ -15,7 +15,7 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/header.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/sidebar.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/workspace.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/dialogs.css', v='7') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dialogs.css', v='8') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/responsive.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/theme-transition.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/animations.css') }}">
@@ -28,7 +28,7 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/status-feedback.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/sidebar-peek.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/selection.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/account.css', v='3') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/account.css', v='4') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/history.css') }}">
   <!-- Scripts are ES modules under static/js; main.js wires everything together. -->
   <script type="module" src="{{ url_for('static', filename='js/main.js', v='1') }}"></script>
@@ -448,16 +448,18 @@
     </div>
     <p class="auth-message" id="accountMessage" role="alert" hidden></p>
     <div class="danger-zone">
-      <button type="button" class="link-button danger-link" id="deleteToggle" aria-expanded="false" aria-controls="deleteForm">Delete my account</button>
-      <form id="deleteForm" class="delete-form" hidden novalidate>
-        <p>This permanently deletes your account and your whole translation history. It can't be undone.</p>
-        <div class="auth-field">
-          <label for="deletePassword">Confirm with your password</label>
-          <input type="password" id="deletePassword" name="password" autocomplete="current-password" maxlength="128">
-        </div>
-        <p class="auth-message" id="deleteMessage" role="alert" hidden></p>
-        <button type="submit" class="pill-button danger-button" id="deleteSubmit">Delete account</button>
-      </form>
+      <button type="button" class="link-button danger-link" id="deleteToggle" aria-expanded="false" aria-controls="deletePanel">Delete my account</button>
+      <div class="delete-panel" id="deletePanel" aria-hidden="true" inert>
+        <form id="deleteForm" class="delete-form" novalidate>
+          <p>This permanently deletes your account and your whole translation history. It can't be undone.</p>
+          <div class="auth-field">
+            <label for="deletePassword">Confirm with your password</label>
+            <input type="password" id="deletePassword" name="password" autocomplete="current-password" maxlength="128">
+          </div>
+          <p class="auth-message" id="deleteMessage" role="alert" hidden></p>
+          <button type="submit" class="pill-button danger-button" id="deleteSubmit">Delete account</button>
+        </form>
+      </div>
     </div>
   </dialog>
     <script type="module" src="{{ url_for('static', filename='js/mobile-touch.js') }}"></script>

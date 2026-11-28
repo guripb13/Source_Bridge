@@ -86,6 +86,11 @@
 .danger-link { color: var(--error); font-size: 14px; font-weight: 500; }
 .danger-link:hover:not(:disabled) { color: var(--error); opacity: .8; }
 .delete-form { display: grid; gap: 14px; margin-top: 14px; }
+.delete-panel { display: grid; grid-template-rows: 0fr; overflow: hidden; opacity: 0; visibility: hidden; transition: grid-template-rows .34s var(--ease-soft), opacity .24s var(--ease-soft), visibility 0s linear .34s; }
+.delete-panel.is-open { grid-template-rows: 1fr; opacity: 1; visibility: visible; transition-delay: 0s; }
+.delete-panel > .delete-form { min-height: 0; overflow: hidden; margin-top: 0; padding-top: 0; transition: padding-top .34s var(--ease-soft); }
+.delete-panel.is-open > .delete-form { padding-top: 14px; }
+.danger-link.is-open, .danger-link.is-open:hover:not(:disabled) { color: var(--ink); }
 .delete-form p:not(.auth-message) { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.6; }
 .danger-button { border-color: color-mix(in srgb, var(--error) 55%, transparent); background: color-mix(in srgb, var(--error) 10%, var(--surface)); color: var(--error); font-size: 15px; }
 .danger-button:hover:not(:disabled) { background: color-mix(in srgb, var(--error) 18%, var(--surface)); }
@@ -99,5 +104,5 @@
   .auth-tab { font-size: 14px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .auth-tabs::before, .auth-tab, .auth-field input, .meter-bars i { transition: none; }
+  .auth-tabs::before, .auth-tab, .auth-field input, .meter-bars i, .delete-panel, .delete-panel > .delete-form { transition: none; }
 }

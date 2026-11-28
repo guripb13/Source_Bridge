@@ -352,7 +352,11 @@ function openAccountDialog() {
 
 function resetAccountDialog() {
   $("deletePassword").value = "";
-  $("deleteForm").hidden = true;
+  $("deletePanel").classList.remove("is-open");
+  $("deletePanel").setAttribute("aria-hidden", "true");
+  $("deletePanel").inert = true;
+  $("deleteToggle").classList.remove("is-open");
+  $("deleteToggle").textContent = "Delete my account";
   $("deleteToggle").setAttribute("aria-expanded", "false");
   showMessage("deleteMessage", "");
   showMessage("accountMessage", "");
@@ -431,10 +435,14 @@ export function initAuth() {
   $("accountHistory").addEventListener("click", () => { $("accountDialog").close(); $("historyNav").click(); });
   $("accountSignOut").addEventListener("click", handleSignOut);
   $("deleteToggle").addEventListener("click", () => {
-    const open = $("deleteForm").hidden;
-    $("deleteForm").hidden = !open;
+    const open = !$("deletePanel").classList.contains("is-open");
+    $("deletePanel").classList.toggle("is-open", open);
+    $("deletePanel").setAttribute("aria-hidden", String(!open));
+    $("deletePanel").inert = !open;
+    $("deleteToggle").classList.toggle("is-open", open);
+    $("deleteToggle").textContent = open ? "Don't delete my account" : "Delete my account";
     $("deleteToggle").setAttribute("aria-expanded", String(open));
-    if (open) $("deletePassword").focus();
+    if (open) $("deletePassword").focus({ preventScroll: true });
   });
   $("deleteForm").addEventListener("submit", handleDelete);
   $("accountDialog").addEventListener("close", resetAccountDialog);
