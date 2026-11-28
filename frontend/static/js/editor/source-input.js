@@ -5,8 +5,7 @@ import { setStatus } from "../core/feedback.js";
 import { refreshButtons } from "../ui/buttons.js";
 import { updateLines } from "./line-numbers.js";
 import { initAutoClose } from "./auto-close.js";
-import { countLines, enforceLimits, SOURCE_LIMIT_MESSAGE } from "./source-limits.js";
-import { MAX_LINES } from "../core/config.js";
+import { countLines } from "./source-lines.js";
 
 const { form, source, output } = dom;
 let dragMode = false;
@@ -25,15 +24,12 @@ function setDragMode(on) {
 
 export function initSourceInput() {
   source.addEventListener("input", () => {
-    const limited = enforceLimits(source.value);
-    if (limited.text !== source.value) source.value = limited.text;
     state.fileReadVersion += 1;
     updateLines(source, $("sourceLines"));
-    $("sourceLineCounter").textContent = `Lines ${countLines(source.value)}/${MAX_LINES}`;
+    $("sourceLineCounter").textContent = `Lines ${countLines(source.value)}`;
     refreshButtons();
     refreshDragAvailability();
-    if (limited.cut) setStatus(SOURCE_LIMIT_MESSAGE, true);
-    else if (state.completedTranslation) setStatus("Source updated. Translate again to refresh the result.");
+    if (state.completedTranslation) setStatus("Source updated. Translate again to refresh the result.");
     else setStatus("");
   });
   const insertPlainText = (event, text) => {
@@ -48,7 +44,7 @@ export function initSourceInput() {
   source.addEventListener("drop", (event) => {
     insertPlainText(event, event.dataTransfer?.getData("text/plain") ?? null);
   });
-  $("sourceLineCounter").textContent = `Lines ${countLines(source.value)}/${MAX_LINES}`;
+  $("sourceLineCounter").textContent = `Lines ${countLines(source.value)}`;
   initAutoClose(source);
   source.addEventListener("keydown", (event) => {
     if (event.key === "Tab" && !event.shiftKey && !event.ctrlKey && !event.metaKey && !event.altKey) {
