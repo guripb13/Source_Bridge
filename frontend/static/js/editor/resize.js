@@ -251,6 +251,7 @@ export function initEditorResize() {
       let scrollStart = 0;
       let frame = 0;
       let dragging = false;
+      const pointerId = event.pointerId;
       const beginDrag = () => {
         dragging = true;
         lastTap = null;
@@ -281,16 +282,21 @@ export function initEditorResize() {
         if (speed || gap) frame = requestAnimationFrame(update);
       };
       const move = (e) => {
+        if (e.pointerId !== pointerId) return;
         pointerY = e.clientY;
         if (!dragging && Math.abs(pointerY - startY) < DRAG_THRESHOLD) return;
         if (!dragging) beginDrag();
         if (!frame) frame = requestAnimationFrame(update);
       };
-      const end = (e) => {
-        handle.removeEventListener("pointermove", move);
-        handle.removeEventListener("pointerup", end);
-        handle.removeEventListener("pointercancel", end);
+      const end = (e, cancelled = false) => {
+        if (e.pointerId !== undefined && e.pointerId !== pointerId) return;
+        window.removeEventListener("pointermove", move);
+        window.removeEventListener("pointerup", end);
+        window.removeEventListener("pointercancel", onCancel);
+        window.removeEventListener("blur", onBlur);
+        handle.removeEventListener("lostpointercapture", onLostPointerCapture);
         if (dragging) {
+          if (!cancelled && Number.isFinite(e.clientY)) pointerY = e.clientY;
           raw = startHeight + (pointerY - startY) + (window.scrollY - scrollStart);
           dragging = false;
           cancelAnimationFrame(frame);
@@ -313,9 +319,14 @@ export function initEditorResize() {
           lastTap = null;
         }
       };
-      handle.addEventListener("pointermove", move);
-      handle.addEventListener("pointerup", end);
-      handle.addEventListener("pointercancel", end);
+      const onBlur = () => end({ type: "blur", pointerId }, true);
+      const onCancel = (e) => end(e, true);
+      const onLostPointerCapture = (e) => end(e, true);
+      window.addEventListener("pointermove", move);
+      window.addEventListener("pointerup", end);
+      window.addEventListener("pointercancel", onCancel);
+      window.addEventListener("blur", onBlur);
+      handle.addEventListener("lostpointercapture", onLostPointerCapture);
     });
 
     handle.addEventListener("keydown", (event) => {
