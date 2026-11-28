@@ -11,7 +11,6 @@ import { addSaved, findSaved, isFull, removeSavedById } from "./store.js";
 import { fetchTranslation, refreshCloudSaved, setCloudSaved, syncOpenTranslation } from "./cloud.js";
 import { refreshButtons } from "../ui/buttons.js";
 import { updateLines } from "../editor/line-numbers.js";
-import { countLines } from "../editor/source-lines.js";
 import { showView } from "../ui/navigation.js";
 import { updateTargetLanguageOptions, languageChanged } from "../languages/selection.js";
 import { explainTranslationError } from "../translate/errors.js";
@@ -129,7 +128,6 @@ export function loadIntoWorkspace(entry, statusText) {
   source.scrollTop = 0; output.scrollTop = 0;
   languageChanged();
   updateLines(source, $("sourceLines")); updateLines(output, $("outputLines"));
-  $("sourceLineCounter").textContent = `Lines ${countLines(source.value)}`;
   showView("translate");
   if (statusText) setStatus(statusText);
   return true;

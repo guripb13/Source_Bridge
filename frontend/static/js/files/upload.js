@@ -5,7 +5,6 @@ import { state } from "../core/state.js";
 import { notify, setStatus } from "../core/feedback.js";
 import { refreshButtons } from "../ui/buttons.js";
 import { updateLines } from "../editor/line-numbers.js";
-import { countLines } from "../editor/source-lines.js";
 
 const { source, sourceLanguage } = dom;
 const SUPPORTED_TEXT = ".py, .java, .c or .cpp";
@@ -51,7 +50,6 @@ async function loadFile(file) {
     source.scrollTop = 0;
     updateFileLabel();
     updateLines(source, $("sourceLines"));
-    $("sourceLineCounter").textContent = `Lines ${countLines(source.value)}`;
     refreshButtons();
     source.focus();
     const fileLanguage = uploadExtensions[extension];
@@ -73,7 +71,6 @@ function removeFile() {
     source.value = "";
     source.scrollTop = 0;
     updateLines(source, $("sourceLines"));
-    $("sourceLineCounter").textContent = `Lines ${countLines(source.value)}`;
   }
   updateFileLabel();
   refreshButtons();
