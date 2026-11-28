@@ -31,8 +31,8 @@
 .app-dialog.has-rounded-scrollbar::-webkit-scrollbar { width: var(--sb-size); }
 .app-dialog.has-rounded-scrollbar::-webkit-scrollbar-thumb,
 .app-dialog.has-rounded-scrollbar::-webkit-scrollbar-thumb:hover { background-color: transparent; border-color: transparent; }
-.dialog-scrollbar { position: fixed; z-index: 2; width: var(--sb-size); opacity: 0; visibility: hidden; pointer-events: none; transition: opacity .18s ease, visibility 0s linear .18s; }
-.dialog-scrollbar.is-visible { opacity: 1; visibility: visible; pointer-events: auto; transition: opacity .18s ease, visibility 0s; }
+.dialog-scrollbar { position: fixed; z-index: 2; width: var(--sb-size); opacity: 0; visibility: hidden; pointer-events: none; transform: translateX(calc(100% + 8px)); transition: transform .5s var(--ease-soft), opacity .35s var(--ease-soft), visibility 0s linear .5s; }
+.dialog-scrollbar.is-visible { opacity: 1; visibility: visible; pointer-events: auto; transform: none; transition: transform .5s var(--ease-soft), opacity .35s var(--ease-soft), visibility 0s; }
 .dialog-scrollbar-thumb { position: absolute; top: 0; left: var(--sb-gap); right: var(--sb-gap); border-radius: 999px; background: var(--sb-thumb); cursor: pointer; transition: left .22s var(--ease-soft), right .22s var(--ease-soft), background-color .22s; touch-action: none; }
 .dialog-scrollbar:hover .dialog-scrollbar-thumb, .dialog-scrollbar.is-dragging .dialog-scrollbar-thumb { left: var(--sb-gap-hover); right: var(--sb-gap-hover); background: var(--sb-thumb-hover); }
 .dialog-scrollbar.is-dragging .dialog-scrollbar-thumb { background: var(--sb-thumb-active); }
